@@ -124,7 +124,7 @@ export default function DrawingTools({ onToolSelect, activeTool }: DrawingToolsP
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
-          absolute top-4 z-20 flex items-center justify-center
+          absolute bottom-20 z-20 flex items-center justify-center
           transition-all duration-200 ease-in-out
           bg-[#0c0e14] border border-gray-600
           text-gray-300 hover:bg-gray-700 hover:text-white
