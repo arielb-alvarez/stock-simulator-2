@@ -85,7 +85,7 @@ export default function ChartControls() {
   const currentChartType = CHART_TYPES.find(type => type.value === config.chartType);
 
   return (
-    <div className="chart-controls">
+    <div className="chart-controls p-1">
       <div className="flex items-center gap-4">
         {/* Time Frame Selector */}
         <div className="relative" ref={timeFrameRef}>

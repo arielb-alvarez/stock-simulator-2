@@ -90,7 +90,7 @@ export default function DrawingTools({ onToolSelect, activeTool }: DrawingToolsP
       <div
         className={`
           absolute left-0 top-0 z-10 h-full
-          bg-gray-900 border-r border-gray-700
+          bg-[#0c0e14] border-r border-gray-700
           transition-transform duration-200 ease-in-out
           flex flex-col items-center py-3 space-y-1
           ${isOpen ? 'translate-x-0 w-9' : '-translate-x-full w-9'}
@@ -126,7 +126,7 @@ export default function DrawingTools({ onToolSelect, activeTool }: DrawingToolsP
         className={`
           absolute top-4 z-20 flex items-center justify-center
           transition-all duration-200 ease-in-out
-          bg-gray-800 border border-gray-600
+          bg-[#0c0e14] border border-gray-600
           text-gray-300 hover:bg-gray-700 hover:text-white
           shadow-lg
           ${isOpen 
