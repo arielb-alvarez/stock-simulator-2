@@ -36,13 +36,9 @@ export default function ChartControls() {
   // Track if current timeframe is pinned
   const isCurrentTimeFramePinned = pinnedTimeFrames.includes(config.interval);
 
-  // Get displayed timeframes (pinned + current if not pinned)
+  // Get displayed timeframes - only pinned timeframes are always displayed
   const getDisplayTimeFrames = () => {
-    const displayTimeFrames = [...pinnedTimeFrames];
-    if (!isCurrentTimeFramePinned) {
-      displayTimeFrames.push(config.interval);
-    }
-    return ALL_TIME_FRAMES.filter(tf => displayTimeFrames.includes(tf.value));
+    return ALL_TIME_FRAMES.filter(tf => pinnedTimeFrames.includes(tf.value));
   };
 
   const getAvailableTimeFrames = () => {
@@ -93,17 +89,17 @@ export default function ChartControls() {
       <div className="flex items-center gap-4">
         {/* Time Frame Selector */}
         <div className="relative" ref={timeFrameRef}>
-          <div className="flex items-center">
-            {/* Displayed Timeframes */}
+          <div className="flex items-center bg-gray-700/30 rounded-md p-1">
+            {/* Display only pinned timeframes */}
             {getDisplayTimeFrames().map((timeFrame) => (
               <button
                 key={timeFrame.value}
                 onClick={() => handleTimeFrameChange(timeFrame.value)}
                 className={`
-                  px-1 py-0.5 text-xs font-medium transition-all min-w-[30px]
+                  px-2 py-1 text-xs font-medium transition-all min-w-[36px] rounded
                   ${config.interval === timeFrame.value
-                    ? 'text-gray-200'
-                    : 'text-gray-400 hover:text-gray-200'
+                    ? 'bg-yellow-500/20 text-yellow-400'
+                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-600/30'
                   }
                 `}
               >
@@ -111,16 +107,26 @@ export default function ChartControls() {
               </button>
             ))}
             
+            {/* Current unpinned timeframe (if any) displayed before dropdown */}
+            {!isCurrentTimeFramePinned && config.interval && (
+              <button
+                onClick={() => handleTimeFrameChange(config.interval)}
+                className="px-2 py-1 text-xs font-medium min-w-[36px] rounded bg-yellow-500/20 text-yellow-400"
+              >
+                {ALL_TIME_FRAMES.find(tf => tf.value === config.interval)?.label || config.interval}
+              </button>
+            )}
+            
             {/* Dropdown Trigger */}
             <button
               onClick={() => setIsTimeFrameOpen(!isTimeFrameOpen)}
               className={`
-                flex items-center justify-center px-2 py-1.5 transition-all
-                text-gray-400 hover:text-gray-200 rounded-md hover:bg-gray-700/30
-                ${isTimeFrameOpen ? 'bg-gray-700/30' : ''}
+                flex items-center justify-center px-2 py-1 transition-all
+                text-gray-400 hover:text-gray-200 rounded hover:bg-gray-600/30
+                ${isTimeFrameOpen ? 'bg-gray-600/30' : ''}
               `}
             >
-              <ChevronDown className="w-4 h-4" />
+              <ChevronDown className="w-3 h-3" />
             </button>
           </div>
 
@@ -153,7 +159,7 @@ export default function ChartControls() {
                       <span className="text-xs text-gray-500 font-medium">Pinned</span>
                     </div>
                     <div className="grid grid-cols-3 gap-1">
-                      {getDisplayTimeFrames().map((timeFrame) => (
+                      {ALL_TIME_FRAMES.filter(tf => pinnedTimeFrames.includes(tf.value)).map((timeFrame) => (
                         <button
                           key={timeFrame.value}
                           onClick={() => isEditingPinned 
@@ -163,16 +169,14 @@ export default function ChartControls() {
                           className={`
                             flex items-center justify-center p-2 rounded-md text-sm font-medium transition-all
                             ${isEditingPinned
-                              ? pinnedTimeFrames.includes(timeFrame.value)
-                                ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                                : 'bg-gray-700/50 text-gray-400'
+                              ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
                               : config.interval === timeFrame.value
                                 ? 'bg-yellow-500/20 text-yellow-400'
                                 : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
                             }
                           `}
                         >
-                          {isEditingPinned && pinnedTimeFrames.includes(timeFrame.value) ? (
+                          {isEditingPinned ? (
                             <span className="text-sm">− {timeFrame.label}</span>
                           ) : (
                             timeFrame.label
@@ -187,7 +191,9 @@ export default function ChartControls() {
                 {getAvailableTimeFrames().length > 0 && (
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-gray-500 font-medium">Available</span>
+                      <span className="text-xs text-gray-500 font-medium">
+                        {isEditingPinned ? 'Click + to pin' : 'Available'}
+                      </span>
                     </div>
                     <div className="grid grid-cols-3 gap-1">
                       {getAvailableTimeFrames().map((timeFrame) => (
@@ -223,7 +229,7 @@ export default function ChartControls() {
           <button
             onClick={() => setIsChartTypeOpen(!isChartTypeOpen)}
             className={`
-              flex items-center justify-center p-2
+              flex items-center gap-2 px-3 py-2
               text-sm font-medium transition-all hover:bg-gray-700/30 rounded-md
               ${isChartTypeOpen ? 'bg-gray-700/30' : ''}
             `}
@@ -232,7 +238,7 @@ export default function ChartControls() {
             <span className="text-gray-300">
               {currentChartType?.icon}
             </span>
-            <ChevronDown className="w-4 h-4 text-gray-400 ml-1" />
+            <ChevronDown className="w-3 h-3 text-gray-400" />
           </button>
 
           {isChartTypeOpen && (

@@ -7,30 +7,42 @@ interface IconProps {
 
 export const CandleIcon: React.FC<IconProps> = ({ className = "w-4 h-4" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-    <path d="M3 6h18M6 12h12M9 18h6" strokeWidth="2" strokeLinecap="round"/>
-    <rect x="8" y="4" width="2" height="4" fill="currentColor"/>
-    <rect x="14" y="8" width="2" height="8" fill="currentColor"/>
-    <rect x="10" y="14" width="2" height="6" fill="currentColor"/>
+    {/* Binance-style candlestick icon - two candlesticks */}
+    <path d="M7 6V8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <rect x="6" y="8" width="2" height="3" fill="currentColor"/>
+    <path d="M7 14V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    
+    <path d="M12 4V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <rect x="11" y="6" width="2" height="8" fill="currentColor"/>
+    <path d="M12 16V18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    
+    <path d="M17 8V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <rect x="16" y="10" width="2" height="6" fill="currentColor"/>
+    <path d="M17 18V20" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
   </svg>
 );
 
 export const LineIcon: React.FC<IconProps> = ({ className = "w-4 h-4" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-    <path d="M3 12h3l3-6 3 6 3-6 3 6h3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    {/* Binance-style line chart icon */}
+    <path d="M3 17L9 11L13 15L21 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M3 17L9 11L13 15L21 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
   </svg>
 );
 
 export const AreaIcon: React.FC<IconProps> = ({ className = "w-4 h-4" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-    <path d="M3 12h3l3-6 3 6 3-6 3 6h3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="currentColor" fillOpacity="0.2"/>
+    {/* Binance-style area chart icon */}
+    <path d="M3 17L9 11L13 15L21 7V21H3V17Z" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
 export const BarIcon: React.FC<IconProps> = ({ className = "w-4 h-4" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-    <rect x="4" y="4" width="2" height="16" fill="currentColor"/>
-    <rect x="10" y="8" width="2" height="12" fill="currentColor"/>
-    <rect x="16" y="12" width="2" height="8" fill="currentColor"/>
+    {/* Binance-style bar chart icon - three bars of different heights */}
+    <rect x="4" y="4" width="3" height="16" fill="currentColor"/>
+    <rect x="10" y="8" width="3" height="12" fill="currentColor"/>
+    <rect x="16" y="12" width="3" height="8" fill="currentColor"/>
   </svg>
 );
 
