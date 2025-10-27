@@ -104,7 +104,7 @@ export default function Chart() {
       width: chartContainerRef.current.clientWidth,
       height: chartContainerRef.current.clientHeight,
       crosshair: {
-        mode: 1,
+        mode: 0,
         vertLine: {
           color: BINANCE_THEME.dark.textColor,
           width: 1,
