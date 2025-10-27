@@ -10,7 +10,7 @@ export default function Home() {
       </div>
       
       {/* This container must have explicit height */}
-      <div className="h-[calc(100vh-40px)]"> {/* Adjust based on ChartControls height */}
+      <div className="h-[calc(100vh-41px)]"> {/* Adjust based on ChartControls height */}
         <Chart />
       </div>
     </main>

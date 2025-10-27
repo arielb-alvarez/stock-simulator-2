@@ -128,10 +128,10 @@ export default function DrawingTools({ onToolSelect, activeTool }: DrawingToolsP
           transition-all duration-200 ease-in-out
           bg-[#0c0e14] border border-gray-600
           text-gray-300 hover:bg-gray-700 hover:text-white
-          shadow-lg w-3 h-10
+          shadow-lg w-3 h-10 rounded
           ${isOpen 
-            ? 'left-9 rounded-r-sm border-l-0'  // Attached to right of open panel
-            : 'left-1 rounded'   // At left edge when closed
+            ? 'left-7'  // Attached to right of open panel
+            : 'left-1'   // At left edge when closed
           }
         `}
         title={isOpen ? "Hide Drawing Tools" : "Show Drawing Tools"}
