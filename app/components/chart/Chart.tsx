@@ -397,23 +397,7 @@ export default function Chart() {
   }, [cleanup]);
 
   return (
-    <div className="w-full h-full flex flex-col">
-        {/* Loading and error states */}
-        {(isLoading || error) && (
-            <div className="flex-shrink-0 z-10 p-4">
-            {isLoading && (
-                <div className="bg-yellow-500 text-white px-3 py-2 rounded-lg text-sm">
-                Loading chart data...
-                </div>
-            )}
-            {error && (
-                <div className="bg-red-500 text-white px-3 py-2 rounded-lg text-sm">
-                {error}
-                </div>
-            )}
-            </div>
-        )}
-        
+    <div className="w-full h-full flex flex-col">        
         {/* Chart container - fills remaining space */}
         <div 
             ref={chartContainerRef} 
