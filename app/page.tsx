@@ -9,7 +9,8 @@ export default function Home() {
         <ChartControls />
       </div>
       
-      <div className="flex-1 min-h-0">
+      {/* This container must have explicit height */}
+      <div className="h-[calc(100vh-32px)]"> {/* Adjust based on ChartControls height */}
         <Chart />
       </div>
     </main>

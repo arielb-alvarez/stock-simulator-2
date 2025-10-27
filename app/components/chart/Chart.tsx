@@ -125,31 +125,27 @@ export default function Chart() {
     chartRef.current = chart;
 
     const handleResize = () => {
-        if (chartContainerRef.current && chartRef.current) {
+      if (chartContainerRef.current && chartRef.current) {
         chartRef.current.applyOptions({
-            width: chartContainerRef.current.clientWidth,
-            height: chartContainerRef.current.clientHeight,
+          width: chartContainerRef.current.clientWidth,
+          height: chartContainerRef.current.clientHeight,
         });
-        }
+      }
     };
 
-    // Use both ResizeObserver and window resize for better coverage
+    // Use ResizeObserver for better performance
     const resizeObserver = new ResizeObserver(handleResize);
     if (chartContainerRef.current) {
-        resizeObserver.observe(chartContainerRef.current);
+      resizeObserver.observe(chartContainerRef.current);
     }
 
-    // Also listen to window resize
-    window.addEventListener('resize', handleResize);
-
     return () => {
-        resizeObserver.disconnect();
-        window.removeEventListener('resize', handleResize);
-        cleanup();
-        if (chartRef.current) {
+      resizeObserver.disconnect();
+      cleanup();
+      if (chartRef.current) {
         chartRef.current.remove();
         chartRef.current = null;
-        }
+      }
     };
   }, [cleanup]);
 
@@ -401,15 +397,28 @@ export default function Chart() {
   }, [cleanup]);
 
   return (
-    <div className="chart-container flex flex-col">      
-      {/* Chart container that fills available space */}
-      <div className="flex flex-1">
+    <div className="w-full h-full flex flex-col">
+        {/* Loading and error states */}
+        {(isLoading || error) && (
+            <div className="flex-shrink-0 z-10 p-4">
+            {isLoading && (
+                <div className="bg-yellow-500 text-white px-3 py-2 rounded-lg text-sm">
+                Loading chart data...
+                </div>
+            )}
+            {error && (
+                <div className="bg-red-500 text-white px-3 py-2 rounded-lg text-sm">
+                {error}
+                </div>
+            )}
+            </div>
+        )}
+        
+        {/* Chart container - fills remaining space */}
         <div 
-          ref={chartContainerRef} 
-          className="chart flex-1 inset-0 bg-gray-900 rounded-lg"
-          style={{ opacity: isLoading ? 0.5 : 1, height: 'calc(100vh - 32px)' }}
+            ref={chartContainerRef} 
+            className="w-full h-full bg-gray-900 rounded-lg"
         />
-      </div>
     </div>
   );
 }
