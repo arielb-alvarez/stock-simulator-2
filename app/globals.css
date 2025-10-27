@@ -60,3 +60,15 @@ body {
 .chart-controls button:active {
   transform: scale(0.98);
 }
+
+.bg-bnb-yellow {
+  background-color: #f0b90b;
+}
+
+.text-bnb-dark {
+  color: #0c0e14;
+}
+
+.border-bnb-yellow {
+  border-color: #f0b90b;
+}

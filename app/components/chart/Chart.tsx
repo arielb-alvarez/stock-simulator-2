@@ -1,4 +1,4 @@
-// components/chart/Chart.tsx
+// components/chart/Chart.tsx (updated)
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { 
@@ -18,6 +18,7 @@ import {
 } from 'lightweight-charts';
 import { useGlobalContext } from '@/context/GlobalContext';
 import { cryptoService, ChartData, CryptoData } from '@/services/cryptoService';
+import DrawingTools from './DrawingTools';
 
 // Binance-like color scheme
 const BINANCE_THEME = {
@@ -51,7 +52,16 @@ export default function Chart() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
+  const [activeDrawingTool, setActiveDrawingTool] = useState<string>('');
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handle drawing tool selection
+  const handleDrawingToolSelect = useCallback((tool: string) => {
+    setActiveDrawingTool(tool);
+    console.log('Selected drawing tool:', tool);
+    // Here you would typically integrate with your chart's drawing tools API
+    // For now, we'll just log the selected tool
+  }, []);
 
   // Cleanup function
   const cleanup = useCallback(() => {
@@ -397,7 +407,13 @@ export default function Chart() {
   }, [cleanup]);
 
   return (
-    <div className="w-full h-full flex flex-col">        
+    <div className="w-full h-full flex flex-col relative">
+        {/* Drawing Tools */}
+        <DrawingTools 
+          onToolSelect={handleDrawingToolSelect}
+          activeTool={activeDrawingTool}
+        />
+        
         {/* Chart container - fills remaining space */}
         <div 
             ref={chartContainerRef} 
