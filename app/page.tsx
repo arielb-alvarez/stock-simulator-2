@@ -1,5 +1,5 @@
 // page.tsx
-import MainChart from "@/components/chart/Chart";
+import Chart from "@/components/chart/Chart";
 import ChartControls from "@/components/chart/ChartControls";
 
 export default function Home() {
@@ -11,7 +11,7 @@ export default function Home() {
       
       {/* This container must have explicit height */}
       <div className="h-[calc(100vh-41px)]"> {/* Adjust based on ChartControls height */}
-        <MainChart />
+        <Chart />
       </div>
     </main>
   );
