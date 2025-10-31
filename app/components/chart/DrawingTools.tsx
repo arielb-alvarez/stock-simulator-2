@@ -1,67 +1,23 @@
 // components/chart/DrawingTools.tsx
 'use client';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import {
+  ArrowRightIcon,
+  ArrowLeftIcon,
+  ArrowDownIcon,
+  LineIcon,
+  HorizontalLineIcon,
+  VerticalLineIcon,
+  RayIcon,
+  RectangleIcon,
+  CircleIcon,
+  TextIcon
+} from './DrawingToolIcons';
 
 interface DrawingToolsProps {
   onToolSelect: (tool: string) => void;
   activeTool: string;
 }
-
-// Icons
-const ArrowRightIcon = () => (
-  <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
-    <path d="M2 1l3 3-3 3" stroke="currentColor" strokeWidth="1" fill="none" strokeLinecap="round"/>
-  </svg>
-);
-
-const ArrowLeftIcon = () => (
-  <svg width="8" height="8" viewBox="0 0 8 8" fill="currentColor">
-    <path d="M6 1L3 4l3 3" stroke="currentColor" strokeWidth="1" fill="none" strokeLinecap="round"/>
-  </svg>
-);
-
-const LineIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <path d="M3 13L13 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-  </svg>
-);
-
-const HorizontalLineIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <path d="M3 8H13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-  </svg>
-);
-
-const VerticalLineIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <path d="M8 3V13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-  </svg>
-);
-
-const RayIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <path d="M3 13L8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    <path d="M8 8V13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-  </svg>
-);
-
-const RectangleIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <rect x="4" y="4" width="8" height="8" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-  </svg>
-);
-
-const CircleIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-    <circle cx="8" cy="8" r="4" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-  </svg>
-);
-
-const TextIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-    <text x="3" y="12" fontSize="9" fontFamily="Arial, sans-serif">A</text>
-  </svg>
-);
 
 const tools = [
   { id: 'line', name: 'Line', icon: LineIcon },
@@ -75,6 +31,20 @@ const tools = [
 
 export default function DrawingTools({ onToolSelect, activeTool }: DrawingToolsProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const popupRef = useRef<HTMLDivElement>(null);
+
+  // Close popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
+        setIsPopupOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleToolClick = (toolId: string) => {
     if (activeTool === toolId) {
@@ -82,6 +52,25 @@ export default function DrawingTools({ onToolSelect, activeTool }: DrawingToolsP
     } else {
       onToolSelect(toolId);
     }
+    setIsPopupOpen(false);
+  };
+
+  // Handle right-click to clear selected tool
+  const handleRightClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (activeTool) {
+      onToolSelect('');
+      setIsPopupOpen(false);
+    }
+  };
+
+  const getCurrentToolIcon = () => {
+    const currentTool = tools.find(tool => tool.id === activeTool);
+    if (currentTool) {
+      const Icon = currentTool.icon;
+      return <Icon />;
+    }
+    return <LineIcon />;
   };
 
   return (
@@ -92,37 +81,90 @@ export default function DrawingTools({ onToolSelect, activeTool }: DrawingToolsP
           absolute left-0 top-0 z-10 h-full
           bg-[#0c0e14] border-r border-gray-700
           transition-transform duration-200 ease-in-out
-          flex flex-col items-center py-3 space-y-1
-          ${isOpen ? 'translate-x-0 w-9' : '-translate-x-full w-9'}
+          flex flex-col items-center py-3 w-10
+          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
+        onContextMenu={handleRightClick} // Add right-click handler to the entire panel
       >
-        {tools.map((tool) => {
-          const Icon = tool.icon;
-          const isActive = activeTool === tool.id;
-          
-          return (
+        {/* Main Line Button Container */}
+        <div className="relative pr-2">
+          {/* Main Line Button */}
+          <button
+            onClick={() => {
+              if (activeTool) {
+                onToolSelect('');
+              } else {
+                onToolSelect('line');
+              }
+            }}
+            onContextMenu={handleRightClick} // Add right-click handler to main button
+            className={`
+              w-7 h-7 rounded flex items-center justify-center
+              transition-all duration-150 ease-in-out
+              ${activeTool 
+                ? 'bg-bnb-yellow text-bnb-dark' 
+                : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
+              }
+            `}
+            title={activeTool ? `Active: ${tools.find(t => t.id === activeTool)?.name} (Right-click to clear)` : 'Line Tool'}
+          >
+            {getCurrentToolIcon()}
+          </button>
+
+          {/* Line Trigger Button - positioned to the right of main button */}
+          <button
+            onClick={() => setIsPopupOpen(!isPopupOpen)}
+            onContextMenu={handleRightClick} // Add right-click handler to trigger button
+            className={`
+              absolute right-0 top-1/2 transform -translate-y-1/2
+              w-3 h-6 flex items-center justify-center
+              text-gray-300 hover:bg-gray-700 hover:text-white
+              transition-all duration-200 ease-in-out
+              rounded
+              ${isPopupOpen 
+                ? 'bg-gray-700' 
+                : 'bg-[#0c0e14]'
+              }
+            `}
+            title="Show drawing tools"
+          >
+            {isPopupOpen ? <ArrowLeftIcon /> : <ArrowRightIcon />}
+          </button>
+        </div>
+      </div>
+
+      {/* Tools Popup */}
+      {isPopupOpen && (
+        <div
+          ref={popupRef}
+          className="absolute left-[42px] top-3 bg-[#0c0e14] border border-gray-600 rounded shadow-lg py-2 z-30"
+          onContextMenu={handleRightClick} // Add right-click handler to popup
+        >
+          <div className="flex flex-col gap-1">
             <button
-              key={tool.id}
-              onClick={() => handleToolClick(tool.id)}
+              onClick={() => handleToolClick('line')}
+              onContextMenu={handleRightClick} // Add right-click handler to tool button
               className={`
-                w-7 h-7 rounded flex items-center justify-center
+                w-full px-3 py-2 flex items-center gap-2
                 transition-all duration-150 ease-in-out
-                ${isActive 
+                ${activeTool === 'line' 
                   ? 'bg-bnb-yellow text-bnb-dark' 
                   : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'
                 }
               `}
-              title={tool.name}
+              title="Trend Line (Right-click to clear)"
             >
-              <Icon />
+              <LineIcon />
+              <span className="text-xs whitespace-nowrap">Trend Line</span>
             </button>
-          );
-        })}
-      </div>
+          </div>
+        </div>
+      )}
 
-      {/* Trigger Button - Very small */}
+      {/* Original Sidebar Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
+        onContextMenu={handleRightClick} // Add right-click handler to sidebar trigger
         className={`
           absolute bottom-20 z-20 flex items-center justify-center
           transition-all duration-200 ease-in-out
@@ -130,7 +172,7 @@ export default function DrawingTools({ onToolSelect, activeTool }: DrawingToolsP
           text-gray-300 hover:bg-gray-700 hover:text-white
           shadow-lg w-3 h-10 rounded
           ${isOpen 
-            ? 'left-7'  // Attached to right of open panel
+            ? 'left-8'  // Attached to right of open panel
             : 'left-1'   // At left edge when closed
           }
         `}
