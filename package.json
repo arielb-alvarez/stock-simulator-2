@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "klinecharts": "^9.3.0",
     "lightweight-charts": "^5.0.9",
     "next": "16.0.0",
     "react": "19.2.0",
