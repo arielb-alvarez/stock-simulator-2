@@ -10,12 +10,12 @@ export interface CryptoData {
 }
 
 export interface ChartData {
-  time: number; // Changed from string to number for Lightweight Charts
-  value?: number;
+  timestamp: number;
   open?: number;
   high?: number;
   low?: number;
   close?: number;
+  volume?: number;
 }
 
 export class CryptoDataService {
@@ -63,36 +63,16 @@ export class CryptoDataService {
     }
   }
 
-  // Convert candlestick data to line chart data
-  candlestickToLineData(candlestickData: CryptoData[]): ChartData[] {
+  // Convert to KLineCharts format
+  convertToKLineData(candlestickData: CryptoData[]): ChartData[] {
     return candlestickData.map(item => ({
-      time: item.time, // Keep as milliseconds, will be converted in component
-      value: item.close,
-    }));
-  }
-
-  // Convert candlestick data to area chart data
-  candlestickToAreaData(candlestickData: CryptoData[]): ChartData[] {
-    return candlestickData.map(item => ({
-      time: item.time,
-      value: item.close,
-    }));
-  }
-
-  // Convert candlestick data to bar chart data (OHLC)
-  candlestickToBarData(candlestickData: CryptoData[]): ChartData[] {
-    return candlestickData.map(item => ({
-      time: item.time,
+      timestamp: item.time,
       open: item.open,
       high: item.high,
       low: item.low,
       close: item.close,
+      volume: item.volume,
     }));
-  }
-
-  // Convert candlestick data to candlestick chart data
-  candlestickToCandleData(candlestickData: CryptoData[]): ChartData[] {
-    return this.candlestickToBarData(candlestickData);
   }
 
   // Enhanced real-time WebSocket data with better error handling
@@ -130,7 +110,7 @@ export class CryptoDataService {
           low: parseFloat(kline.l),
           close: parseFloat(kline.c),
           volume: parseFloat(kline.v),
-          isFinal: kline.x,
+          isFinal: kline.x, // Whether this candle is final
         };
         
         callback(cryptoData);
@@ -158,17 +138,23 @@ export class CryptoDataService {
   ): CryptoData[] {
     const data = [...existingData];
     
-    // Find if we have data for this timestamp
-    const existingIndex = data.findIndex(item => item.time === newData.time);
-    
-    if (existingIndex >= 0) {
-      // Update existing candle
-      data[existingIndex] = newData;
-    } else {
-      // Add new candle and maintain max points
+    if (newData.isFinal) {
+      // If the candle is final, add it as a new candle
       data.push(newData);
+      
+      // Remove oldest data if we exceed max points
       if (data.length > maxPoints) {
         data.shift();
+      }
+    } else {
+      // If the candle is not final, update the last candle
+      const lastIndex = data.length - 1;
+      if (lastIndex >= 0 && data[lastIndex].time === newData.time) {
+        // Update existing candle
+        data[lastIndex] = newData;
+      } else {
+        // Add as new candle if timestamp doesn't match
+        data.push(newData);
       }
     }
     
