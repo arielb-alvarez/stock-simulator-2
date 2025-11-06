@@ -562,11 +562,6 @@ export default function MainChart() {
           </div>
         )}
         
-        {/* Debug Info */}
-        <div className="absolute top-2 left-2 text-xs text-gray-400 z-10">
-          Data: {currentDataRef.current.length} points | RSI: {config.indicators.rsi.show ? 'ON' : 'OFF'}
-        </div>
-        
         {/* Main Chart container */}
         <div 
             ref={chartContainerRef} 
