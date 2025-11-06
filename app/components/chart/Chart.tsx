@@ -206,20 +206,18 @@ export default function MainChart() {
       }
 
       if (config.indicators.rsi.show && currentDataRef.current.length > 0) {
-        setTimeout(() => {
-          try {
-            chart.createIndicator('RSI', false, {
-              id: 'rsi',
-              height: 100,
-              margin: {
-                top: 0.05,
-                bottom: 0.05,
-              },
-            });
-          } catch (indicatorError) {
-            console.error('Error creating RSI indicator:', indicatorError);
-          }
-        }, 500);
+        try {
+          chart.createIndicator('RSI', false, {
+            id: 'rsi',
+            height: 100,
+            margin: {
+              top: 0.05,
+              bottom: 0.05,
+            },
+          });
+        } catch (indicatorError) {
+          console.error('Error creating RSI indicator:', indicatorError);
+        }
       }
     } catch (error) {
       console.error('Error in RSI setup:', error);
@@ -407,11 +405,9 @@ export default function MainChart() {
 
         updateChartWithData(chartInstance, candlestickData, false);
         
-        setTimeout(() => {
-          if (mounted && chartInstance) {
-            setupRSIIndicator(chartInstance);
-          }
-        }, 1000);
+        if (mounted && chartInstance) {
+          setupRSIIndicator(chartInstance);
+        }
         
         setupWebSocket(chartInstance);
 
