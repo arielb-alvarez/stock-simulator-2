@@ -290,54 +290,7 @@ export default function MainChart() {
     try {
       console.log('🎯 Initializing chart with type:', config.chartType);
 
-      const candleConfig = getChartTypeConfig(config.chartType);
-
-      const chart = init(chartContainerRef.current, {
-        candle: candleConfig,
-        grid: {
-          horizontal: {
-            color: '#2b3139',
-            size: 1,
-          },
-          vertical: {
-            color: '#2b3139',
-            size: 1,
-          },
-        },
-        crosshair: {
-          horizontal: {
-            line: { color: '#eaecef', size: 1 },
-            text: { color: '#eaecef', bgColor: '#0c0e14' },
-          },
-          vertical: {
-            line: { color: '#eaecef', size: 1 },
-            text: { color: '#eaecef', bgColor: '#0c0e14' },
-          },
-        },
-        xAxis: {
-          axisLine: { color: '#2b3139' },
-          tickLine: { color: '#2b3139' },
-          tickText: { color: '#7f7f7f' },
-        },
-        yAxis: {
-          axisLine: { color: '#2b3139' },
-          tickLine: { color: '#2b3139' },
-          tickText: { color: '#7f7f7f' },
-        },
-        technicalIndicator: {
-          bar: {
-            upColor: '#26a69a',
-            downColor: '#ef5350',
-            noChangeColor: '#999999',
-          },
-          line: {
-            size: 1,
-          },
-          circle: {
-            size: 1,
-          },
-        },
-      });
+      const chart = init(chartContainerRef.current, {});
       
       if (!chart) {
         throw new Error('Chart initialization returned null');
