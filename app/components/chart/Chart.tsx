@@ -277,7 +277,7 @@ export default function MainChart() {
       setError('Failed to initialize chart');
       return null;
     }
-  }, [config.chartType]);
+  }, []);
 
   // Function to update chart with data - NO flush() calls
   const updateChartWithData = useCallback((chart: any, data: CryptoData[], isRealtime: boolean = false) => {
