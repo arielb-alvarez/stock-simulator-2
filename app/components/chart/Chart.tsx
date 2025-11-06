@@ -122,9 +122,8 @@ const registerRSIIndicator = () => {
         return result;
       },
     });
-    console.log('✅ RSI indicator registered successfully');
   } catch (error) {
-    console.error('❌ Error registering RSI indicator:', error);
+    console.error('Error registering RSI indicator:', error);
   }
 };
 
@@ -132,7 +131,6 @@ const registerRSIIndicator = () => {
 const registerCustomOverlays = () => {
   try {
     // [Keep your existing overlay registrations...]
-    console.log('✅ Custom overlays registered successfully');
   } catch (error) {
     console.warn('Error registering custom overlays:', error);
   }
@@ -197,18 +195,9 @@ export default function MainChart() {
 
   // Fixed RSI Indicator Setup - NO flush() calls
   const setupRSIIndicator = useCallback((chart: any) => {
-    if (!chart) {
-      console.warn('Chart not available for RSI setup');
-      return;
-    }
+    if (!chart) return;
 
     try {
-      console.log('🔄 Setting up RSI indicator...', {
-        show: config.indicators.rsi.show,
-        hasChart: !!chart,
-        dataLength: currentDataRef.current.length
-      });
-
       // Remove existing RSI indicator if it exists
       try {
         chart.removeIndicator('rsi');
@@ -217,12 +206,9 @@ export default function MainChart() {
       }
 
       if (config.indicators.rsi.show && currentDataRef.current.length > 0) {
-        console.log('📊 Adding RSI indicator to chart...');
-        
-        // Use setTimeout to ensure chart is ready
         setTimeout(() => {
           try {
-            const indicator = chart.createIndicator('RSI', false, {
+            chart.createIndicator('RSI', false, {
               id: 'rsi',
               height: 100,
               margin: {
@@ -230,35 +216,24 @@ export default function MainChart() {
                 bottom: 0.05,
               },
             });
-
-            if (indicator) {
-              console.log('✅ RSI indicator added successfully');
-            } else {
-              console.warn('❌ RSI indicator creation returned null');
-            }
           } catch (indicatorError) {
-            console.error('❌ Error creating RSI indicator:', indicatorError);
+            console.error('Error creating RSI indicator:', indicatorError);
           }
         }, 500);
-      } else {
-        console.log('❌ RSI not shown or no data available');
       }
     } catch (error) {
-      console.error('❌ Error in RSI setup:', error);
+      console.error('Error in RSI setup:', error);
     }
   }, [config.indicators.rsi.show]);
 
   // Safe cleanup function
   const cleanup = useCallback(() => {
-    console.log('🧹 Cleaning up...');
-    
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
     }
 
     if (wsRef.current) {
-      console.log('🔌 Closing WebSocket...');
       wsRef.current.onclose = null;
       wsRef.current.close();
       wsRef.current = null;
@@ -271,7 +246,6 @@ export default function MainChart() {
 
     if (chartContainerRef.current) {
       try {
-        console.log('🗑️ Disposing chart...');
         dispose(chartContainerRef.current);
         chartRef.current = null;
       } catch (error) {
@@ -282,14 +256,9 @@ export default function MainChart() {
 
   // Initialize chart with proper configuration
   const initializeChart = useCallback(() => {
-    if (!chartContainerRef.current) {
-      console.log('❌ Chart container not available');
-      return null;
-    }
+    if (!chartContainerRef.current) return null;
 
     try {
-      console.log('🎯 Initializing chart with type:', config.chartType);
-
       const chart = init(chartContainerRef.current, {});
       
       if (!chart) {
@@ -304,10 +273,9 @@ export default function MainChart() {
       resizeObserverRef.current = new ResizeObserver(handleResize);
       resizeObserverRef.current.observe(chartContainerRef.current);
 
-      console.log('✅ Chart initialized successfully');
       return chart;
     } catch (error) {
-      console.error('❌ Error initializing chart:', error);
+      console.error('Error initializing chart:', error);
       setError('Failed to initialize chart');
       return null;
     }
@@ -315,35 +283,25 @@ export default function MainChart() {
 
   // Function to update chart with data - NO flush() calls
   const updateChartWithData = useCallback((chart: any, data: CryptoData[], isRealtime: boolean = false) => {
-    if (!chart || data.length === 0) {
-      console.log('❌ Chart not ready or no data available');
-      return;
-    }
+    if (!chart || data.length === 0) return;
 
     try {
       const klineData = convertToKLineData(data);
       
       if (!isRealtime) {
-        // Initial data load
         chart.applyNewData(klineData);
-        console.log(`✅ Applied ${klineData.length} data points to chart`);
       } else {
-        // Real-time update
         const lastCandle = klineData[klineData.length - 1];
         chart.updateData(lastCandle);
-        console.log('✅ Updated chart with real-time data');
       }
     } catch (error) {
-      console.error('❌ Error updating chart:', error);
+      console.error('Error updating chart:', error);
       setError('Failed to update chart display');
     }
   }, []);
 
   // Function to setup WebSocket for real-time data
   const setupWebSocket = useCallback((chart: any) => {
-    console.log('🔌 Setting up WebSocket...');
-    
-    // Cleanup existing WebSocket
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
@@ -374,12 +332,11 @@ export default function MainChart() {
       );
 
       ws.onopen = () => {
-        console.log('✅ WebSocket connected successfully');
         setError(null);
       };
 
       ws.onerror = (error) => {
-        console.error('❌ WebSocket error:', error);
+        console.error('WebSocket error:', error);
         setError('Real-time connection failed - attempting to reconnect...');
         
         if (reconnectTimeoutRef.current) {
@@ -391,8 +348,6 @@ export default function MainChart() {
       };
 
       ws.onclose = (event) => {
-        console.log('🔌 WebSocket connection closed:', event.code, event.reason);
-        
         if (event.code !== 1000 && !reconnectTimeoutRef.current) {
           setError('Connection lost - reconnecting...');
           reconnectTimeoutRef.current = setTimeout(() => {
@@ -404,7 +359,7 @@ export default function MainChart() {
       wsRef.current = ws;
 
     } catch (err) {
-      console.error('❌ Failed to setup WebSocket:', err);
+      console.error('Failed to setup WebSocket:', err);
       setError('Failed to establish real-time connection');
       
       if (reconnectTimeoutRef.current) {
@@ -428,20 +383,12 @@ export default function MainChart() {
       setError(null);
 
       try {
-        // Step 1: Initialize chart
         chartInstance = initializeChart();
         if (!chartInstance) {
           throw new Error('Chart initialization failed');
         }
 
         chartRef.current = chartInstance;
-
-        // Step 2: Fetch historical data
-        console.log('📊 Fetching historical data...', {
-          symbol: config.symbol,
-          interval: config.interval,
-          limit: config.limit
-        });
 
         const candlestickData = await cryptoService.getHistoricalData(
           config.symbol,
@@ -450,8 +397,6 @@ export default function MainChart() {
         );
 
         if (!mounted) return;
-
-        console.log('📈 Historical data received:', candlestickData.length, 'items');
         
         if (candlestickData.length === 0) {
           setError('No data received from API');
@@ -460,26 +405,20 @@ export default function MainChart() {
 
         currentDataRef.current = candlestickData;
 
-        // Step 3: Apply data to chart
         updateChartWithData(chartInstance, candlestickData, false);
         
-        // Step 4: Setup RSI indicator with proper delay
         setTimeout(() => {
           if (mounted && chartInstance) {
-            console.log('🔄 Setting up RSI after data load...');
             setupRSIIndicator(chartInstance);
           }
         }, 1000);
         
-        // Step 5: Setup WebSocket
         setupWebSocket(chartInstance);
-
-        console.log('✅ Chart initialization completed successfully');
 
       } catch (err) {
         if (!mounted) return;
         
-        console.error('❌ Error in chart initialization:', err);
+        console.error('Error in chart initialization:', err);
         setError(`Failed to initialize chart: ${err instanceof Error ? err.message : 'Unknown error'}`);
       } finally {
         if (mounted) {
@@ -499,8 +438,6 @@ export default function MainChart() {
   // Effect for RSI indicator changes
   useEffect(() => {
     if (!chartRef.current || !currentDataRef.current.length) return;
-
-    console.log('🔄 RSI configuration changed:', config.indicators.rsi.show);
     
     const timer = setTimeout(() => {
       setupRSIIndicator(chartRef.current);
@@ -512,8 +449,6 @@ export default function MainChart() {
   // Effect for chart type changes
   useEffect(() => {
     if (!chartRef.current) return;
-
-    console.log('🎨 Chart type changed to:', config.chartType);
     
     const timer = setTimeout(() => {
       try {
@@ -522,10 +457,9 @@ export default function MainChart() {
           chartRef.current.setStyles({
             candle: candleConfig
           });
-          console.log('✅ Chart type updated successfully');
         }
       } catch (error) {
-        console.error('❌ Error updating chart type:', error);
+        console.error('Error updating chart type:', error);
       }
     }, 200);
 
@@ -535,7 +469,6 @@ export default function MainChart() {
   // Cleanup on component unmount
   useEffect(() => {
     return () => {
-      console.log('👋 Component unmounting...');
       cleanup();
     };
   }, [cleanup]);
