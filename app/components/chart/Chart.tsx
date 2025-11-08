@@ -111,7 +111,7 @@ export default function MainChart() {
   const chartRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const currentDataRef = useRef<CryptoData[]>([]);
-  const { config, toggleRSI, addRSI } = useGlobalContext();
+  const { config, toggleRSI } = useGlobalContext();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
@@ -129,11 +129,6 @@ export default function MainChart() {
   // Handle drawing tool selection
   const handleDrawingToolSelect = useCallback((tool: string) => {
     if (tool === 'rsi') {
-      // Add a new RSI indicator when RSI tool is selected
-      addRSI({
-        name: `RSI ${config.indicators.rsi.length + 1}`,
-        lineColor: `hsl(${config.indicators.rsi.length * 60}, 70%, 50%)`,
-      });
       setActiveDrawingTool(tool);
       return;
     }
@@ -175,7 +170,7 @@ export default function MainChart() {
         console.warn('Error creating overlay:', error);
       }
     }
-  }, [addRSI, toggleRSI, config.indicators.rsi.length]);
+  }, [toggleRSI, config.indicators.rsi.length]);
 
   // Setup RSI indicators on chart
   const setupRSIIndicators = useCallback((chart: any) => {
@@ -505,7 +500,6 @@ export default function MainChart() {
         <DrawingTools 
           onToolSelect={handleDrawingToolSelect}
           activeTool={activeDrawingTool}
-          rsiConfigs={config.indicators.rsi}
         />
         
         {/* Loading and Error States */}
