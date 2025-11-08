@@ -16,7 +16,7 @@ export interface RSIConfig {
   overboughtLineColor: string;
   oversoldLineColor: string;
   areaColor: string;
-  name?: string;
+  name: string;
 }
 
 // Chart Style Configuration
@@ -73,8 +73,6 @@ interface GlobalConfig {
 interface GlobalContextType {
   config: GlobalConfig;
   updateConfig: (updates: Partial<GlobalConfig>) => void;
-  addRSI: (rsiConfig?: Partial<RSIConfig>) => void;
-  removeRSI: (id: string) => void;
   updateRSI: (id: string, updates: Partial<RSIConfig>) => void;
   toggleRSI: (id: string) => void;
   updateChartStyle: (updates: Partial<ChartStyleConfig>) => void;
@@ -119,20 +117,48 @@ const defaultChartStyle: ChartStyleConfig = {
   },
 };
 
-const createDefaultRSI = (id: string, overrides?: Partial<RSIConfig>): RSIConfig => ({
-  id,
-  show: true,
-  period: 14,
-  overbought: 70,
-  oversold: 30,
-  lineColor: '#2962FF',
-  lineSize: 2,
-  overboughtLineColor: '#ff5b5a',
-  oversoldLineColor: '#00b15d',
-  areaColor: 'rgba(41, 98, 255, 0.1)',
-  name: `RSI ${id.slice(0, 4)}`,
-  ...overrides,
-});
+// Create 3 default RSI configurations
+const createDefaultRSIs = (): RSIConfig[] => [
+  {
+    id: 'rsi-1',
+    show: true,
+    period: 14,
+    overbought: 70,
+    oversold: 30,
+    lineColor: '#2962FF',
+    lineSize: 2,
+    overboughtLineColor: '#ff5b5a',
+    oversoldLineColor: '#00b15d',
+    areaColor: 'rgba(41, 98, 255, 0.1)',
+    name: 'RSI 14',
+  },
+  {
+    id: 'rsi-2',
+    show: false,
+    period: 21,
+    overbought: 70,
+    oversold: 30,
+    lineColor: '#FF6B6B',
+    lineSize: 1.5,
+    overboughtLineColor: '#ff5b5a',
+    oversoldLineColor: '#00b15d',
+    areaColor: 'rgba(255, 107, 107, 0.1)',
+    name: 'RSI 21',
+  },
+  {
+    id: 'rsi-3',
+    show: false,
+    period: 28,
+    overbought: 75,
+    oversold: 25,
+    lineColor: '#4ECDC4',
+    lineSize: 1.5,
+    overboughtLineColor: '#ff5b5a',
+    oversoldLineColor: '#00b15d',
+    areaColor: 'rgba(78, 205, 196, 0.1)',
+    name: 'RSI 28',
+  }
+];
 
 const defaultConfig: GlobalConfig = {
   chartType: 'candle',
@@ -142,7 +168,7 @@ const defaultConfig: GlobalConfig = {
   chart: defaultChartStyle,
   series: {},
   indicators: {
-    rsi: [createDefaultRSI('rsi-1')],
+    rsi: createDefaultRSIs(),
   },
 };
 
@@ -153,31 +179,6 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
   const updateConfig = useCallback((updates: Partial<GlobalConfig>) => {
     setConfig(prev => ({ ...prev, ...updates }));
-  }, []);
-
-  const addRSI = useCallback((rsiConfig?: Partial<RSIConfig>) => {
-    const newId = `rsi-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const newRSI = createDefaultRSI(newId, rsiConfig);
-    
-    setConfig(prev => ({
-      ...prev,
-      indicators: {
-        ...prev.indicators,
-        rsi: [...prev.indicators.rsi, newRSI],
-      },
-    }));
-    
-    return newId;
-  }, []);
-
-  const removeRSI = useCallback((id: string) => {
-    setConfig(prev => ({
-      ...prev,
-      indicators: {
-        ...prev.indicators,
-        rsi: prev.indicators.rsi.filter(rsi => rsi.id !== id),
-      },
-    }));
   }, []);
 
   const updateRSI = useCallback((id: string, updates: Partial<RSIConfig>) => {
@@ -276,8 +277,6 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
     <GlobalContext.Provider value={{ 
       config, 
       updateConfig,
-      addRSI,
-      removeRSI,
       updateRSI,
       toggleRSI,
       updateChartStyle,

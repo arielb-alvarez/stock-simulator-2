@@ -173,8 +173,7 @@ interface IndicatorsDialogProps {
   onClose: () => void;
   rsiConfigs: RSIConfig[];
   onUpdateRSI: (id: string, updates: Partial<RSIConfig>) => void;
-  onAddRSI: () => void;
-  onRemoveRSI: (id: string) => void;
+  onToggleRSI: (id: string) => void;
 }
 
 const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
@@ -182,14 +181,37 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   onClose,
   rsiConfigs,
   onUpdateRSI,
-  onAddRSI,
-  onRemoveRSI,
+  onToggleRSI,
 }) => {
   const [activeTab, setActiveTab] = useState<'main' | 'sub'>('sub');
   const [activeSubMenu, setActiveSubMenu] = useState<string>('rsi');
-  const [selectedRSI, setSelectedRSI] = useState<string>(rsiConfigs[0]?.id || '');
 
   if (!isOpen) return null;
+
+  // Handle checkbox toggle
+  const handleToggleRSI = (rsiId: string) => {
+    onToggleRSI(rsiId);
+  };
+
+  // Handle name change
+  const handleNameChange = (rsiId: string, name: string) => {
+    onUpdateRSI(rsiId, { name });
+  };
+
+  // Handle period change
+  const handlePeriodChange = (rsiId: string, period: number) => {
+    onUpdateRSI(rsiId, { period: Math.max(1, period) });
+  };
+
+  // Handle line size change
+  const handleLineSizeChange = (rsiId: string, lineSize: number) => {
+    onUpdateRSI(rsiId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  // Handle color change
+  const handleColorChange = (rsiId: string, lineColor: string) => {
+    onUpdateRSI(rsiId, { lineColor });
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -263,72 +285,116 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
               <div className="flex-1 p-6 overflow-y-auto">
                 {activeSubMenu === 'rsi' && (
                   <div className="space-y-6">
-                    {/* RSI List Management */}
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-medium text-gray-200">RSI Indicators</h3>
-                      <button
-                        onClick={onAddRSI}
-                        className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md text-sm font-medium transition-colors"
-                      >
-                        Add RSI
-                      </button>
+                      <div className="text-sm text-gray-400">
+                        {rsiConfigs.filter(rsi => rsi.show).length} of {rsiConfigs.length} active
+                      </div>
                     </div>
 
-                    {/* RSI Selection Tabs */}
-                    {rsiConfigs.length > 0 && (
-                      <div className="flex space-x-2 border-b border-gray-700">
-                        {rsiConfigs.map((rsiConfig, index) => (
-                          <button
-                            key={rsiConfig.id}
-                            onClick={() => setSelectedRSI(rsiConfig.id)}
-                            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                              selectedRSI === rsiConfig.id
-                                ? 'border-yellow-400 text-yellow-400'
-                                : 'border-transparent text-gray-400 hover:text-gray-200'
-                            }`}
-                          >
-                            {rsiConfig.name || `RSI ${index + 1}`}
-                            {rsiConfigs.length > 1 && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onRemoveRSI(rsiConfig.id);
-                                  if (selectedRSI === rsiConfig.id) {
-                                    setSelectedRSI(rsiConfigs[0]?.id || '');
-                                  }
-                                }}
-                                className="ml-2 text-red-400 hover:text-red-300"
-                              >
-                                ✕
-                              </button>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    {/* RSI Configuration Table */}
+                    <div className="bg-gray-750 rounded-lg border border-gray-700 overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-700">
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-16">
+                              Show
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">
+                              Name
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
+                              Period
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
+                              Line Width
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">
+                              Color
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rsiConfigs.map((rsiConfig) => (
+                            <tr 
+                              key={rsiConfig.id} 
+                              className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors"
+                            >
+                              {/* Checkbox for visibility */}
+                              <td className="py-3 px-4">
+                                <input
+                                  type="checkbox"
+                                  checked={rsiConfig.show}
+                                  onChange={() => handleToggleRSI(rsiConfig.id)}
+                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
+                                />
+                              </td>
+                              
+                              {/* Editable Name */}
+                              <td className="py-3 px-4">
+                                <input
+                                  type="text"
+                                  value={rsiConfig.name}
+                                  onChange={(e) => handleNameChange(rsiConfig.id, e.target.value)}
+                                  className="w-full bg-transparent border-none text-white focus:outline-none focus:ring-1 focus:ring-yellow-500 rounded px-2 py-1"
+                                />
+                              </td>
+                              
+                              {/* Editable Period */}
+                              <td className="py-3 px-4">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="100"
+                                  value={rsiConfig.period}
+                                  onChange={(e) => handlePeriodChange(rsiConfig.id, parseInt(e.target.value) || 14)}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                />
+                              </td>
+                              
+                              {/* Editable Line Width */}
+                              <td className="py-3 px-4">
+                                <input
+                                  type="number"
+                                  min="0.5"
+                                  max="5"
+                                  step="0.5"
+                                  value={rsiConfig.lineSize}
+                                  onChange={(e) => handleLineSizeChange(rsiConfig.id, parseFloat(e.target.value) || 1.5)}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                />
+                              </td>
+                              
+                              {/* Color Picker */}
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="color"
+                                    value={rsiConfig.lineColor}
+                                    onChange={(e) => handleColorChange(rsiConfig.id, e.target.value)}
+                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
+                                  />
+                                  <span className="text-xs text-gray-400 font-mono">
+                                    {rsiConfig.lineColor}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
 
-                    {/* RSI Configuration Form */}
-                    {rsiConfigs.length > 0 ? (
-                      rsiConfigs
-                        .filter(rsi => rsi.id === selectedRSI)
-                        .map(rsiConfig => (
-                          <RSIForm
-                            key={rsiConfig.id}
-                            rsiConfig={rsiConfig}
-                            onUpdate={(updates) => onUpdateRSI(rsiConfig.id, updates)}
-                          />
-                        ))
-                    ) : (
-                      <div className="text-center py-8 text-gray-400">
-                        <p>No RSI indicators configured.</p>
-                        <button
-                          onClick={onAddRSI}
-                          className="mt-2 text-yellow-400 hover:text-yellow-300"
-                        >
-                          Click here to add one
-                        </button>
-                      </div>
-                    )}
+                    {/* Additional RSI Information */}
+                    <div className="bg-gray-750 rounded-lg border border-gray-700 p-4">
+                      <h4 className="text-md font-medium text-gray-200 mb-2">RSI Configuration Notes</h4>
+                      <ul className="text-sm text-gray-400 space-y-1">
+                        <li>• RSI values range from 0 to 100</li>
+                        <li>• Traditional overbought level: 70, oversold level: 30</li>
+                        <li>• Standard period: 14, but can be adjusted from 1-100</li>
+                        <li>• Multiple RSI indicators can be displayed simultaneously</li>
+                      </ul>
+                    </div>
                   </div>
                 )}
               </div>
@@ -341,7 +407,7 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
 };
 
 export default function ChartControls() {
-  const { config, updateConfig, addRSI, updateRSI, removeRSI } = useGlobalContext();
+  const { config, updateConfig, updateRSI, toggleRSI } = useGlobalContext();
   const [isChartTypeOpen, setIsChartTypeOpen] = useState(false);
   const [isTimeFrameOpen, setIsTimeFrameOpen] = useState(false);
   const [isEditingPinned, setIsEditingPinned] = useState(false);
@@ -382,19 +448,12 @@ export default function ChartControls() {
     }
   };
 
-  const handleAddRSI = () => {
-    addRSI({
-      name: `RSI ${config.indicators.rsi.length + 1}`,
-      lineColor: `hsl(${config.indicators.rsi.length * 60}, 70%, 50%)`,
-    });
-  };
-
   const handleUpdateRSI = (id: string, updates: Partial<RSIConfig>) => {
     updateRSI(id, updates);
   };
 
-  const handleRemoveRSI = (id: string) => {
-    removeRSI(id);
+  const handleToggleRSI = (id: string) => {
+    toggleRSI(id);
   };
 
   // Close dropdowns when clicking outside
@@ -618,8 +677,7 @@ export default function ChartControls() {
         onClose={() => setIsIndicatorsOpen(false)}
         rsiConfigs={config.indicators.rsi}
         onUpdateRSI={handleUpdateRSI}
-        onAddRSI={handleAddRSI}
-        onRemoveRSI={handleRemoveRSI}
+        onToggleRSI={handleToggleRSI}
       />
     </>
   );
