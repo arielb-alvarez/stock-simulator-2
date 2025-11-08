@@ -384,17 +384,6 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                         </tbody>
                       </table>
                     </div>
-
-                    {/* Additional RSI Information */}
-                    <div className="bg-gray-750 rounded-lg border border-gray-700 p-4">
-                      <h4 className="text-md font-medium text-gray-200 mb-2">RSI Configuration Notes</h4>
-                      <ul className="text-sm text-gray-400 space-y-1">
-                        <li>• RSI values range from 0 to 100</li>
-                        <li>• Traditional overbought level: 70, oversold level: 30</li>
-                        <li>• Standard period: 14, but can be adjusted from 1-100</li>
-                        <li>• Multiple RSI indicators can be displayed simultaneously</li>
-                      </ul>
-                    </div>
                   </div>
                 )}
               </div>
