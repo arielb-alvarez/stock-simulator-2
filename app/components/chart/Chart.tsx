@@ -8,7 +8,7 @@ import {
   registerOverlay,
   registerIndicator,
 } from 'klinecharts';
-import { useGlobalContext } from '@/context/GlobalContext';
+import { useGlobalContext, RSIConfig } from '@/context/GlobalContext';
 import { cryptoService, CryptoData } from '@/services/cryptoService';
 import DrawingTools from './DrawingTools';
 
@@ -25,69 +25,39 @@ const convertToKLineData = (cryptoData: CryptoData[]): KLineData[] => {
   }));
 };
 
-// Get chart type configuration
-const getChartTypeConfig = (chartType: string) => {
-  switch (chartType) {
-    case 'line':
-      return {
-        type: 'area',
-        line: {
-          color: '#f0b90b',
-          size: 2,
-        },
-        area: {
-          show: true,
-          color: 'rgba(41, 98, 255, 0.1)'
-        },
-      };
-    case 'area':
-      return {
-        type: 'area',
-        line: {
-          color: '#f0b90b',
-          size: 2,
-        },
-        area: {
-          show: true,
-          color: [
-            'rgba(240, 185, 11, 0.4)',
-            'rgba(240, 185, 11, 0.05)'
-          ],
-        },
-      };
-    case 'bar':
-      return {
-        type: 'ohlc' as const,
-        bar: {
-          upColor: '#00b15d',
-          downColor: '#ff5b5a',
-        },
-      };
-    case 'candle':
-    default:
-      return {
-        type: 'candle_solid' as const,
-        bar: {
-          upColor: '#00b15d',
-          downColor: '#ff5b5a',
-        },
-      };
-  }
-};
-
-// Simple and reliable RSI Indicator
-const registerRSIIndicator = () => {
+// Register RSI Indicator with unique name
+const registerRSIIndicator = (rsiConfig: RSIConfig) => {
+  const indicatorName = `RSI_${rsiConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  
   try {
+    // Check if already registered to avoid duplicates
+    if ((window as any).__registeredIndicators?.includes(indicatorName)) {
+      return indicatorName;
+    }
+
     registerIndicator({
-      name: 'RSI',
-      shortName: 'RSI',
-      calcParams: [14],
+      name: indicatorName,
+      shortName: `RSI${rsiConfig.period}`,
+      calcParams: [rsiConfig.period],
       figures: [
-        { key: 'rsi', title: 'RSI: ', type: 'line' }
+        { 
+          key: 'rsi', 
+          title: `RSI${rsiConfig.period}: `, 
+          type: 'line',
+          styles: (rsiData: any) => {
+            const currentRSI = rsiData.rsi;
+            if (currentRSI > rsiConfig.overbought) {
+              return { color: rsiConfig.overboughtLineColor };
+            } else if (currentRSI < rsiConfig.oversold) {
+              return { color: rsiConfig.oversoldLineColor };
+            }
+            return { color: rsiConfig.lineColor };
+          }
+        }
       ],
       calc: (dataList: KLineData[]) => {
         const result: any[] = [];
-        const period = 14;
+        const period = rsiConfig.period;
         
         for (let i = 0; i < dataList.length; i++) {
           if (i < period) {
@@ -122,23 +92,19 @@ const registerRSIIndicator = () => {
         return result;
       },
     });
+
+    // Track registered indicators
+    if (!(window as any).__registeredIndicators) {
+      (window as any).__registeredIndicators = [];
+    }
+    (window as any).__registeredIndicators.push(indicatorName);
+
+    return indicatorName;
   } catch (error) {
     console.error('Error registering RSI indicator:', error);
+    return indicatorName;
   }
 };
-
-// Register custom overlays for drawing tools
-const registerCustomOverlays = () => {
-  try {
-    // [Keep your existing overlay registrations...]
-  } catch (error) {
-    console.warn('Error registering custom overlays:', error);
-  }
-};
-
-// Register indicators and overlays on module load
-registerRSIIndicator();
-registerCustomOverlays();
 
 export default function MainChart() {
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -153,10 +119,23 @@ export default function MainChart() {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
+  // Register all RSI indicators
+  useEffect(() => {
+    config.indicators.rsi.forEach(rsiConfig => {
+      registerRSIIndicator(rsiConfig);
+    });
+  }, [config.indicators.rsi]);
+
   // Handle drawing tool selection
   const handleDrawingToolSelect = useCallback((tool: string) => {
     if (tool === 'rsi') {
-      toggleRSI();
+      setActiveDrawingTool(tool);
+      return;
+    }
+    
+    if (tool.startsWith('rsi-toggle-')) {
+      const rsiId = tool.replace('rsi-toggle-', '');
+      toggleRSI(rsiId);
       setActiveDrawingTool(tool);
       return;
     }
@@ -175,7 +154,7 @@ export default function MainChart() {
             chartRef.current.createOverlay('straightLine');
             break;
           case 'fibonacci':
-            chartRef.current.createOverlay('rect');
+            chartRef.current.createOverlay('fibonacciLine');
             break;
           case 'rectangle':
             chartRef.current.createOverlay('rect');
@@ -191,38 +170,82 @@ export default function MainChart() {
         console.warn('Error creating overlay:', error);
       }
     }
-  }, [toggleRSI]);
+  }, [toggleRSI, config.indicators.rsi.length]);
 
-  // Fixed RSI Indicator Setup - NO flush() calls
-  const setupRSIIndicator = useCallback((chart: any) => {
+  // Setup RSI indicators on chart
+  const setupRSIIndicators = useCallback((chart: any) => {
     if (!chart) return;
 
     try {
-      // Remove existing RSI indicator if it exists
-      try {
-        chart.removeIndicator('rsi');
-      } catch (e) {
-        // Ignore removal errors
-      }
-
-      if (config.indicators.rsi.show && currentDataRef.current.length > 0) {
+      // Remove all existing RSI indicators first
+      config.indicators.rsi.forEach(rsiConfig => {
+        const indicatorName = `RSI_${rsiConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
         try {
-          chart.createIndicator('RSI', false, {
-            id: 'rsi',
-            height: 100,
-            margin: {
-              top: 0.05,
-              bottom: 0.05,
-            },
-          });
-        } catch (indicatorError) {
-          console.error('Error creating RSI indicator:', indicatorError);
+          chart.removeIndicator(indicatorName);
+        } catch (e) {
+          // Ignore removal errors
         }
-      }
+      });
+
+      // Add visible RSI indicators
+      config.indicators.rsi
+        .filter(rsiConfig => rsiConfig.show)
+        .forEach((rsiConfig, index) => {
+          const indicatorName = `RSI_${rsiConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+          
+          try {
+            chart.createIndicator(indicatorName, false, {
+              id: indicatorName,
+              height: 100,
+              gap: {
+                top: 0.1,
+                bottom: 0.1,
+              },
+              styles: {
+                rsi: {
+                  color: rsiConfig.lineColor,
+                  size: rsiConfig.lineSize,
+                },
+                marginTop: 10 * index, // Stagger indicators slightly
+              },
+              bands: [
+                {
+                  value: rsiConfig.overbought,
+                  color: rsiConfig.overboughtLineColor,
+                  width: 1,
+                  style: 'dashed',
+                },
+                {
+                  value: rsiConfig.oversold,
+                  color: rsiConfig.oversoldLineColor,
+                  width: 1,
+                  style: 'dashed',
+                },
+              ],
+            });
+          } catch (indicatorError) {
+            console.error(`Error creating RSI indicator ${indicatorName}:`, indicatorError);
+          }
+        });
     } catch (error) {
       console.error('Error in RSI setup:', error);
     }
-  }, [config.indicators.rsi.show]);
+  }, [config.indicators.rsi]);
+
+  // Apply chart styles from global config
+  const applyChartStyles = useCallback((chart: any) => {
+    if (!chart) return;
+
+    try {
+      chart.setStyles({
+        candle: config.chart.candle,
+        grid: config.chart.grid,
+        crosshair: config.chart.crosshair,
+      });
+    } catch (error) {
+      console.error('Error applying chart styles:', error);
+    }
+  }, [config.chart]);
 
   // Safe cleanup function
   const cleanup = useCallback(() => {
@@ -279,7 +302,7 @@ export default function MainChart() {
     }
   }, []);
 
-  // Function to update chart with data - NO flush() calls
+  // Function to update chart with data
   const updateChartWithData = useCallback((chart: any, data: CryptoData[], isRealtime: boolean = false) => {
     if (!chart || data.length === 0) return;
 
@@ -405,9 +428,9 @@ export default function MainChart() {
 
         updateChartWithData(chartInstance, candlestickData, false);
         
-        if (mounted && chartInstance) {
-          setupRSIIndicator(chartInstance);
-        }
+        // Apply styles and setup indicators
+        applyChartStyles(chartInstance);
+        setupRSIIndicators(chartInstance);
         
         setupWebSocket(chartInstance);
 
@@ -429,38 +452,40 @@ export default function MainChart() {
       mounted = false;
       cleanup();
     };
-  }, [config.symbol, config.interval, config.limit, initializeChart, updateChartWithData, setupRSIIndicator, setupWebSocket, cleanup]);
+  }, [config.symbol, config.interval, config.limit, initializeChart, updateChartWithData, applyChartStyles, setupRSIIndicators, setupWebSocket, cleanup]);
 
   // Effect for RSI indicator changes
   useEffect(() => {
     if (!chartRef.current || !currentDataRef.current.length) return;
     
     const timer = setTimeout(() => {
-      setupRSIIndicator(chartRef.current);
+      setupRSIIndicators(chartRef.current);
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [config.indicators.rsi.show, setupRSIIndicator]);
+  }, [config.indicators.rsi, setupRSIIndicators]);
+
+  // Effect for chart style changes
+  useEffect(() => {
+    if (!chartRef.current) return;
+    
+    const timer = setTimeout(() => {
+      applyChartStyles(chartRef.current);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [config.chart, applyChartStyles]);
 
   // Effect for chart type changes
   useEffect(() => {
     if (!chartRef.current) return;
     
     const timer = setTimeout(() => {
-      try {
-        const candleConfig = getChartTypeConfig(config.chartType);
-        if (chartRef.current?.setStyles) {
-          chartRef.current.setStyles({
-            candle: candleConfig
-          });
-        }
-      } catch (error) {
-        console.error('Error updating chart type:', error);
-      }
+      applyChartStyles(chartRef.current);
     }, 200);
 
     return () => clearTimeout(timer);
-  }, [config.chartType]);
+  }, [config.chartType, applyChartStyles]);
 
   // Cleanup on component unmount
   useEffect(() => {
@@ -475,7 +500,6 @@ export default function MainChart() {
         <DrawingTools 
           onToolSelect={handleDrawingToolSelect}
           activeTool={activeDrawingTool}
-          showRSI={config.indicators.rsi.show}
         />
         
         {/* Loading and Error States */}

@@ -1,10 +1,26 @@
 // context/GlobalContext.tsx
 'use client';
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 
 export type ChartType = 'line' | 'area' | 'bar' | 'candle';
 
-interface ChartConfig {
+// Enhanced RSI Indicator Configuration
+export interface RSIConfig {
+  id: string;
+  show: boolean;
+  period: number;
+  overbought: number;
+  oversold: number;
+  lineColor: string;
+  lineSize: number;
+  overboughtLineColor: string;
+  oversoldLineColor: string;
+  areaColor: string;
+  name: string;
+}
+
+// Chart Style Configuration
+interface ChartStyleConfig {
   layout: {
     background: {
       type: string;
@@ -16,22 +32,29 @@ interface ChartConfig {
     vertLines: { color: string };
     horzLines: { color: string };
   };
-}
-
-// RSI Indicator Configuration
-interface RSIConfig {
-  show: boolean;
-  period: number;
-  overbought: number;
-  oversold: number;
-  style: {
-    line: {
+  candle: {
+    type: string;
+    bar?: {
+      upColor: string;
+      downColor: string;
+    };
+    line?: {
       color: string;
       size: number;
     };
-    area: {
-      color: string;
+    area?: {
+      show: boolean;
+      color: string | string[];
     };
+  };
+  priceLine: {
+    show: boolean;
+    color: string;
+  };
+  crosshair: {
+    show: boolean;
+    horizontal: { show: boolean };
+    vertical: { show: boolean };
   };
 }
 
@@ -40,55 +63,112 @@ interface GlobalConfig {
   symbol: string;
   interval: string;
   limit: number;
-  chart: ChartConfig;
+  chart: ChartStyleConfig;
   series: unknown;
   indicators: {
-    rsi: RSIConfig;
+    rsi: RSIConfig[];
   };
 }
 
 interface GlobalContextType {
   config: GlobalConfig;
   updateConfig: (updates: Partial<GlobalConfig>) => void;
-  toggleRSI: () => void;
-  updateRSIConfig: (updates: Partial<RSIConfig>) => void;
+  updateRSI: (id: string, updates: Partial<RSIConfig>) => void;
+  toggleRSI: (id: string) => void;
+  updateChartStyle: (updates: Partial<ChartStyleConfig>) => void;
+  updateChartType: (chartType: ChartType) => void;
 }
+
+const defaultChartStyle: ChartStyleConfig = {
+  layout: {
+    background: { 
+      type: 'solid', 
+      color: '#1a1a1a' 
+    },
+    textColor: '#ffffff',
+  },
+  grid: {
+    vertLines: { color: '#2d2d2d' },
+    horzLines: { color: '#2d2d2d' },
+  },
+  candle: {
+    type: 'candle_solid',
+    bar: {
+      upColor: '#00b15d',
+      downColor: '#ff5b5a',
+    },
+    line: {
+      color: '#f0b90b',
+      size: 2,
+    },
+    area: {
+      show: true,
+      color: 'rgba(41, 98, 255, 0.1)',
+    },
+  },
+  priceLine: {
+    show: true,
+    color: '#2962FF',
+  },
+  crosshair: {
+    show: true,
+    horizontal: { show: true },
+    vertical: { show: true },
+  },
+};
+
+// Create 3 default RSI configurations
+const createDefaultRSIs = (): RSIConfig[] => [
+  {
+    id: 'rsi-1',
+    show: true,
+    period: 14,
+    overbought: 70,
+    oversold: 30,
+    lineColor: '#2962FF',
+    lineSize: 2,
+    overboughtLineColor: '#ff5b5a',
+    oversoldLineColor: '#00b15d',
+    areaColor: 'rgba(41, 98, 255, 0.1)',
+    name: 'RSI 14',
+  },
+  {
+    id: 'rsi-2',
+    show: false,
+    period: 21,
+    overbought: 70,
+    oversold: 30,
+    lineColor: '#FF6B6B',
+    lineSize: 1.5,
+    overboughtLineColor: '#ff5b5a',
+    oversoldLineColor: '#00b15d',
+    areaColor: 'rgba(255, 107, 107, 0.1)',
+    name: 'RSI 21',
+  },
+  {
+    id: 'rsi-3',
+    show: false,
+    period: 28,
+    overbought: 75,
+    oversold: 25,
+    lineColor: '#4ECDC4',
+    lineSize: 1.5,
+    overboughtLineColor: '#ff5b5a',
+    oversoldLineColor: '#00b15d',
+    areaColor: 'rgba(78, 205, 196, 0.1)',
+    name: 'RSI 28',
+  }
+];
 
 const defaultConfig: GlobalConfig = {
   chartType: 'candle',
   symbol: 'BTCUSDT',
   interval: '15m',
   limit: 1000,
-  chart: {
-    layout: {
-      background: { 
-        type: 'solid', 
-        color: 'white' 
-      },
-      textColor: 'black',
-    },
-    grid: {
-      vertLines: { color: '#f0f0f0' },
-      horzLines: { color: '#f0f0f0' },
-    },
-  },
+  chart: defaultChartStyle,
   series: {},
   indicators: {
-    rsi: {
-      show: true,
-      period: 14,
-      overbought: 70,
-      oversold: 30,
-      style: {
-        line: {
-          color: '#2962FF',
-          size: 2,
-        },
-        area: {
-          color: 'rgba(41, 98, 255, 0.1)',
-        },
-      },
-    },
+    rsi: createDefaultRSIs(),
   },
 };
 
@@ -97,42 +177,110 @@ const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 export function GlobalProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<GlobalConfig>(defaultConfig);
 
-  const updateConfig = (updates: Partial<GlobalConfig>) => {
+  const updateConfig = useCallback((updates: Partial<GlobalConfig>) => {
     setConfig(prev => ({ ...prev, ...updates }));
-  };
+  }, []);
 
-  const toggleRSI = () => {
+  const updateRSI = useCallback((id: string, updates: Partial<RSIConfig>) => {
     setConfig(prev => ({
       ...prev,
       indicators: {
         ...prev.indicators,
-        rsi: {
-          ...prev.indicators.rsi,
-          show: !prev.indicators.rsi.show,
-        },
+        rsi: prev.indicators.rsi.map(rsi => 
+          rsi.id === id ? { ...rsi, ...updates } : rsi
+        ),
       },
     }));
-  };
+  }, []);
 
-  const updateRSIConfig = (updates: Partial<RSIConfig>) => {
+  const toggleRSI = useCallback((id: string) => {
     setConfig(prev => ({
       ...prev,
       indicators: {
         ...prev.indicators,
-        rsi: {
-          ...prev.indicators.rsi,
-          ...updates,
-        },
+        rsi: prev.indicators.rsi.map(rsi => 
+          rsi.id === id ? { ...rsi, show: !rsi.show } : rsi
+        ),
       },
     }));
+  }, []);
+
+  const updateChartStyle = useCallback((updates: Partial<ChartStyleConfig>) => {
+    setConfig(prev => ({
+      ...prev,
+      chart: { ...prev.chart, ...updates },
+    }));
+  }, []);
+
+  // Helper function to get chart type configuration
+  const getChartTypeConfig = (chartType: ChartType) => {
+    switch (chartType) {
+      case 'line':
+        return {
+          type: 'line',
+          line: {
+            color: '#f0b90b',
+            size: 2,
+          },
+          area: {
+            show: false,
+            color: 'rgba(41, 98, 255, 0.1)'
+          },
+        };
+      case 'area':
+        return {
+          type: 'area',
+          line: {
+            color: '#f0b90b',
+            size: 2,
+          },
+          area: {
+            show: true,
+            color: [
+              'rgba(240, 185, 11, 0.4)',
+              'rgba(240, 185, 11, 0.05)'
+            ],
+          },
+        };
+      case 'bar':
+        return {
+          type: 'ohlc',
+          bar: {
+            upColor: '#00b15d',
+            downColor: '#ff5b5a',
+          },
+        };
+      case 'candle':
+      default:
+        return {
+          type: 'candle_solid',
+          bar: {
+            upColor: '#00b15d',
+            downColor: '#ff5b5a',
+          },
+        };
+    }
   };
+
+  const updateChartType = useCallback((chartType: ChartType) => {
+    setConfig(prev => ({
+      ...prev,
+      chartType,
+      chart: {
+        ...prev.chart,
+        candle: getChartTypeConfig(chartType),
+      },
+    }));
+  }, []);
 
   return (
     <GlobalContext.Provider value={{ 
       config, 
-      updateConfig, 
-      toggleRSI, 
-      updateRSIConfig 
+      updateConfig,
+      updateRSI,
+      toggleRSI,
+      updateChartStyle,
+      updateChartType,
     }}>
       {children}
     </GlobalContext.Provider>

@@ -17,7 +17,7 @@ import {
 interface DrawingToolsProps {
   onToolSelect: (tool: string) => void;
   activeTool: string;
-  showRSI: boolean; // This now comes from context
+  showRSI?: boolean; // This now comes from context
 }
 
 const tools = [
