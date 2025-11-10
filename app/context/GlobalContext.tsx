@@ -181,7 +181,7 @@ const createDefaultRSIs = (): RSIConfig[] => [
 const createDefaultVolume = (): VolumeConfig[] => [
   {
     id: 'volume-1',
-    show: false,
+    show: true,
     upColor: '#00b15d',
     downColor: '#ff5b5a',
     opacity: 0.6,
@@ -330,7 +330,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       },
     }));
   }, []);
-
+4
   return (
     <GlobalContext.Provider value={{ 
       config, 
