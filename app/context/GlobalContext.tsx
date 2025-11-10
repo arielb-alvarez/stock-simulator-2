@@ -19,6 +19,20 @@ export interface RSIConfig {
   name: string;
 }
 
+// Volume Configuration
+export interface VolumeConfig {
+  id: string;
+  show: boolean;
+  upColor: string;
+  downColor: string;
+  opacity: number;
+  showMA: boolean;
+  maPeriod: number;
+  maColor: string;
+  maLineSize: number;
+  name: string;
+}
+
 // Chart Style Configuration
 interface ChartStyleConfig {
   layout: {
@@ -67,6 +81,7 @@ interface GlobalConfig {
   series: unknown;
   indicators: {
     rsi: RSIConfig[];
+    volume: VolumeConfig[];
   };
 }
 
@@ -75,6 +90,8 @@ interface GlobalContextType {
   updateConfig: (updates: Partial<GlobalConfig>) => void;
   updateRSI: (id: string, updates: Partial<RSIConfig>) => void;
   toggleRSI: (id: string) => void;
+  updateVolume: (id: string, updates: Partial<VolumeConfig>) => void;
+  toggleVolume: (id: string) => void;
   updateChartStyle: (updates: Partial<ChartStyleConfig>) => void;
   updateChartType: (chartType: ChartType) => void;
 }
@@ -160,6 +177,22 @@ const createDefaultRSIs = (): RSIConfig[] => [
   }
 ];
 
+// Create default Volume configuration
+const createDefaultVolume = (): VolumeConfig[] => [
+  {
+    id: 'volume-1',
+    show: false,
+    upColor: '#00b15d',
+    downColor: '#ff5b5a',
+    opacity: 0.6,
+    showMA: true,
+    maPeriod: 20,
+    maColor: '#f0b90b',
+    maLineSize: 1.5,
+    name: 'Volume',
+  }
+];
+
 const defaultConfig: GlobalConfig = {
   chartType: 'candle',
   symbol: 'BTCUSDT',
@@ -169,6 +202,7 @@ const defaultConfig: GlobalConfig = {
   series: {},
   indicators: {
     rsi: createDefaultRSIs(),
+    volume: createDefaultVolume(),
   },
 };
 
@@ -200,6 +234,30 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
         ...prev.indicators,
         rsi: prev.indicators.rsi.map(rsi => 
           rsi.id === id ? { ...rsi, show: !rsi.show } : rsi
+        ),
+      },
+    }));
+  }, []);
+
+  const updateVolume = useCallback((id: string, updates: Partial<VolumeConfig>) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        volume: prev.indicators.volume.map(volume => 
+          volume.id === id ? { ...volume, ...updates } : volume
+        ),
+      },
+    }));
+  }, []);
+
+  const toggleVolume = useCallback((id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        volume: prev.indicators.volume.map(volume => 
+          volume.id === id ? { ...volume, show: !volume.show } : volume
         ),
       },
     }));
@@ -279,6 +337,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       updateConfig,
       updateRSI,
       toggleRSI,
+      updateVolume,
+      toggleVolume,
       updateChartStyle,
       updateChartType,
     }}>

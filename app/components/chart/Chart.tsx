@@ -8,7 +8,7 @@ import {
   registerOverlay,
   registerIndicator,
 } from 'klinecharts';
-import { useGlobalContext, RSIConfig } from '@/context/GlobalContext';
+import { useGlobalContext, RSIConfig, VolumeConfig } from '@/context/GlobalContext';
 import { cryptoService, CryptoData } from '@/services/cryptoService';
 import DrawingTools from './DrawingTools';
 
@@ -106,12 +106,89 @@ const registerRSIIndicator = (rsiConfig: RSIConfig) => {
   }
 };
 
+// Register Volume Indicator
+const registerVolumeIndicator = (volumeConfig: VolumeConfig) => {
+  const indicatorName = `VOLUME_${volumeConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  
+  try {
+    // Check if already registered to avoid duplicates
+    if ((window as any).__registeredIndicators?.includes(indicatorName)) {
+      return indicatorName;
+    }
+
+    registerIndicator({
+      name: indicatorName,
+      shortName: 'VOL',
+      calcParams: volumeConfig.showMA ? [volumeConfig.maPeriod] : [],
+      figures: [
+        {
+          key: 'volume',
+          title: 'VOLUME: ',
+          type: 'bar',
+          baseValue: 0,
+          // styles: (kLineData: KLineData) => {
+          //   const isUp = kLineData.close >= kLineData.open;
+          //   return {
+          //     color: isUp ? volumeConfig.upColor : volumeConfig.downColor,
+          //     opacity: volumeConfig.opacity,
+          //   };
+          // }
+        },
+        ...(volumeConfig.showMA ? [{
+          key: 'ma',
+          title: `MA${volumeConfig.maPeriod}: `,
+          type: 'line',
+          // styles: {
+          //   color: volumeConfig.maColor,
+          //   size: volumeConfig.maLineSize,
+          // }
+        }] : [])
+      ],
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        const maPeriod = calcParams[0] || volumeConfig.maPeriod;
+
+        for (let i = 0; i < dataList.length; i++) {
+          const volume = dataList[i].volume || 0;
+          const volumeItem: any = { volume };
+
+          // Calculate MA if enabled
+          if (volumeConfig.showMA && i >= maPeriod - 1) {
+            let sum = 0;
+            for (let j = 0; j < maPeriod; j++) {
+              sum += dataList[i - j].volume || 0;
+            }
+            volumeItem.ma = sum / maPeriod;
+          } else if (volumeConfig.showMA) {
+            volumeItem.ma = 0;
+          }
+
+          result.push(volumeItem);
+        }
+
+        return result;
+      },
+    });
+
+    // Track registered indicators
+    if (!(window as any).__registeredIndicators) {
+      (window as any).__registeredIndicators = [];
+    }
+    (window as any).__registeredIndicators.push(indicatorName);
+
+    return indicatorName;
+  } catch (error) {
+    console.error('Error registering Volume indicator:', error);
+    return indicatorName;
+  }
+};
+
 export default function MainChart() {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const currentDataRef = useRef<CryptoData[]>([]);
-  const { config, toggleRSI } = useGlobalContext();
+  const { config, toggleRSI, toggleVolume } = useGlobalContext();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
@@ -126,16 +203,30 @@ export default function MainChart() {
     });
   }, [config.indicators.rsi]);
 
+  // Register all Volume indicators
+  useEffect(() => {
+    config.indicators.volume.forEach(volumeConfig => {
+      registerVolumeIndicator(volumeConfig);
+    });
+  }, [config.indicators.volume]);
+
   // Handle drawing tool selection
   const handleDrawingToolSelect = useCallback((tool: string) => {
     if (tool === 'rsi') {
       setActiveDrawingTool(tool);
       return;
     }
-    
+
     if (tool.startsWith('rsi-toggle-')) {
       const rsiId = tool.replace('rsi-toggle-', '');
       toggleRSI(rsiId);
+      setActiveDrawingTool(tool);
+      return;
+    }
+
+    if (tool.startsWith('volume-toggle-')) {
+      const volumeId = tool.replace('volume-toggle-', '');
+      toggleVolume(volumeId);
       setActiveDrawingTool(tool);
       return;
     }
@@ -170,7 +261,7 @@ export default function MainChart() {
         console.warn('Error creating overlay:', error);
       }
     }
-  }, [toggleRSI, config.indicators.rsi.length]);
+  }, [toggleRSI, toggleVolume, config.indicators.rsi.length, config.indicators.volume.length]);
 
   // Setup RSI indicators on chart
   const setupRSIIndicators = useCallback((chart: any) => {
@@ -231,6 +322,48 @@ export default function MainChart() {
       console.error('Error in RSI setup:', error);
     }
   }, [config.indicators.rsi]);
+
+  // Setup Volume indicators on chart
+  const setupVolumeIndicators = useCallback((chart: any) => {
+    if (!chart) return;
+
+    try {
+      // Remove all existing Volume indicators first
+      config.indicators.volume.forEach(volumeConfig => {
+        const indicatorName = `VOLUME_${volumeConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        try {
+          chart.removeIndicator(indicatorName);
+        } catch (e) {
+          // Ignore removal errors
+        }
+      });
+
+      // Add visible Volume indicators
+      config.indicators.volume
+        .filter(volumeConfig => volumeConfig.show)
+        .forEach((volumeConfig, index) => {
+          const indicatorName = `VOLUME_${volumeConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+          
+          try {
+            chart.createIndicator(indicatorName, false, {
+              id: indicatorName,
+              height: 80,
+              gap: {
+                top: 0.1,
+                bottom: 0.1,
+              },
+              styles: {
+                marginTop: 5 * index,
+              },
+            });
+          } catch (indicatorError) {
+            console.error(`Error creating Volume indicator ${indicatorName}:`, indicatorError);
+          }
+        });
+    } catch (error) {
+      console.error('Error in Volume setup:', error);
+    }
+  }, [config.indicators.volume]);
 
   // Apply chart styles from global config
   const applyChartStyles = useCallback((chart: any) => {
@@ -431,6 +564,7 @@ export default function MainChart() {
         // Apply styles and setup indicators
         applyChartStyles(chartInstance);
         setupRSIIndicators(chartInstance);
+        setupVolumeIndicators(chartInstance);
         
         setupWebSocket(chartInstance);
 
@@ -452,7 +586,7 @@ export default function MainChart() {
       mounted = false;
       cleanup();
     };
-  }, [config.symbol, config.interval, config.limit, initializeChart, updateChartWithData, applyChartStyles, setupRSIIndicators, setupWebSocket, cleanup]);
+  }, [config.symbol, config.interval, config.limit, initializeChart, updateChartWithData, applyChartStyles, setupRSIIndicators, setupVolumeIndicators, setupWebSocket, cleanup]);
 
   // Effect for RSI indicator changes
   useEffect(() => {
@@ -464,6 +598,17 @@ export default function MainChart() {
 
     return () => clearTimeout(timer);
   }, [config.indicators.rsi, setupRSIIndicators]);
+
+  // Effect for Volume indicator changes
+  useEffect(() => {
+    if (!chartRef.current || !currentDataRef.current.length) return;
+    
+    const timer = setTimeout(() => {
+      setupVolumeIndicators(chartRef.current);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [config.indicators.volume, setupVolumeIndicators]);
 
   // Effect for chart style changes
   useEffect(() => {
