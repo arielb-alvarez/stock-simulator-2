@@ -1,6 +1,6 @@
 // components/chart/DrawingTools.tsx
 'use client';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useGlobalContext } from '@/context/GlobalContext';
 
 interface DrawingToolsProps {
@@ -9,17 +9,41 @@ interface DrawingToolsProps {
 }
 
 const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool }) => {
-  const { config } = useGlobalContext();
+  const { config, resetToDefaults } = useGlobalContext();
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  // Auto-hide reset confirmation after 3 seconds
+  useEffect(() => {
+    if (showResetConfirm) {
+      const timer = setTimeout(() => {
+        setShowResetConfirm(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showResetConfirm]);
+
+  const handleResetClick = () => {
+    if (showResetConfirm) {
+      resetToDefaults();
+      setShowResetConfirm(false);
+      // Also reset the active tool
+      onToolSelect('select');
+    } else {
+      setShowResetConfirm(true);
+    }
+  };
 
   return (
     <div className="flex flex-wrap items-center gap-2 p-4 bg-gray-800 border-b border-gray-700">
       {/* Drawing Tools */}
       <div className="flex items-center gap-1">
+        <span className="text-xs text-gray-400 mr-1">Tools:</span>
         <button
           onClick={() => onToolSelect('select')}
           className={`px-3 py-1 rounded text-sm ${
             activeTool === 'select' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
+          title="Select and move drawings"
         >
           Select
         </button>
@@ -28,6 +52,7 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
           className={`px-3 py-1 rounded text-sm ${
             activeTool === 'horizontalLine' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
+          title="Horizontal Line"
         >
           Horizontal
         </button>
@@ -36,6 +61,7 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
           className={`px-3 py-1 rounded text-sm ${
             activeTool === 'verticalLine' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
+          title="Vertical Line"
         >
           Vertical
         </button>
@@ -44,6 +70,7 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
           className={`px-3 py-1 rounded text-sm ${
             activeTool === 'trendLine' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
+          title="Trend Line"
         >
           Trend Line
         </button>
@@ -52,6 +79,7 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
           className={`px-3 py-1 rounded text-sm ${
             activeTool === 'fibonacci' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
+          title="Fibonacci Retracement"
         >
           Fibonacci
         </button>
@@ -60,6 +88,7 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
           className={`px-3 py-1 rounded text-sm ${
             activeTool === 'rectangle' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
+          title="Rectangle"
         >
           Rectangle
         </button>
@@ -68,6 +97,7 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
           className={`px-3 py-1 rounded text-sm ${
             activeTool === 'circle' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
+          title="Circle"
         >
           Circle
         </button>
@@ -86,8 +116,12 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
               activeTool === `rsi-toggle-${rsi.id}` ? 'ring-2 ring-blue-400' : ''
             }`}
             style={{ borderLeft: `3px solid ${rsi.lineColor}` }}
+            title={`${rsi.name} (Period: ${rsi.period}) - ${rsi.show ? 'Visible' : 'Hidden'}`}
           >
             {rsi.name}
+            {rsi.show && (
+              <span className="ml-1 text-xs">✓</span>
+            )}
           </button>
         ))}
       </div>
@@ -104,10 +138,42 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
             } ${
               activeTool === `volume-toggle-${volume.id}` ? 'ring-2 ring-blue-400' : ''
             }`}
+            title={`${volume.name} ${volume.showMA ? `with MA${volume.maPeriod}` : ''} - ${volume.show ? 'Visible' : 'Hidden'}`}
           >
             {volume.name}
+            {volume.show && (
+              <span className="ml-1 text-xs">✓</span>
+            )}
           </button>
         ))}
+      </div>
+
+      {/* Reset Button */}
+      <div className="flex items-center gap-1 ml-2 pl-2 border-l border-gray-600">
+        <button
+          onClick={handleResetClick}
+          className={`px-3 py-1 rounded text-sm ${
+            showResetConfirm 
+              ? 'bg-red-600 text-white' 
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+          title="Reset all settings to defaults"
+        >
+          {showResetConfirm ? 'Confirm Reset' : 'Reset Settings'}
+        </button>
+        {showResetConfirm && (
+          <span className="text-xs text-yellow-400 ml-1">
+            Click again to confirm
+          </span>
+        )}
+      </div>
+
+      {/* Persistence Status Indicator */}
+      <div className="flex items-center gap-1 ml-2 pl-2 border-l border-gray-600">
+        <div className="flex items-center text-xs text-gray-400">
+          <div className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></div>
+          Auto-saved
+        </div>
       </div>
     </div>
   );
