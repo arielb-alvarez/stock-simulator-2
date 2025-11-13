@@ -22,151 +22,6 @@ const CHART_TYPES: { value: ChartType; label: string; icon: React.ReactNode }[] 
   { value: 'bar', label: 'Bar', icon: <BarIcon /> },
 ];
 
-// RSI Configuration Form Component
-interface RSIFormProps {
-  rsiConfig: RSIConfig;
-  onUpdate: (updates: Partial<RSIConfig>) => void;
-}
-
-const RSIForm: React.FC<RSIFormProps> = ({ rsiConfig, onUpdate }) => {
-  return (
-    <div className="space-y-4">
-      <h3 className="text-lg font-medium text-gray-200">RSI Configuration</h3>
-      
-      <div className="grid grid-cols-2 gap-4">
-        {/* Period */}
-        <div>
-          <label className="block text-sm font-medium text-gray-400 mb-1">
-            Period
-          </label>
-          <input
-            type="number"
-            min="1"
-            max="50"
-            value={rsiConfig.period}
-            onChange={(e) => onUpdate({ period: parseInt(e.target.value) || 14 })}
-            className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          />
-        </div>
-
-        {/* Line Size */}
-        <div>
-          <label className="block text-sm font-medium text-gray-400 mb-1">
-            Line Size
-          </label>
-          <input
-            type="number"
-            min="1"
-            max="5"
-            step="0.5"
-            value={rsiConfig.lineSize}
-            onChange={(e) => onUpdate({ lineSize: parseFloat(e.target.value) || 2 })}
-            className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          />
-        </div>
-
-        {/* Overbought Level */}
-        <div>
-          <label className="block text-sm font-medium text-gray-400 mb-1">
-            Overbought Level
-          </label>
-          <input
-            type="number"
-            min="50"
-            max="90"
-            value={rsiConfig.overbought}
-            onChange={(e) => onUpdate({ overbought: parseInt(e.target.value) || 70 })}
-            className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          />
-        </div>
-
-        {/* Oversold Level */}
-        <div>
-          <label className="block text-sm font-medium text-gray-400 mb-1">
-            Oversold Level
-          </label>
-          <input
-            type="number"
-            min="10"
-            max="50"
-            value={rsiConfig.oversold}
-            onChange={(e) => onUpdate({ oversold: parseInt(e.target.value) || 30 })}
-            className="w-full bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
-          />
-        </div>
-      </div>
-
-      {/* Color Settings */}
-      <div className="grid grid-cols-3 gap-4">
-        {/* Line Color */}
-        <div>
-          <label className="block text-sm font-medium text-gray-400 mb-1">
-            Line Color
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={rsiConfig.lineColor}
-              onChange={(e) => onUpdate({ lineColor: e.target.value })}
-              className="w-8 h-8 rounded border border-gray-600 cursor-pointer"
-            />
-            <span className="text-xs text-gray-400">{rsiConfig.lineColor}</span>
-          </div>
-        </div>
-
-        {/* Overbought Line Color */}
-        <div>
-          <label className="block text-sm font-medium text-gray-400 mb-1">
-            Overbought Color
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={rsiConfig.overboughtLineColor}
-              onChange={(e) => onUpdate({ overboughtLineColor: e.target.value })}
-              className="w-8 h-8 rounded border border-gray-600 cursor-pointer"
-            />
-            <span className="text-xs text-gray-400">{rsiConfig.overboughtLineColor}</span>
-          </div>
-        </div>
-
-        {/* Oversold Line Color */}
-        <div>
-          <label className="block text-sm font-medium text-gray-400 mb-1">
-            Oversold Color
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="color"
-              value={rsiConfig.oversoldLineColor}
-              onChange={(e) => onUpdate({ oversoldLineColor: e.target.value })}
-              className="w-8 h-8 rounded border border-gray-600 cursor-pointer"
-            />
-            <span className="text-xs text-gray-400">{rsiConfig.oversoldLineColor}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Toggle Visibility */}
-      <div className="flex items-center justify-between pt-2 border-t border-gray-700">
-        <span className="text-sm font-medium text-gray-400">Show RSI</span>
-        <button
-          onClick={() => onUpdate({ show: !rsiConfig.show })}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            rsiConfig.show ? 'bg-yellow-500' : 'bg-gray-600'
-          }`}
-        >
-          <span
-            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-              rsiConfig.show ? 'translate-x-6' : 'translate-x-1'
-            }`}
-          />
-        </button>
-      </div>
-    </div>
-  );
-};
-
 // Indicators Dialog Component
 interface IndicatorsDialogProps {
   isOpen: boolean;
@@ -199,11 +54,8 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     onToggleRSI(rsiId);
   };
 
-  const handleNameChangeRSI = (rsiId: string, name: string) => {
-    onUpdateRSI(rsiId, { name });
-  };
-
   const handlePeriodChangeRSI = (rsiId: string, period: number) => {
+    // Update the period - the GlobalContext will handle auto-updating the name
     onUpdateRSI(rsiId, { period: Math.max(1, period) });
   };
 
@@ -378,14 +230,9 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                                 />
                               </td>
                               
-                              {/* Editable Name */}
+                              {/* Static RSI Name */}
                               <td className="py-3 px-4">
-                                <input
-                                  type="text"
-                                  value={rsiConfig.name}
-                                  onChange={(e) => handleNameChangeRSI(rsiConfig.id, e.target.value)}
-                                  className="w-full bg-transparent border-none text-white focus:outline-none focus:ring-1 focus:ring-yellow-500 rounded px-2 py-1"
-                                />
+                                <span className="text-white font-medium">RSI</span>
                               </td>
                               
                               {/* Editable Period */}

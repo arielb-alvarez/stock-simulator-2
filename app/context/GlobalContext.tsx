@@ -161,6 +161,11 @@ const defaultChartStyle: ChartStyleConfig = {
   },
 };
 
+// Helper function to generate RSI name based on period
+const generateRSIName = (period: number): string => {
+  return `RSI ${period}`;
+};
+
 // Create 3 default RSI configurations
 const createDefaultRSIs = (): RSIConfig[] => [
   {
@@ -174,7 +179,7 @@ const createDefaultRSIs = (): RSIConfig[] => [
     overboughtLineColor: '#ff5b5a',
     oversoldLineColor: '#00b15d',
     areaColor: 'rgba(41, 98, 255, 0.1)',
-    name: 'RSI 14',
+    name: generateRSIName(14),
   },
   {
     id: 'rsi-2',
@@ -187,7 +192,7 @@ const createDefaultRSIs = (): RSIConfig[] => [
     overboughtLineColor: '#ff5b5a',
     oversoldLineColor: '#00b15d',
     areaColor: 'rgba(255, 107, 107, 0.1)',
-    name: 'RSI 21',
+    name: generateRSIName(21),
   },
   {
     id: 'rsi-3',
@@ -200,7 +205,7 @@ const createDefaultRSIs = (): RSIConfig[] => [
     overboughtLineColor: '#ff5b5a',
     oversoldLineColor: '#00b15d',
     areaColor: 'rgba(78, 205, 196, 0.1)',
-    name: 'RSI 28',
+    name: generateRSIName(28),
   }
 ];
 
@@ -297,15 +302,32 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updateRSI = useCallback((id: string, updates: Partial<RSIConfig>) => {
-    setConfig(prev => ({
-      ...prev,
-      indicators: {
-        ...prev.indicators,
-        rsi: prev.indicators.rsi.map(rsi => 
-          rsi.id === id ? { ...rsi, ...updates } : rsi
-        ),
-      },
-    }));
+    setConfig(prev => {
+      const currentRSI = prev.indicators.rsi.find(rsi => rsi.id === id);
+      
+      // If period is being updated and name matches the pattern "RSI {oldPeriod}", auto-update the name
+      if (updates.period && currentRSI) {
+        const oldPeriod = currentRSI.period;
+        const newPeriod = updates.period;
+        
+        // Check if the current name follows the default pattern "RSI {period}"
+        const defaultNamePattern = `RSI ${oldPeriod}`;
+        if (currentRSI.name === defaultNamePattern) {
+          // Auto-update the name to match the new period
+          updates.name = generateRSIName(newPeriod);
+        }
+      }
+      
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          rsi: prev.indicators.rsi.map(rsi => 
+            rsi.id === id ? { ...rsi, ...updates } : rsi
+          ),
+        },
+      };
+    });
   }, []);
 
   const toggleRSI = useCallback((id: string) => {
