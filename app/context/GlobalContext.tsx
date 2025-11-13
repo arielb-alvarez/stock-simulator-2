@@ -1,6 +1,6 @@
 // context/GlobalContext.tsx
 'use client';
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 
 export type ChartType = 'line' | 'area' | 'bar' | 'candle';
 
@@ -43,8 +43,21 @@ interface ChartStyleConfig {
     textColor: string;
   };
   grid: {
-    vertLines: { color: string };
-    horzLines: { color: string };
+    show: boolean;
+    vertical: {
+      show: boolean;
+      size: number;
+      color: string;
+      style: string;
+      dashedValue: number[];
+    };
+    horizontal: {
+      show: boolean;
+      size: number;
+      color: string;
+      style: string;
+      dashedValue: number[];
+    };
   };
   candle: {
     type: string;
@@ -94,6 +107,7 @@ interface GlobalContextType {
   toggleVolume: (id: string) => void;
   updateChartStyle: (updates: Partial<ChartStyleConfig>) => void;
   updateChartType: (chartType: ChartType) => void;
+  resetToDefaults: () => void;
 }
 
 const defaultChartStyle: ChartStyleConfig = {
@@ -105,8 +119,21 @@ const defaultChartStyle: ChartStyleConfig = {
     textColor: '#ffffff',
   },
   grid: {
-    vertLines: { color: '#2d2d2d' },
-    horzLines: { color: '#2d2d2d' },
+    show: true,
+    horizontal: {
+      show: true,
+      size: 1,
+      color: 'rgba(180, 180, 180, 0.1)',
+      style: 'dashed',
+      dashedValue: [2, 2]
+    },
+    vertical: {
+      show: true,
+      size: 1,
+      color: 'rgba(180, 180, 180, 0.1)',
+      style: 'dashed',
+      dashedValue: [2, 2]
+    }
   },
   candle: {
     type: 'candle_solid',
@@ -206,10 +233,64 @@ const defaultConfig: GlobalConfig = {
   },
 };
 
+// localStorage key
+const STORAGE_KEY = 'kline-chart-config';
+
+// Helper functions for localStorage
+const loadConfigFromStorage = (): GlobalConfig | null => {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return null;
+    
+    const parsed = JSON.parse(stored);
+    
+    // Validate the stored config has the basic structure
+    if (parsed && typeof parsed === 'object' && parsed.chartType && parsed.symbol) {
+      return parsed as GlobalConfig;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error loading config from localStorage:', error);
+    return null;
+  }
+};
+
+const saveConfigToStorage = (config: GlobalConfig): void => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  } catch (error) {
+    console.error('Error saving config to localStorage:', error);
+  }
+};
+
+const resetStorage = (): void => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    console.error('Error resetting localStorage:', error);
+  }
+};
+
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 
 export function GlobalProvider({ children }: { children: ReactNode }) {
-  const [config, setConfig] = useState<GlobalConfig>(defaultConfig);
+  const [config, setConfig] = useState<GlobalConfig>(() => {
+    // Load config from localStorage on initial render, fallback to default
+    const storedConfig = loadConfigFromStorage();
+    return storedConfig || defaultConfig;
+  });
+
+  // Save config to localStorage whenever it changes
+  useEffect(() => {
+    saveConfigToStorage(config);
+  }, [config]);
 
   const updateConfig = useCallback((updates: Partial<GlobalConfig>) => {
     setConfig(prev => ({ ...prev, ...updates }));
@@ -268,6 +349,11 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       chart: { ...prev.chart, ...updates },
     }));
+  }, []);
+
+  const resetToDefaults = useCallback(() => {
+    setConfig(defaultConfig);
+    resetStorage();
   }, []);
 
   // Helper function to get chart type configuration
@@ -330,7 +416,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       },
     }));
   }, []);
-4
+
   return (
     <GlobalContext.Provider value={{ 
       config, 
@@ -341,6 +427,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       toggleVolume,
       updateChartStyle,
       updateChartType,
+      resetToDefaults,
     }}>
       {children}
     </GlobalContext.Provider>

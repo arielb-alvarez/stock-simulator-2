@@ -106,7 +106,7 @@ const registerRSIIndicator = (rsiConfig: RSIConfig) => {
   }
 };
 
-// Register Volume Indicator
+// Register Volume Indicator - FIXED VERSION
 const registerVolumeIndicator = (volumeConfig: VolumeConfig) => {
   const indicatorName = `VOLUME_${volumeConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
   
@@ -126,22 +126,11 @@ const registerVolumeIndicator = (volumeConfig: VolumeConfig) => {
           title: 'VOLUME: ',
           type: 'bar',
           baseValue: 0,
-          // styles: (kLineData: KLineData) => {
-          //   const isUp = kLineData.close >= kLineData.open;
-          //   return {
-          //     color: isUp ? volumeConfig.upColor : volumeConfig.downColor,
-          //     opacity: volumeConfig.opacity,
-          //   };
-          // }
         },
         ...(volumeConfig.showMA ? [{
           key: 'ma',
           title: `MA${volumeConfig.maPeriod}: `,
           type: 'line',
-          // styles: {
-          //   color: volumeConfig.maColor,
-          //   size: volumeConfig.maLineSize,
-          // }
         }] : [])
       ],
       calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
@@ -183,6 +172,27 @@ const registerVolumeIndicator = (volumeConfig: VolumeConfig) => {
   }
 };
 
+// Helper function to get active tool from localStorage
+const getStoredActiveTool = (): string => {
+  if (typeof window === 'undefined') return '';
+  try {
+    return localStorage.getItem('active-tool') || '';
+  } catch (error) {
+    console.error('Error loading active tool from localStorage:', error);
+    return '';
+  }
+};
+
+// Helper function to save active tool to localStorage
+const saveActiveTool = (tool: string): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem('active-tool', tool);
+  } catch (error) {
+    console.error('Error saving active tool to localStorage:', error);
+  }
+};
+
 export default function MainChart() {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
@@ -192,7 +202,7 @@ export default function MainChart() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
-  const [activeDrawingTool, setActiveDrawingTool] = useState<string>('');
+  const [activeDrawingTool, setActiveDrawingTool] = useState<string>(() => getStoredActiveTool());
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
@@ -210,28 +220,31 @@ export default function MainChart() {
     });
   }, [config.indicators.volume]);
 
+  // Save active tool to localStorage whenever it changes
+  useEffect(() => {
+    saveActiveTool(activeDrawingTool);
+  }, [activeDrawingTool]);
+
   // Handle drawing tool selection
   const handleDrawingToolSelect = useCallback((tool: string) => {
+    setActiveDrawingTool(tool);
+
     if (tool === 'rsi') {
-      setActiveDrawingTool(tool);
       return;
     }
 
     if (tool.startsWith('rsi-toggle-')) {
       const rsiId = tool.replace('rsi-toggle-', '');
       toggleRSI(rsiId);
-      setActiveDrawingTool(tool);
       return;
     }
 
     if (tool.startsWith('volume-toggle-')) {
       const volumeId = tool.replace('volume-toggle-', '');
       toggleVolume(volumeId);
-      setActiveDrawingTool(tool);
       return;
     }
     
-    setActiveDrawingTool(tool);
     if (chartRef.current) {
       try {
         switch (tool) {
@@ -261,9 +274,9 @@ export default function MainChart() {
         console.warn('Error creating overlay:', error);
       }
     }
-  }, [toggleRSI, toggleVolume, config.indicators.rsi.length, config.indicators.volume.length]);
+  }, [toggleRSI, toggleVolume]);
 
-  // Setup RSI indicators on chart
+  // Setup RSI indicators on chart - FIXED VERSION
   const setupRSIIndicators = useCallback((chart: any) => {
     if (!chart) return;
 
@@ -289,16 +302,18 @@ export default function MainChart() {
               id: indicatorName,
               height: 100,
               gap: {
-                top: 0.1,
-                bottom: 0.1,
+                top: 0.2,
+                bottom: 0.2,
               },
+              // Apply RSI styles including colors
               styles: {
                 rsi: {
                   color: rsiConfig.lineColor,
                   size: rsiConfig.lineSize,
                 },
-                marginTop: 10 * index, // Stagger indicators slightly
+                marginTop: 10 * index,
               },
+              // Apply bands with current colors
               bands: [
                 {
                   value: rsiConfig.overbought,
@@ -323,7 +338,7 @@ export default function MainChart() {
     }
   }, [config.indicators.rsi]);
 
-  // Setup Volume indicators on chart
+  // Setup Volume indicators on chart - FIXED VERSION
   const setupVolumeIndicators = useCallback((chart: any) => {
     if (!chart) return;
 
@@ -352,7 +367,22 @@ export default function MainChart() {
                 top: 0.1,
                 bottom: 0.1,
               },
+              // Apply volume styles including colors
               styles: {
+                volume: {
+                  bar: {
+                    upColor: volumeConfig.upColor,
+                    downColor: volumeConfig.downColor,
+                    noChangeColor: volumeConfig.upColor,
+                  },
+                  opacity: volumeConfig.opacity,
+                },
+                ...(volumeConfig.showMA && {
+                  ma: {
+                    color: volumeConfig.maColor,
+                    size: volumeConfig.maLineSize,
+                  }
+                }),
                 marginTop: 5 * index,
               },
             });
@@ -588,24 +618,36 @@ export default function MainChart() {
     };
   }, [config.symbol, config.interval, config.limit, initializeChart, updateChartWithData, applyChartStyles, setupRSIIndicators, setupVolumeIndicators, setupWebSocket, cleanup]);
 
-  // Effect for RSI indicator changes
+  // Effect for RSI indicator changes - IMPROVED
   useEffect(() => {
     if (!chartRef.current || !currentDataRef.current.length) return;
     
     const timer = setTimeout(() => {
-      setupRSIIndicators(chartRef.current);
-    }, 300);
+      try {
+        setupRSIIndicators(chartRef.current);
+        // Force chart refresh
+        chartRef.current?.resize();
+      } catch (error) {
+        console.error('Error updating RSI indicators:', error);
+      }
+    }, 100);
 
     return () => clearTimeout(timer);
   }, [config.indicators.rsi, setupRSIIndicators]);
 
-  // Effect for Volume indicator changes
+  // Effect for Volume indicator changes - IMPROVED
   useEffect(() => {
     if (!chartRef.current || !currentDataRef.current.length) return;
     
     const timer = setTimeout(() => {
-      setupVolumeIndicators(chartRef.current);
-    }, 300);
+      try {
+        setupVolumeIndicators(chartRef.current);
+        // Force chart refresh
+        chartRef.current?.resize();
+      } catch (error) {
+        console.error('Error updating Volume indicators:', error);
+      }
+    }, 100);
 
     return () => clearTimeout(timer);
   }, [config.indicators.volume, setupVolumeIndicators]);
@@ -642,10 +684,10 @@ export default function MainChart() {
   return (
     <div className="w-full h-full flex flex-col relative">
         {/* Drawing Tools */}
-        {/* <DrawingTools 
+        <DrawingTools 
           onToolSelect={handleDrawingToolSelect}
           activeTool={activeDrawingTool}
-        /> */}
+        />
         
         {/* Loading and Error States */}
         {isLoading && (
