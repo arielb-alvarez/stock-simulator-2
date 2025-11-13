@@ -1,6 +1,6 @@
 // context/GlobalContext.tsx
 'use client';
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 
 export type ChartType = 'line' | 'area' | 'bar' | 'candle';
 
@@ -43,8 +43,21 @@ interface ChartStyleConfig {
     textColor: string;
   };
   grid: {
-    vertLines: { color: string };
-    horzLines: { color: string };
+    show: boolean;
+    vertical: {
+      show: boolean;
+      size: number;
+      color: string;
+      style: string;
+      dashedValue: number[];
+    };
+    horizontal: {
+      show: boolean;
+      size: number;
+      color: string;
+      style: string;
+      dashedValue: number[];
+    };
   };
   candle: {
     type: string;
@@ -94,6 +107,7 @@ interface GlobalContextType {
   toggleVolume: (id: string) => void;
   updateChartStyle: (updates: Partial<ChartStyleConfig>) => void;
   updateChartType: (chartType: ChartType) => void;
+  resetToDefaults: () => void;
 }
 
 const defaultChartStyle: ChartStyleConfig = {
@@ -105,8 +119,21 @@ const defaultChartStyle: ChartStyleConfig = {
     textColor: '#ffffff',
   },
   grid: {
-    vertLines: { color: '#2d2d2d' },
-    horzLines: { color: '#2d2d2d' },
+    show: true,
+    horizontal: {
+      show: true,
+      size: 1,
+      color: 'rgba(180, 180, 180, 0.1)',
+      style: 'dashed',
+      dashedValue: [2, 2]
+    },
+    vertical: {
+      show: true,
+      size: 1,
+      color: 'rgba(180, 180, 180, 0.1)',
+      style: 'dashed',
+      dashedValue: [2, 2]
+    }
   },
   candle: {
     type: 'candle_solid',
@@ -134,6 +161,11 @@ const defaultChartStyle: ChartStyleConfig = {
   },
 };
 
+// Helper function to generate RSI name based on period
+const generateRSIName = (period: number): string => {
+  return `RSI ${period}`;
+};
+
 // Create 3 default RSI configurations
 const createDefaultRSIs = (): RSIConfig[] => [
   {
@@ -147,7 +179,7 @@ const createDefaultRSIs = (): RSIConfig[] => [
     overboughtLineColor: '#ff5b5a',
     oversoldLineColor: '#00b15d',
     areaColor: 'rgba(41, 98, 255, 0.1)',
-    name: 'RSI 14',
+    name: generateRSIName(14),
   },
   {
     id: 'rsi-2',
@@ -160,7 +192,7 @@ const createDefaultRSIs = (): RSIConfig[] => [
     overboughtLineColor: '#ff5b5a',
     oversoldLineColor: '#00b15d',
     areaColor: 'rgba(255, 107, 107, 0.1)',
-    name: 'RSI 21',
+    name: generateRSIName(21),
   },
   {
     id: 'rsi-3',
@@ -173,7 +205,7 @@ const createDefaultRSIs = (): RSIConfig[] => [
     overboughtLineColor: '#ff5b5a',
     oversoldLineColor: '#00b15d',
     areaColor: 'rgba(78, 205, 196, 0.1)',
-    name: 'RSI 28',
+    name: generateRSIName(28),
   }
 ];
 
@@ -206,25 +238,96 @@ const defaultConfig: GlobalConfig = {
   },
 };
 
+// localStorage key
+const STORAGE_KEY = 'kline-chart-config';
+
+// Helper functions for localStorage
+const loadConfigFromStorage = (): GlobalConfig | null => {
+  if (typeof window === 'undefined') return null;
+  
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) return null;
+    
+    const parsed = JSON.parse(stored);
+    
+    // Validate the stored config has the basic structure
+    if (parsed && typeof parsed === 'object' && parsed.chartType && parsed.symbol) {
+      return parsed as GlobalConfig;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error loading config from localStorage:', error);
+    return null;
+  }
+};
+
+const saveConfigToStorage = (config: GlobalConfig): void => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  } catch (error) {
+    console.error('Error saving config to localStorage:', error);
+  }
+};
+
+const resetStorage = (): void => {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch (error) {
+    console.error('Error resetting localStorage:', error);
+  }
+};
+
 const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 
 export function GlobalProvider({ children }: { children: ReactNode }) {
-  const [config, setConfig] = useState<GlobalConfig>(defaultConfig);
+  const [config, setConfig] = useState<GlobalConfig>(() => {
+    // Load config from localStorage on initial render, fallback to default
+    const storedConfig = loadConfigFromStorage();
+    return storedConfig || defaultConfig;
+  });
+
+  // Save config to localStorage whenever it changes
+  useEffect(() => {
+    saveConfigToStorage(config);
+  }, [config]);
 
   const updateConfig = useCallback((updates: Partial<GlobalConfig>) => {
     setConfig(prev => ({ ...prev, ...updates }));
   }, []);
 
   const updateRSI = useCallback((id: string, updates: Partial<RSIConfig>) => {
-    setConfig(prev => ({
-      ...prev,
-      indicators: {
-        ...prev.indicators,
-        rsi: prev.indicators.rsi.map(rsi => 
-          rsi.id === id ? { ...rsi, ...updates } : rsi
-        ),
-      },
-    }));
+    setConfig(prev => {
+      const currentRSI = prev.indicators.rsi.find(rsi => rsi.id === id);
+      
+      // If period is being updated and name matches the pattern "RSI {oldPeriod}", auto-update the name
+      if (updates.period && currentRSI) {
+        const oldPeriod = currentRSI.period;
+        const newPeriod = updates.period;
+        
+        // Check if the current name follows the default pattern "RSI {period}"
+        const defaultNamePattern = `RSI ${oldPeriod}`;
+        if (currentRSI.name === defaultNamePattern) {
+          // Auto-update the name to match the new period
+          updates.name = generateRSIName(newPeriod);
+        }
+      }
+      
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          rsi: prev.indicators.rsi.map(rsi => 
+            rsi.id === id ? { ...rsi, ...updates } : rsi
+          ),
+        },
+      };
+    });
   }, []);
 
   const toggleRSI = useCallback((id: string) => {
@@ -268,6 +371,11 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       chart: { ...prev.chart, ...updates },
     }));
+  }, []);
+
+  const resetToDefaults = useCallback(() => {
+    setConfig(defaultConfig);
+    resetStorage();
   }, []);
 
   // Helper function to get chart type configuration
@@ -330,7 +438,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       },
     }));
   }, []);
-4
+
   return (
     <GlobalContext.Provider value={{ 
       config, 
@@ -341,6 +449,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       toggleVolume,
       updateChartStyle,
       updateChartType,
+      resetToDefaults,
     }}>
       {children}
     </GlobalContext.Provider>
