@@ -761,10 +761,10 @@ export default function MainChart() {
   return (
     <div className="w-full h-full flex flex-col relative">
         {/* Drawing Tools */}
-        <DrawingTools 
+        {/* <DrawingTools 
           onToolSelect={handleDrawingToolSelect}
           activeTool={activeDrawingTool}
-        />
+        /> */}
         
         {/* Loading and Error States */}
         {isLoading && (
