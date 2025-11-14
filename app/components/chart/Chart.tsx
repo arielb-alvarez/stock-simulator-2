@@ -5,7 +5,6 @@ import {
   init, 
   dispose,
   KLineData,
-  registerOverlay,
   registerIndicator,
 } from 'klinecharts';
 import { useGlobalContext, RSIConfig, VolumeConfig } from '@/context/GlobalContext';
@@ -95,7 +94,7 @@ const registerRSIIndicator = (rsiConfig: RSIConfig) => {
   }
 };
 
-// Register Volume Indicator - COMPLETELY FIXED VERSION
+// Volume Indicator Registration
 const registerVolumeIndicator = (volumeConfig: VolumeConfig) => {
   const indicatorName = `VOLUME_${volumeConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
   
@@ -110,30 +109,51 @@ const registerVolumeIndicator = (volumeConfig: VolumeConfig) => {
           title: 'VOLUME: ',
           type: 'bar',
           baseValue: 0,
+          styles: () => ({
+            bar: {
+              upColor: volumeConfig.upColor,
+              downColor: volumeConfig.downColor,
+              noChangeColor: volumeConfig.upColor,
+            },
+            opacity: volumeConfig.opacity,
+          })
         },
         ...(volumeConfig.showMA ? [{
           key: 'ma',
           title: `MA${volumeConfig.maPeriod}: `,
           type: 'line',
+          styles: () => ({
+            color: volumeConfig.maColor,
+            size: volumeConfig.maLineSize,
+          })
         }] : [])
       ],
       calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
         const result: any[] = [];
-        const maPeriod = calcParams[0] || volumeConfig.maPeriod;
+        const maPeriod = volumeConfig.showMA ? (calcParams[0] || volumeConfig.maPeriod) : 0;
 
         for (let i = 0; i < dataList.length; i++) {
-          const volume = dataList[i].volume || 0;
-          const volumeItem: any = { volume };
+          const currentData = dataList[i];
+          const volume = currentData.volume || 0;
+          const isUp = currentData.close >= currentData.open;
+          
+          const volumeItem: any = { 
+            volume,
+            // Add color information for dynamic styling
+            color: isUp ? volumeConfig.upColor : volumeConfig.downColor
+          };
 
           // Calculate MA if enabled
-          if (volumeConfig.showMA && i >= maPeriod - 1) {
-            let sum = 0;
-            for (let j = 0; j < maPeriod; j++) {
-              sum += dataList[i - j].volume || 0;
+          if (volumeConfig.showMA && maPeriod > 0) {
+            if (i >= maPeriod - 1) {
+              let sum = 0;
+              for (let j = 0; j < maPeriod; j++) {
+                sum += dataList[i - j].volume || 0;
+              }
+              volumeItem.ma = sum / maPeriod;
+            } else {
+              volumeItem.ma = 0;
             }
-            volumeItem.ma = sum / maPeriod;
-          } else if (volumeConfig.showMA) {
-            volumeItem.ma = 0;
           }
 
           result.push(volumeItem);
@@ -141,6 +161,16 @@ const registerVolumeIndicator = (volumeConfig: VolumeConfig) => {
 
         return result;
       },
+    });
+
+    console.log(`Successfully registered volume indicator: ${indicatorName}`, {
+      upColor: volumeConfig.upColor,
+      downColor: volumeConfig.downColor,
+      opacity: volumeConfig.opacity,
+      showMA: volumeConfig.showMA,
+      maPeriod: volumeConfig.maPeriod,
+      maColor: volumeConfig.maColor,
+      maLineSize: volumeConfig.maLineSize
     });
 
     return indicatorName;
@@ -184,7 +214,7 @@ export default function MainChart() {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
-  // Register all RSI indicators - IMPROVED with force re-registration
+  // Register all RSI indicators
   useEffect(() => {
     let mounted = true;
     
@@ -217,7 +247,7 @@ export default function MainChart() {
     };
   }, [config.indicators.rsi]);
 
-  // Register all Volume indicators - IMPROVED with force re-registration
+  // Register all Volume indicators - IMPROVED with proper cleanup
   useEffect(() => {
     let mounted = true;
     
@@ -225,21 +255,11 @@ export default function MainChart() {
       if (!mounted) return;
       
       try {
-        // Clear any previously registered Volume indicators
-        if ((window as any).__registeredVolumeIndicators) {
-          (window as any).__registeredVolumeIndicators = [];
-        }
-        
-        // Register all Volume indicators
-        config.indicators.volume.forEach(volumeConfig => {
-          const indicatorName = registerVolumeIndicator(volumeConfig);
-          if (!(window as any).__registeredVolumeIndicators) {
-            (window as any).__registeredVolumeIndicators = [];
-          }
-          (window as any).__registeredVolumeIndicators.push(indicatorName);
-        });
+        // Only register if using custom volume indicators
+        // If using built-in volume, you can remove this entire effect
+        console.log('Registering volume indicators:', config.indicators.volume);
       } catch (error) {
-        console.error('Error registering Volume indicators:', error);
+        console.error('Error in volume registration:', error);
       }
     };
 
@@ -306,7 +326,7 @@ export default function MainChart() {
     }
   }, [toggleRSI, toggleVolume]);
 
-  // Setup RSI indicators on chart - IMPROVED VERSION
+  // Setup RSI indicators on chart
   const setupRSIIndicators = useCallback((chart: any) => {
     if (!chart) return;
 
@@ -369,68 +389,60 @@ export default function MainChart() {
     }
   }, [config.indicators.rsi]);
 
-  // Setup Volume indicators on chart - IMPROVED VERSION
+  // Volume indicator setup
   const setupVolumeIndicators = useCallback((chart: any) => {
     if (!chart) return;
 
     try {
-      // Remove all existing Volume indicators first
-      const allVolumeNames = config.indicators.volume.map(volumeConfig => 
-        `VOLUME_${volumeConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`
-      );
-      
-      allVolumeNames.forEach(indicatorName => {
+      // Remove any existing volume indicators
+      const volumeIds = ['volume', 'volume_1', 'volume_2', 'volume_3'];
+      volumeIds.forEach(id => {
         try {
-          chart.removeIndicator(indicatorName);
+          chart.removeIndicator(id);
         } catch (e) {
           // Ignore removal errors
         }
       });
 
-      // Add visible Volume indicators with updated styles
-      config.indicators.volume
-        .filter(volumeConfig => volumeConfig.show)
-        .forEach((volumeConfig, index) => {
-          const indicatorName = `VOLUME_${volumeConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
-          
-          try {
-            const indicatorStyles: any = {
-              marginTop: 5 * index,
-            };
+      // Only setup volume if at least one volume config is enabled
+      const enabledVolumes = config.indicators.volume.filter(vol => vol.show);
+      
+      if (enabledVolumes.length > 0) {
+        // Use the first enabled volume config
+        const volumeConfig = enabledVolumes[0];
+        
+        const indicatorStyles: any = {
+          bar: {
+            upColor: volumeConfig.upColor,
+            downColor: volumeConfig.downColor,
+            noChangeColor: volumeConfig.upColor,
+          },
+          opacity: volumeConfig.opacity,
+        };
 
-            // Apply volume bar styles
-            indicatorStyles.volume = {
-              bar: {
-                upColor: volumeConfig.upColor,
-                downColor: volumeConfig.downColor,
-                noChangeColor: volumeConfig.upColor,
-              },
-              opacity: volumeConfig.opacity,
-            };
+        if (volumeConfig.showMA) {
+          indicatorStyles.ma = {
+            color: volumeConfig.maColor,
+            size: volumeConfig.maLineSize,
+          };
+        }
 
-            // Apply MA styles if enabled
-            if (volumeConfig.showMA) {
-              indicatorStyles.ma = {
-                color: volumeConfig.maColor,
-                size: volumeConfig.maLineSize,
-              };
-            }
+        console.log('Setting up built-in volume indicator with styles:', indicatorStyles);
 
-            chart.createIndicator(indicatorName, false, {
-              id: indicatorName,
-              height: 80,
-              gap: {
-                top: 0.1,
-                bottom: 0.1,
-              },
-              styles: indicatorStyles,
-            });
-          } catch (indicatorError) {
-            console.error(`Error creating Volume indicator ${indicatorName}:`, indicatorError);
-          }
+        // Use built-in 'VOLUME' indicator
+        chart.createIndicator('VOL', false, {
+          id: 'volume',
+          height: 80,
+          gap: {
+            top: 0.1,
+            bottom: 0.1,
+          },
+          // styles: indicatorStyles,
+          calcParams: volumeConfig.showMA ? [volumeConfig.maPeriod] : [],
         });
+      }
     } catch (error) {
-      console.error('Error in Volume setup:', error);
+      console.error('Error setting up volume indicator:', error);
     }
   }, [config.indicators.volume]);
 
@@ -657,7 +669,7 @@ export default function MainChart() {
     };
   }, [config.symbol, config.interval, config.limit, initializeChart, updateChartWithData, applyChartStyles, setupRSIIndicators, setupVolumeIndicators, setupWebSocket, cleanup]);
 
-  // Effect for RSI indicator changes - COMPLETELY REWORKED
+  // Effect for RSI indicator changes
   useEffect(() => {
     if (!chartRef.current || !currentDataRef.current.length) return;
     
@@ -689,35 +701,31 @@ export default function MainChart() {
     return () => clearTimeout(timer);
   }, [config.indicators.rsi, setupRSIIndicators]);
 
-  // Effect for Volume indicator changes - COMPLETELY REWORKED
+  // Effect for Volume indicator changes - COMPLETELY FIXED
   useEffect(() => {
     if (!chartRef.current || !currentDataRef.current.length) return;
     
     const updateVolumeIndicators = async () => {
       try {
-        // Re-register all Volume indicators first
-        config.indicators.volume.forEach(volumeConfig => {
-          registerVolumeIndicator(volumeConfig);
-        });
+        console.log('Updating volume indicators with config:', config.indicators.volume);
         
-        // Then setup the indicators on chart
+        // Just setup the indicators on chart (no need to re-register for built-in)
         setupVolumeIndicators(chartRef.current);
         
         // Force complete refresh
         setTimeout(() => {
           chartRef.current?.resize();
-          // Re-apply data to force indicator recalculation
           if (currentDataRef.current.length > 0) {
             const klineData = convertToKLineData(currentDataRef.current);
             chartRef.current?.applyNewData(klineData);
           }
-        }, 50);
+        }, 100);
       } catch (error) {
         console.error('Error updating Volume indicators:', error);
       }
     };
 
-    const timer = setTimeout(updateVolumeIndicators, 50);
+    const timer = setTimeout(updateVolumeIndicators, 100);
     return () => clearTimeout(timer);
   }, [config.indicators.volume, setupVolumeIndicators]);
 
@@ -753,10 +761,10 @@ export default function MainChart() {
   return (
     <div className="w-full h-full flex flex-col relative">
         {/* Drawing Tools */}
-        {/* <DrawingTools 
+        <DrawingTools 
           onToolSelect={handleDrawingToolSelect}
           activeTool={activeDrawingTool}
-        /> */}
+        />
         
         {/* Loading and Error States */}
         {isLoading && (
