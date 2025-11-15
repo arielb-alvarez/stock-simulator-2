@@ -1,5 +1,5 @@
 'use client';
-import { useGlobalContext, ChartType, RSIConfig, VolumeConfig } from '@/context/GlobalContext';
+import { useGlobalContext, ChartType, RSIConfig, VolumeConfig, VolumeMAConfig } from '@/context/GlobalContext';
 import { useState, useRef, useEffect } from 'react';
 import { CandleIcon, LineIcon, AreaIcon, BarIcon, ChevronDown, EditIcon, IndicatorsIcon } from './ChartIcons';
 
@@ -32,6 +32,8 @@ interface IndicatorsDialogProps {
   onToggleRSI: (id: string) => void;
   onUpdateVolume: (id: string, updates: Partial<VolumeConfig>) => void;
   onToggleVolume: (id: string) => void;
+  onUpdateVolumeMA: (volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => void;
+  onToggleVolumeMA: (volumeId: string, maId: string) => void;
 }
 
 const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
@@ -43,6 +45,8 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   onToggleRSI,
   onUpdateVolume,
   onToggleVolume,
+  onUpdateVolumeMA,
+  onToggleVolumeMA
 }) => {
   const [activeTab, setActiveTab] = useState<'main' | 'sub'>('sub');
   const [activeSubMenu, setActiveSubMenu] = useState<string>('rsi');
@@ -88,20 +92,12 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     onUpdateVolume(volumeId, { opacity: Math.max(0.1, Math.min(1, opacity)) });
   };
 
-  const handleToggleMA = (volumeId: string, showMA: boolean) => {
-    onUpdateVolume(volumeId, { showMA });
+  const handleUpdateVolumeMA = (volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => {
+    onUpdateVolumeMA(volumeId, maId, updates);
   };
 
-  const handleMAPeriodChange = (volumeId: string, maPeriod: number) => {
-    onUpdateVolume(volumeId, { maPeriod: Math.max(1, maPeriod) });
-  };
-
-  const handleMAColorChange = (volumeId: string, maColor: string) => {
-    onUpdateVolume(volumeId, { maColor });
-  };
-
-  const handleMALineSizeChange = (volumeId: string, maLineSize: number) => {
-    onUpdateVolume(volumeId, { maLineSize: Math.max(0.5, Math.min(5, maLineSize)) });
+  const handleToggleVolumeMA = (volumeId: string, maId: string) => {
+    onToggleVolumeMA(volumeId, maId);
   };
 
   return (
@@ -291,173 +287,179 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                       </div>
                     </div>
 
-                    {/* Volume Configuration Table */}
-                    <div className="bg-gray-750 rounded-lg border border-gray-700 overflow-hidden">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-700">
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-16">
-                              Show
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">
-                              Name
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-20">
-                              Up Color
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-20">
-                              Down Color
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
-                              Opacity
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-16">
-                              Show MA
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
-                              MA Period
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-20">
-                              MA Color
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
-                              MA Width
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {volumeConfigs.map((volumeConfig) => (
-                            <tr 
-                              key={volumeConfig.id} 
-                              className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors"
-                            >
-                              {/* Checkbox for visibility */}
-                              <td className="py-3 px-4">
+                    {/* Volume Configuration */}
+                    <div className="space-y-4">
+                      {volumeConfigs.map((volumeConfig) => (
+                        <div key={volumeConfig.id} className="bg-gray-750 rounded-lg border border-gray-700 p-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
+                                checked={volumeConfig.show}
+                                onChange={() => handleToggleVolume(volumeConfig.id)}
+                                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
+                              />
+                              <h4 className="text-md font-medium text-white">{volumeConfig.name}</h4>
+                            </div>
+                          </div>
+
+                          {/* Basic Volume Settings */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                            {/* Up Color */}
+                            <div>
+                              <label className="block text-sm text-gray-400 mb-2">Up Color</label>
+                              <div className="flex items-center gap-2">
                                 <input
-                                  type="checkbox"
-                                  checked={volumeConfig.show}
-                                  onChange={() => handleToggleVolume(volumeConfig.id)}
-                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
+                                  type="color"
+                                  value={volumeConfig.upColor}
+                                  onChange={(e) => handleUpColorChange(volumeConfig.id, e.target.value)}
+                                  className="w-10 h-10 rounded border border-gray-600 cursor-pointer bg-transparent"
                                 />
-                              </td>
-                              
-                              {/* Editable Name */}
-                              <td className="py-3 px-4">
                                 <input
                                   type="text"
-                                  value={volumeConfig.name}
-                                  onChange={(e) => handleNameChangeVolume(volumeConfig.id, e.target.value)}
-                                  className="w-full bg-transparent border-none text-white focus:outline-none focus:ring-1 focus:ring-yellow-500 rounded px-2 py-1"
+                                  value={volumeConfig.upColor}
+                                  onChange={(e) => handleUpColorChange(volumeConfig.id, e.target.value)}
+                                  className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500 font-mono text-xs"
                                 />
-                              </td>
-                              
-                              {/* Up Color */}
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="color"
-                                    value={volumeConfig.upColor}
-                                    onChange={(e) => handleUpColorChange(volumeConfig.id, e.target.value)}
-                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
-                                  />
-                                  <span className="text-xs text-gray-400 font-mono">
-                                    {volumeConfig.upColor}
-                                  </span>
-                                </div>
-                              </td>
-                              
-                              {/* Down Color */}
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="color"
-                                    value={volumeConfig.downColor}
-                                    onChange={(e) => handleDownColorChange(volumeConfig.id, e.target.value)}
-                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
-                                  />
-                                  <span className="text-xs text-gray-400 font-mono">
-                                    {volumeConfig.downColor}
-                                  </span>
-                                </div>
-                              </td>
-                              
-                              {/* Opacity */}
-                              <td className="py-3 px-4">
+                              </div>
+                            </div>
+
+                            {/* Down Color */}
+                            <div>
+                              <label className="block text-sm text-gray-400 mb-2">Down Color</label>
+                              <div className="flex items-center gap-2">
                                 <input
-                                  type="number"
-                                  min="0.1"
-                                  max="1"
-                                  step="0.1"
-                                  value={volumeConfig.opacity}
-                                  onChange={(e) => handleOpacityChange(volumeConfig.id, parseFloat(e.target.value) || 0.6)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                  type="color"
+                                  value={volumeConfig.downColor}
+                                  onChange={(e) => handleDownColorChange(volumeConfig.id, e.target.value)}
+                                  className="w-10 h-10 rounded border border-gray-600 cursor-pointer bg-transparent"
                                 />
-                              </td>
-                              
-                              {/* Show MA Toggle */}
-                              <td className="py-3 px-4">
                                 <input
-                                  type="checkbox"
-                                  checked={volumeConfig.showMA}
-                                  onChange={(e) => handleToggleMA(volumeConfig.id, e.target.checked)}
-                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
+                                  type="text"
+                                  value={volumeConfig.downColor}
+                                  onChange={(e) => handleDownColorChange(volumeConfig.id, e.target.value)}
+                                  className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500 font-mono text-xs"
                                 />
-                              </td>
-                              
-                              {/* MA Period */}
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="50"
-                                  value={volumeConfig.maPeriod}
-                                  onChange={(e) => handleMAPeriodChange(volumeConfig.id, parseInt(e.target.value) || 20)}
-                                  disabled={!volumeConfig.showMA}
-                                  className={`w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500 ${
-                                    !volumeConfig.showMA ? 'opacity-50 cursor-not-allowed' : ''
-                                  }`}
-                                />
-                              </td>
-                              
-                              {/* MA Color */}
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="color"
-                                    value={volumeConfig.maColor}
-                                    onChange={(e) => handleMAColorChange(volumeConfig.id, e.target.value)}
-                                    disabled={!volumeConfig.showMA}
-                                    className={`w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent ${
-                                      !volumeConfig.showMA ? 'opacity-50 cursor-not-allowed' : ''
-                                    }`}
-                                  />
-                                  <span className={`text-xs font-mono ${
-                                    !volumeConfig.showMA ? 'text-gray-500' : 'text-gray-400'
-                                  }`}>
-                                    {volumeConfig.maColor}
-                                  </span>
-                                </div>
-                              </td>
-                              
-                              {/* MA Line Size */}
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="0.5"
-                                  max="5"
-                                  step="0.5"
-                                  value={volumeConfig.maLineSize}
-                                  onChange={(e) => handleMALineSizeChange(volumeConfig.id, parseFloat(e.target.value) || 1.5)}
-                                  disabled={!volumeConfig.showMA}
-                                  className={`w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500 ${
-                                    !volumeConfig.showMA ? 'opacity-50 cursor-not-allowed' : ''
-                                  }`}
-                                />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                              </div>
+                            </div>
+
+                            {/* Opacity */}
+                            <div>
+                              <label className="block text-sm text-gray-400 mb-2">Opacity</label>
+                              <input
+                                type="number"
+                                min="0.1"
+                                max="1"
+                                step="0.1"
+                                value={volumeConfig.opacity}
+                                onChange={(e) => handleOpacityChange(volumeConfig.id, parseFloat(e.target.value) || 0.6)}
+                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                              />
+                            </div>
+
+                            {/* Name */}
+                            <div>
+                              <label className="block text-sm text-gray-400 mb-2">Name</label>
+                              <input
+                                type="text"
+                                value={volumeConfig.name}
+                                onChange={(e) => handleNameChangeVolume(volumeConfig.id, e.target.value)}
+                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Volume MA Configuration Table */}
+                          <div className="border-t border-gray-700 pt-4">
+                            <h5 className="text-sm font-medium text-gray-300 mb-3">Moving Average (MA) Settings</h5>
+                            
+                            <div className="bg-gray-800 rounded border border-gray-700 overflow-hidden">
+                              <table className="w-full">
+                                <thead>
+                                  <tr className="border-b border-gray-700">
+                                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-400 w-16">Show</th>
+                                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">MA Line</th>
+                                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-400 w-24">Period</th>
+                                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-400 w-32">Color</th>
+                                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-400 w-24">Line Width</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {volumeConfig.maLines.map((maConfig, index) => (
+                                    <tr key={maConfig.id} className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors">
+                                      {/* Show/Hide MA */}
+                                      <td className="py-3 px-4">
+                                        <input
+                                          type="checkbox"
+                                          checked={maConfig.show}
+                                          onChange={() => handleToggleVolumeMA(volumeConfig.id, maConfig.id)}
+                                          className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
+                                        />
+                                      </td>
+                                      
+                                      {/* MA Label */}
+                                      <td className="py-3 px-4">
+                                        <span className="text-white font-medium">MA {index + 1}</span>
+                                      </td>
+                                      
+                                      {/* MA Period */}
+                                      <td className="py-3 px-4">
+                                        <input
+                                          type="number"
+                                          min="1"
+                                          max="50"
+                                          value={maConfig.period}
+                                          onChange={(e) => handleUpdateVolumeMA(volumeConfig.id, maConfig.id, { 
+                                            period: parseInt(e.target.value) || 5 
+                                          })}
+                                          className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                        />
+                                      </td>
+                                      
+                                      {/* MA Color */}
+                                      <td className="py-3 px-4">
+                                        <div className="flex items-center gap-2">
+                                          <input
+                                            type="color"
+                                            value={maConfig.color}
+                                            onChange={(e) => handleUpdateVolumeMA(volumeConfig.id, maConfig.id, { 
+                                              color: e.target.value 
+                                            })}
+                                            className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
+                                          />
+                                          <input
+                                            type="text"
+                                            value={maConfig.color}
+                                            onChange={(e) => handleUpdateVolumeMA(volumeConfig.id, maConfig.id, { 
+                                              color: e.target.value 
+                                            })}
+                                            className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500 font-mono text-xs"
+                                          />
+                                        </div>
+                                      </td>
+                                      
+                                      {/* MA Line Size */}
+                                      <td className="py-3 px-4">
+                                        <input
+                                          type="number"
+                                          min="0.5"
+                                          max="5"
+                                          step="0.5"
+                                          value={maConfig.lineSize}
+                                          onChange={(e) => handleUpdateVolumeMA(volumeConfig.id, maConfig.id, { 
+                                            lineSize: parseFloat(e.target.value) || 1.5 
+                                          })}
+                                          className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -471,7 +473,16 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
 };
 
 export default function ChartControls() {
-  const { config, updateConfig, updateRSI, toggleRSI, updateVolume, toggleVolume } = useGlobalContext();
+  const { 
+    config, 
+    updateConfig, 
+    updateRSI, 
+    toggleRSI, 
+    updateVolume, 
+    toggleVolume, 
+    updateVolumeMA, 
+    toggleVolumeMA 
+  } = useGlobalContext();
   const [isChartTypeOpen, setIsChartTypeOpen] = useState(false);
   const [isTimeFrameOpen, setIsTimeFrameOpen] = useState(false);
   const [isEditingPinned, setIsEditingPinned] = useState(false);
@@ -571,6 +582,14 @@ export default function ChartControls() {
   }, []);
 
   const currentChartType = CHART_TYPES.find(type => type.value === config.chartType);
+
+  const handleUpdateVolumeMA = (volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => {
+    updateVolumeMA(volumeId, maId, updates);
+  };
+
+  const handleToggleVolumeMA = (volumeId: string, maId: string) => {
+    toggleVolumeMA(volumeId, maId);
+  };
 
   return (
     <>
@@ -777,6 +796,8 @@ export default function ChartControls() {
         onToggleRSI={handleToggleRSI}
         onUpdateVolume={handleUpdateVolume}
         onToggleVolume={handleToggleVolume}
+        onUpdateVolumeMA={handleUpdateVolumeMA}
+        onToggleVolumeMA={handleToggleVolumeMA}
       />
     </>
   );

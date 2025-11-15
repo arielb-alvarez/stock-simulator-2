@@ -20,17 +20,22 @@ export interface RSIConfig {
 }
 
 // Volume Configuration
+export interface VolumeMAConfig {
+  id: string;
+  show: boolean;
+  period: number;
+  color: string;
+  lineSize: number;
+}
+
 export interface VolumeConfig {
   id: string;
   show: boolean;
   upColor: string;
   downColor: string;
   opacity: number;
-  showMA: boolean;
-  maPeriod: number;
-  maColor: string;
-  maLineSize: number;
   name: string;
+  maLines: VolumeMAConfig[]; // Change from single MA to array of MAs
 }
 
 // Chart Style Configuration
@@ -105,6 +110,8 @@ interface GlobalContextType {
   toggleRSI: (id: string) => void;
   updateVolume: (id: string, updates: Partial<VolumeConfig>) => void;
   toggleVolume: (id: string) => void;
+  updateVolumeMA: (volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => void;
+  toggleVolumeMA: (volumeId: string, maId: string) => void;
   updateChartStyle: (updates: Partial<ChartStyleConfig>) => void;
   updateChartType: (chartType: ChartType) => void;
   resetToDefaults: () => void;
@@ -217,11 +224,30 @@ const createDefaultVolume = (): VolumeConfig[] => [
     upColor: '#00b15d',
     downColor: '#ff5b5a',
     opacity: 0.6,
-    showMA: true,
-    maPeriod: 20,
-    maColor: '#f0b90b',
-    maLineSize: 1.5,
     name: 'Volume',
+    maLines: [
+      {
+        id: 'volume-ma-1',
+        show: true,
+        period: 5,
+        color: '#f0b90b',
+        lineSize: 1.5
+      },
+      {
+        id: 'volume-ma-2', 
+        show: true,
+        period: 10,
+        color: '#2962FF',
+        lineSize: 1.5
+      },
+      {
+        id: 'volume-ma-3',
+        show: true,
+        period: 20,
+        color: '#FF6B6B',
+        lineSize: 1.5
+      }
+    ],
   }
 ];
 
@@ -241,6 +267,47 @@ const defaultConfig: GlobalConfig = {
 // localStorage key
 const STORAGE_KEY = 'kline-chart-config';
 
+const migrateVolumeConfig = (volumeConfig: any): VolumeConfig => {
+  // If already using new structure, return as is
+  if (volumeConfig.maLines && Array.isArray(volumeConfig.maLines)) {
+    return volumeConfig;
+  }
+  
+  // Migrate from old structure to new structure
+  return {
+    ...volumeConfig,
+    maLines: [
+      {
+        id: 'volume-ma-1',
+        show: volumeConfig.showMA || false,
+        period: volumeConfig.maPeriod || 20,
+        color: volumeConfig.maColor || '#f0b90b',
+        lineSize: volumeConfig.maLineSize || 1.5
+      },
+      {
+        id: 'volume-ma-2',
+        show: false,
+        period: 10,
+        color: '#2962FF',
+        lineSize: 1.5
+      },
+      {
+        id: 'volume-ma-3',
+        show: false,
+        period: 5,
+        color: '#FF6B6B',
+        lineSize: 1.5
+      }
+    ],
+    // Remove old MA properties to avoid conflicts
+    showMA: undefined,
+    maPeriod: undefined,
+    maColor: undefined,
+    maLineSize: undefined
+  };
+};
+
+
 // Helper functions for localStorage
 const loadConfigFromStorage = (): GlobalConfig | null => {
   if (typeof window === 'undefined') return null;
@@ -253,6 +320,10 @@ const loadConfigFromStorage = (): GlobalConfig | null => {
     
     // Validate the stored config has the basic structure
     if (parsed && typeof parsed === 'object' && parsed.chartType && parsed.symbol) {
+      // Migrate volume config if needed
+      if (parsed.indicators && parsed.indicators.volume && Array.isArray(parsed.indicators.volume)) {
+        parsed.indicators.volume = parsed.indicators.volume.map((vol: any) => migrateVolumeConfig(vol));
+      }
       return parsed as GlobalConfig;
     }
     
@@ -439,6 +510,44 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const updateVolumeMA = useCallback((volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        volume: prev.indicators.volume.map(volume => 
+          volume.id === volumeId 
+            ? {
+                ...volume,
+                maLines: volume.maLines.map(ma => 
+                  ma.id === maId ? { ...ma, ...updates } : ma
+                )
+              }
+            : volume
+        ),
+      },
+    }));
+  }, []);
+
+  const toggleVolumeMA = useCallback((volumeId: string, maId: string) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        volume: prev.indicators.volume.map(volume => 
+          volume.id === volumeId 
+            ? {
+                ...volume,
+                maLines: volume.maLines.map(ma => 
+                  ma.id === maId ? { ...ma, show: !ma.show } : ma
+                )
+              }
+            : volume
+        ),
+      },
+    }));
+  }, []);
+
   return (
     <GlobalContext.Provider value={{ 
       config, 
@@ -447,6 +556,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       toggleRSI,
       updateVolume,
       toggleVolume,
+      updateVolumeMA,
+      toggleVolumeMA,
       updateChartStyle,
       updateChartType,
       resetToDefaults,
