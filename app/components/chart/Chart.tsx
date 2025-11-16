@@ -94,91 +94,184 @@ const registerRSIIndicator = (rsiConfig: RSIConfig) => {
   }
 };
 
-// Volume Indicator Registration
-const registerVolumeIndicator = (volumeConfig: VolumeConfig) => {
-  const indicatorName = `VOLUME_${volumeConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
-  
-  try {
-    registerIndicator({
-      name: indicatorName,
-      shortName: 'VOL',
-      calcParams: volumeConfig.showMA ? [volumeConfig.maPeriod] : [],
-      figures: [
-        {
-          key: 'volume',
-          title: 'VOLUME: ',
-          type: 'bar',
-          baseValue: 0,
-          styles: () => ({
-            bar: {
-              upColor: volumeConfig.upColor,
-              downColor: volumeConfig.downColor,
-              noChangeColor: volumeConfig.upColor,
-            },
-            opacity: volumeConfig.opacity,
-          })
-        },
-        ...(volumeConfig.showMA ? [{
-          key: 'ma',
-          title: `MA${volumeConfig.maPeriod}: `,
-          type: 'line',
-          styles: () => ({
-            color: volumeConfig.maColor,
-            size: volumeConfig.maLineSize,
-          })
-        }] : [])
-      ],
-      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
-        const result: any[] = [];
-        const maPeriod = volumeConfig.showMA ? (calcParams[0] || volumeConfig.maPeriod) : 0;
+  // Register Custom Volume Indicator
+  const registerCustomVolumeIndicator = (volumeConfig: VolumeConfig) => {
+    const indicatorName = `CUSTOM_VOLUME_${volumeConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    
+    try {
+      // Calculate the MA periods for calcParams
+      const maPeriods = volumeConfig.maLines
+        .filter(ma => ma.show)
+        .map(ma => ma.period);
 
-        for (let i = 0; i < dataList.length; i++) {
-          const currentData = dataList[i];
-          const volume = currentData.volume || 0;
-          const isUp = currentData.close >= currentData.open;
-          
-          const volumeItem: any = { 
-            volume,
-            // Add color information for dynamic styling
-            color: isUp ? volumeConfig.upColor : volumeConfig.downColor
-          };
-
-          // Calculate MA if enabled
-          if (volumeConfig.showMA && maPeriod > 0) {
-            if (i >= maPeriod - 1) {
-              let sum = 0;
-              for (let j = 0; j < maPeriod; j++) {
-                sum += dataList[i - j].volume || 0;
-              }
-              volumeItem.ma = sum / maPeriod;
-            } else {
-              volumeItem.ma = 0;
+      registerIndicator({
+        name: indicatorName,
+        shortName: 'VOL',
+        calcParams: maPeriods,
+        figures: [
+          {
+            key: 'volume',
+            title: 'VOLUME: ',
+            type: 'bar',
+            baseValue: 0,
+            styles: (volumeData: any) => {
+              // Use the direction flag we set in the calc function
+              const isUp = volumeData?.current?.indicatorData?.isUp ?? true;
+              
+              return {
+                color: isUp ? volumeConfig.upColor : volumeConfig.downColor,
+                opacity: volumeConfig.opacity,
+              };
             }
+          },
+          ...volumeConfig.maLines
+            .filter(ma => ma.show)
+            .map((maConfig, index) => ({
+              key: `ma${index + 1}`,
+              title: `MA${maConfig.period}: `,
+              type: 'line',
+              styles: () => ({
+                color: maConfig.color,
+                size: maConfig.lineSize,
+              })
+            }))
+        ],
+        calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+          const result: any[] = [];
+          
+          for (let i = 0; i < dataList.length; i++) {
+            const currentData = dataList[i];
+            const volume = currentData.volume || 0;
+            
+            // Determine if current candle is up or down
+            const isUp = currentData.close >= currentData.open;
+            
+            const volumeItem: any = { 
+              volume,
+              // Pass the direction information to the styles function
+              isUp
+            };
+
+            // Calculate MAs for each period in calcParams
+            calcParams.forEach((period, maIndex) => {
+              const maKey = `ma${maIndex + 1}`;
+              if (i >= period - 1) {
+                let sum = 0;
+                for (let j = 0; j < period; j++) {
+                  sum += dataList[i - j].volume || 0;
+                }
+                volumeItem[maKey] = sum / period;
+              } else {
+                volumeItem[maKey] = 0;
+              }
+            });
+
+            result.push(volumeItem);
           }
 
-          result.push(volumeItem);
-        }
+          return result;
+        },
+      });
 
-        return result;
-      },
-    });
+      console.log(`✅ Successfully registered custom volume indicator: ${indicatorName}`, {
+        upColor: volumeConfig.upColor,
+        downColor: volumeConfig.downColor,
+        opacity: volumeConfig.opacity,
+        maPeriods: maPeriods
+      });
 
-    console.log(`Successfully registered volume indicator: ${indicatorName}`, {
-      upColor: volumeConfig.upColor,
-      downColor: volumeConfig.downColor,
-      opacity: volumeConfig.opacity,
-      showMA: volumeConfig.showMA,
-      maPeriod: volumeConfig.maPeriod,
-      maColor: volumeConfig.maColor,
-      maLineSize: volumeConfig.maLineSize
-    });
+      return indicatorName;
+    } catch (error) {
+      console.error('❌ Error registering custom Volume indicator:', error);
+      return indicatorName;
+    }
+  };
 
-    return indicatorName;
-  } catch (error) {
-    console.error('Error registering Volume indicator:', error);
-    return indicatorName;
-  }
-};
+// Volume Indicator Registration
+// const registerVolumeIndicator = (volumeConfig: VolumeConfig) => {
+//   const indicatorName = `VOLUME_${volumeConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  
+//   try {
+//     registerIndicator({
+//       name: indicatorName,
+//       shortName: 'VOL',
+//       calcParams: volumeConfig.showMA ? [volumeConfig.maPeriod] : [],
+//       figures: [
+//         {
+//           key: 'volume',
+//           title: 'VOLUME: ',
+//           type: 'bar',
+//           baseValue: 0,
+//           styles: () => ({
+//             bar: {
+//               upColor: volumeConfig.upColor,
+//               downColor: volumeConfig.downColor,
+//               noChangeColor: volumeConfig.upColor,
+//             },
+//             opacity: volumeConfig.opacity,
+//           })
+//         },
+//         ...(volumeConfig.showMA ? [{
+//           key: 'ma',
+//           title: `MA${volumeConfig.maPeriod}: `,
+//           type: 'line',
+//           styles: () => ({
+//             color: volumeConfig.maColor,
+//             size: volumeConfig.maLineSize,
+//           })
+//         }] : [])
+//       ],
+//       calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+//         const result: any[] = [];
+//         const maPeriod = volumeConfig.showMA ? (calcParams[0] || volumeConfig.maPeriod) : 0;
+
+//         for (let i = 0; i < dataList.length; i++) {
+//           const currentData = dataList[i];
+//           const volume = currentData.volume || 0;
+//           const isUp = currentData.close >= currentData.open;
+          
+//           const volumeItem: any = { 
+//             volume,
+//             // Add color information for dynamic styling
+//             color: isUp ? volumeConfig.upColor : volumeConfig.downColor
+//           };
+
+//           // Calculate MA if enabled
+//           if (volumeConfig.showMA && maPeriod > 0) {
+//             if (i >= maPeriod - 1) {
+//               let sum = 0;
+//               for (let j = 0; j < maPeriod; j++) {
+//                 sum += dataList[i - j].volume || 0;
+//               }
+//               volumeItem.ma = sum / maPeriod;
+//             } else {
+//               volumeItem.ma = 0;
+//             }
+//           }
+
+//           result.push(volumeItem);
+//         }
+
+//         return result;
+//       },
+//     });
+
+//     console.log(`Successfully registered volume indicator: ${indicatorName}`, {
+//       upColor: volumeConfig.upColor,
+//       downColor: volumeConfig.downColor,
+//       opacity: volumeConfig.opacity,
+//       showMA: volumeConfig.showMA,
+//       maPeriod: volumeConfig.maPeriod,
+//       maColor: volumeConfig.maColor,
+//       maLineSize: volumeConfig.maLineSize
+//     });
+
+//     return indicatorName;
+//   } catch (error) {
+//     console.error('Error registering Volume indicator:', error);
+//     return indicatorName;
+//   }
+// };
 
 // Helper function to get active tool from localStorage
 const getStoredActiveTool = (): string => {
@@ -247,7 +340,7 @@ export default function MainChart() {
     };
   }, [config.indicators.rsi]);
 
-  // Register all Volume indicators - IMPROVED with proper cleanup
+  // Register all Volume indicators
   useEffect(() => {
     let mounted = true;
     
@@ -255,11 +348,28 @@ export default function MainChart() {
       if (!mounted) return;
       
       try {
-        // Only register if using custom volume indicators
-        // If using built-in volume, you can remove this entire effect
-        console.log('Registering volume indicators:', config.indicators.volume);
+        // Clear any previously registered custom volume indicators
+        if ((window as any).__registeredVolumeIndicators) {
+          (window as any).__registeredVolumeIndicators.forEach((indicatorName: string) => {
+            try {
+              // You might need to unregister indicators if klinecharts supports it
+            } catch (error) {
+              // Ignore errors
+            }
+          });
+          (window as any).__registeredVolumeIndicators = [];
+        }
+        
+        // Register all volume indicators
+        config.indicators.volume.forEach(volumeConfig => {
+          const indicatorName = registerCustomVolumeIndicator(volumeConfig);
+          if (!(window as any).__registeredVolumeIndicators) {
+            (window as any).__registeredVolumeIndicators = [];
+          }
+          (window as any).__registeredVolumeIndicators.push(indicatorName);
+        });
       } catch (error) {
-        console.error('Error in volume registration:', error);
+        console.error('Error registering volume indicators:', error);
       }
     };
 
@@ -394,13 +504,16 @@ export default function MainChart() {
     if (!chart) return;
 
     try {
-      // Remove any existing volume indicators
-      const volumeIds = ['volume', 'volume_1', 'volume_2', 'volume_3'];
+      console.log('🔧 Setting up CUSTOM volume indicators with config:', config.indicators.volume);
+
+      // Remove ALL existing volume indicators
+      const volumeIds = ['volume', 'VOL', 'VOLUME', 'volume_1', 'volume_2', 'CUSTOM_VOLUME'];
       volumeIds.forEach(id => {
         try {
           chart.removeIndicator(id);
+          console.log(`🗑️ Removed volume indicator: ${id}`);
         } catch (e) {
-          // Ignore removal errors
+          // Ignore errors - indicator might not exist
         }
       });
 
@@ -408,41 +521,66 @@ export default function MainChart() {
       const enabledVolumes = config.indicators.volume.filter(vol => vol.show);
       
       if (enabledVolumes.length > 0) {
-        // Use the first enabled volume config
         const volumeConfig = enabledVolumes[0];
         
-        const indicatorStyles: any = {
-          bar: {
-            upColor: volumeConfig.upColor,
-            downColor: volumeConfig.downColor,
-            noChangeColor: volumeConfig.upColor,
-          },
+        // Register and create custom volume indicator
+        const indicatorName = registerCustomVolumeIndicator(volumeConfig);
+        
+        // Get enabled MA periods for calcParams
+        const enabledMAPeriods = (volumeConfig.maLines || [])
+          .filter(ma => ma && ma.show)
+          .map(ma => ma.period);
+
+        console.log('📊 Creating CUSTOM volume indicator with:', {
+          indicatorName,
+          upColor: volumeConfig.upColor,
+          downColor: volumeConfig.downColor,
           opacity: volumeConfig.opacity,
-        };
-
-        if (volumeConfig.showMA) {
-          indicatorStyles.ma = {
-            color: volumeConfig.maColor,
-            size: volumeConfig.maLineSize,
-          };
-        }
-
-        console.log('Setting up built-in volume indicator with styles:', indicatorStyles);
-
-        // Use built-in 'VOLUME' indicator
-        chart.createIndicator('VOL', false, {
-          id: 'volume',
-          height: 80,
-          gap: {
-            top: 0.1,
-            bottom: 0.1,
-          },
-          // styles: indicatorStyles,
-          calcParams: volumeConfig.showMA ? [volumeConfig.maPeriod] : [],
+          maPeriods: enabledMAPeriods
         });
+
+        try {
+          // Create the custom volume indicator
+          chart.createIndicator(indicatorName, false, {
+            id: 'volume',
+            height: 80,
+            gap: {
+              top: 0.1,
+              bottom: 0.1,
+            },
+          });
+
+          // Apply volume styles directly to the chart's volume indicator
+          setTimeout(() => {
+            try {
+              chart.setStyles({
+                indicator: {
+                  volume: {
+                    bar: {
+                      upColor: volumeConfig.upColor,
+                      downColor: volumeConfig.downColor,
+                      noChangeColor: volumeConfig.upColor,
+                    },
+                    opacity: volumeConfig.opacity,
+                  }
+                }
+              });
+              console.log('✅ Volume styles applied successfully');
+            } catch (styleError) {
+              console.error('❌ Error applying volume styles:', styleError);
+            }
+          }, 100);
+
+          console.log('✅ Custom volume indicator created successfully');
+          
+        } catch (createError) {
+          console.error('❌ Error creating custom volume indicator:', createError);
+        }
+      } else {
+        console.log('ℹ️ No enabled volume configurations - volume indicator hidden');
       }
     } catch (error) {
-      console.error('Error setting up volume indicator:', error);
+      console.error('💥 Error in volume indicator setup:', error);
     }
   }, [config.indicators.volume]);
 
@@ -645,14 +783,20 @@ export default function MainChart() {
         // Apply styles and setup indicators
         applyChartStyles(chartInstance);
         setupRSIIndicators(chartInstance);
-        setupVolumeIndicators(chartInstance);
+        
+        // Give a small delay before setting up volume to ensure chart is ready
+        setTimeout(() => {
+          if (mounted && chartInstance) {
+            setupVolumeIndicators(chartInstance);
+          }
+        }, 100);
         
         setupWebSocket(chartInstance);
 
       } catch (err) {
         if (!mounted) return;
         
-        console.error('Error in chart initialization:', err);
+        console.error('❌ Error in chart initialization:', err);
         setError(`Failed to initialize chart: ${err instanceof Error ? err.message : 'Unknown error'}`);
       } finally {
         if (mounted) {
@@ -701,33 +845,123 @@ export default function MainChart() {
     return () => clearTimeout(timer);
   }, [config.indicators.rsi, setupRSIIndicators]);
 
-  // Effect for Volume indicator changes - COMPLETELY FIXED
+  // Effect for Volume indicator changes
   useEffect(() => {
-    if (!chartRef.current || !currentDataRef.current.length) return;
+    if (!chartRef.current) {
+      console.log('📈 Chart not ready for volume update');
+      return;
+    }
     
-    const updateVolumeIndicators = async () => {
+    console.log('🔄 Volume config changed, forcing complete refresh...');
+
+    const updateVolumeIndicators = () => {
       try {
-        console.log('Updating volume indicators with config:', config.indicators.volume);
-        
-        // Just setup the indicators on chart (no need to re-register for built-in)
+        console.log('🔄 Recreating volume indicator with new config...');
         setupVolumeIndicators(chartRef.current);
         
-        // Force complete refresh
+        // Force complete chart refresh
         setTimeout(() => {
-          chartRef.current?.resize();
-          if (currentDataRef.current.length > 0) {
+          if (chartRef.current && currentDataRef.current.length > 0) {
             const klineData = convertToKLineData(currentDataRef.current);
-            chartRef.current?.applyNewData(klineData);
+            chartRef.current.applyNewData(klineData);
+            chartRef.current.resize();
+            console.log('✅ Chart completely refreshed with new volume settings');
           }
         }, 100);
       } catch (error) {
-        console.error('Error updating Volume indicators:', error);
+        console.error('💥 Error updating volume indicators:', error);
       }
     };
 
-    const timer = setTimeout(updateVolumeIndicators, 100);
+    const timer = setTimeout(updateVolumeIndicators, 50);
     return () => clearTimeout(timer);
   }, [config.indicators.volume, setupVolumeIndicators]);
+
+  // handle migration from old config structure
+  useEffect(() => {
+    const checkAndMigrateVolumeConfig = () => {
+      const volumeConfigs = config.indicators.volume;
+      
+      // Check if any volume config needs migration
+      const needsMigration = volumeConfigs.some(vol => {
+        // If maLines doesn't exist or isn't an array, needs migration
+        return !vol.maLines || !Array.isArray(vol.maLines);
+      });
+      
+      if (needsMigration) {
+        console.log('🔄 Detected old volume config structure, triggering refresh...');
+        // Force a complete refresh of the chart
+        setTimeout(() => {
+          if (chartRef.current) {
+            setupVolumeIndicators(chartRef.current);
+          }
+        }, 500);
+      }
+    };
+
+    checkAndMigrateVolumeConfig();
+  }, [config.indicators.volume, setupVolumeIndicators]);
+
+  // Force refresh function for immediate updates
+  const forceChartReset = useCallback(() => {
+    if (chartRef.current && chartContainerRef.current) {
+      try {
+        // Completely dispose and reinitialize the chart
+        dispose(chartContainerRef.current);
+        
+        setTimeout(() => {
+          const newChart = initializeChart();
+          if (newChart && currentDataRef.current.length > 0) {
+            chartRef.current = newChart;
+            const klineData = convertToKLineData(currentDataRef.current);
+            newChart.applyNewData(klineData);
+            applyChartStyles(newChart);
+            setupRSIIndicators(newChart);
+            setupVolumeIndicators(newChart);
+            console.log('🔄 Chart completely reset');
+          }
+        }, 100);
+      } catch (error) {
+        console.error('❌ Error resetting chart:', error);
+      }
+    }
+  }, [initializeChart, applyChartStyles, setupRSIIndicators, setupVolumeIndicators]);
+
+  // Debug effect to track volume config changes
+  useEffect(() => {
+    console.log('=== 🎯 VOLUME CONFIG DEBUG ===');
+    console.log('Full volume config array:', config.indicators.volume);
+    
+    config.indicators.volume.forEach((vol, index) => {
+      console.log(`Volume config ${index}:`, {
+        id: vol.id,
+        show: vol.show,
+        name: vol.name,
+        upColor: vol.upColor,
+        downColor: vol.downColor,
+        opacity: vol.opacity,
+        maLines: vol.maLines?.map(ma => ({
+          id: ma.id,
+          show: ma.show,
+          period: ma.period,
+          color: ma.color,
+          lineSize: ma.lineSize
+        }))
+      });
+    });
+    
+    // Check if any volume is enabled
+    const enabledVolumes = config.indicators.volume.filter(vol => vol.show);
+    console.log(`Enabled volumes: ${enabledVolumes.length}`);
+    
+    if (enabledVolumes.length > 0) {
+      const firstEnabled = enabledVolumes[0];
+      const enabledMAs = firstEnabled.maLines?.filter(ma => ma.show) || [];
+      console.log(`Enabled MAs: ${enabledMAs.length}`, enabledMAs);
+    }
+    
+    console.log('=== 🎯 END DEBUG ===');
+  }, [config.indicators.volume]);
 
   // Effect for chart style changes
   useEffect(() => {
