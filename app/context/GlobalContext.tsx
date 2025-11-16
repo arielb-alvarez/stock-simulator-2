@@ -29,6 +29,7 @@ export interface VolumeMAConfig {
 }
 
 export interface VolumeConfig {
+  maPeriod: any;
   id: string;
   show: boolean;
   upColor: string;
@@ -234,7 +235,7 @@ const createDefaultVolume = (): VolumeConfig[] => [
         lineSize: 1.5
       },
       {
-        id: 'volume-ma-2', 
+        id: 'volume-ma-2',
         show: true,
         period: 10,
         color: '#2962FF',
@@ -248,6 +249,7 @@ const createDefaultVolume = (): VolumeConfig[] => [
         lineSize: 1.5
       }
     ],
+    maPeriod: undefined
   }
 ];
 

@@ -138,7 +138,7 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
             } ${
               activeTool === `volume-toggle-${volume.id}` ? 'ring-2 ring-blue-400' : ''
             }`}
-            title={`${volume.name} ${volume.showMA ? `with MA${volume.maPeriod}` : ''} - ${volume.show ? 'Visible' : 'Hidden'}`}
+            // title={`${volume.name} ${volume.show ? `with MA${volume.maPeriod}` : ''} - ${volume.show ? 'Visible' : 'Hidden'}`}
           >
             {volume.name}
             {volume.show && (
