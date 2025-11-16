@@ -114,14 +114,15 @@ const registerRSIIndicator = (rsiConfig: RSIConfig) => {
             title: 'VOLUME: ',
             type: 'bar',
             baseValue: 0,
-            styles: () => ({
-              bar: {
-                upColor: volumeConfig.upColor,
-                downColor: volumeConfig.downColor,
-                noChangeColor: volumeConfig.upColor,
-              },
-              opacity: volumeConfig.opacity,
-            })
+            styles: (volumeData: any) => {
+              // Use the direction flag we set in the calc function
+              const isUp = volumeData?.current?.indicatorData?.isUp ?? true;
+              
+              return {
+                color: isUp ? volumeConfig.upColor : volumeConfig.downColor,
+                opacity: volumeConfig.opacity,
+              };
+            }
           },
           ...volumeConfig.maLines
             .filter(ma => ma.show)
@@ -141,10 +142,14 @@ const registerRSIIndicator = (rsiConfig: RSIConfig) => {
           for (let i = 0; i < dataList.length; i++) {
             const currentData = dataList[i];
             const volume = currentData.volume || 0;
+            
+            // Determine if current candle is up or down
             const isUp = currentData.close >= currentData.open;
             
             const volumeItem: any = { 
-              volume
+              volume,
+              // Pass the direction information to the styles function
+              isUp
             };
 
             // Calculate MAs for each period in calcParams
@@ -172,7 +177,7 @@ const registerRSIIndicator = (rsiConfig: RSIConfig) => {
         upColor: volumeConfig.upColor,
         downColor: volumeConfig.downColor,
         opacity: volumeConfig.opacity,
-        maPeriods: maPeriods // Fixed: using maPeriods variable instead of calcParams
+        maPeriods: maPeriods
       });
 
       return indicatorName;
@@ -542,8 +547,29 @@ export default function MainChart() {
             gap: {
               top: 0.1,
               bottom: 0.1,
-            }
+            },
           });
+
+          // Apply volume styles directly to the chart's volume indicator
+          setTimeout(() => {
+            try {
+              chart.setStyles({
+                indicator: {
+                  volume: {
+                    bar: {
+                      upColor: volumeConfig.upColor,
+                      downColor: volumeConfig.downColor,
+                      noChangeColor: volumeConfig.upColor,
+                    },
+                    opacity: volumeConfig.opacity,
+                  }
+                }
+              });
+              console.log('✅ Volume styles applied successfully');
+            } catch (styleError) {
+              console.error('❌ Error applying volume styles:', styleError);
+            }
+          }, 100);
 
           console.log('✅ Custom volume indicator created successfully');
           
