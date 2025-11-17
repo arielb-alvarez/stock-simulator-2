@@ -573,7 +573,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       indicators: {
         ...prev.indicators,
         ema: prev.indicators.ema.map(ema => 
-          ema.id === id ? { ...ema, show: !ma.show } : ema
+          ema.id === id ? { ...ema, show: !ema.show } : ema
         ),
       },
     }));
