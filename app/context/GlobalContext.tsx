@@ -39,6 +39,16 @@ export interface VolumeConfig {
   maLines: VolumeMAConfig[]; // Change from single MA to array of MAs
 }
 
+export interface MAConfig {
+  id: string;
+  show: boolean;
+  period: number;
+  color: string;
+  lineSize: number;
+  type: 'sma' | 'ema' | 'wma'; // Add type to distinguish between different MAs
+  name: string;
+}
+
 // Chart Style Configuration
 interface ChartStyleConfig {
   layout: {
@@ -101,6 +111,9 @@ interface GlobalConfig {
   indicators: {
     rsi: RSIConfig[];
     volume: VolumeConfig[];
+    ma: MAConfig[];
+    ema: MAConfig[];
+    wma: MAConfig[];
   };
 }
 
@@ -113,6 +126,12 @@ interface GlobalContextType {
   toggleVolume: (id: string) => void;
   updateVolumeMA: (volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => void;
   toggleVolumeMA: (volumeId: string, maId: string) => void;
+  updateMA: (id: string, updates: Partial<MAConfig>) => void;
+  toggleMA: (id: string) => void;
+  updateEMA: (id: string, updates: Partial<MAConfig>) => void;
+  toggleEMA: (id: string) => void;
+  updateWMA: (id: string, updates: Partial<MAConfig>) => void;
+  toggleWMA: (id: string) => void;
   updateChartStyle: (updates: Partial<ChartStyleConfig>) => void;
   updateChartType: (chartType: ChartType) => void;
   resetToDefaults: () => void;
@@ -168,6 +187,47 @@ const defaultChartStyle: ChartStyleConfig = {
     vertical: { show: true },
   },
 };
+
+// Helper function to generate MA name based on type and period
+const generateMAName = (type: 'sma' | 'ema' | 'wma', period: number): string => {
+  const typeMap = {
+    sma: 'MA',
+    ema: 'EMA', 
+    wma: 'WMA'
+  };
+  return `${typeMap[type]} ${period}`;
+};
+
+// Create default MA configurations
+const createDefaultMAs = (type: 'sma' | 'ema' | 'wma'): MAConfig[] => [
+  {
+    id: `${type}-1`,
+    show: false,
+    period: 20,
+    color: type === 'sma' ? '#2962FF' : type === 'ema' ? '#FF6B6B' : '#4ECDC4',
+    lineSize: 1.5,
+    type: type,
+    name: generateMAName(type, 20),
+  },
+  {
+    id: `${type}-2`,
+    show: false,
+    period: 50,
+    color: type === 'sma' ? '#00b15d' : type === 'ema' ? '#FFA726' : '#26C6DA',
+    lineSize: 1.5,
+    type: type,
+    name: generateMAName(type, 50),
+  },
+  {
+    id: `${type}-3`,
+    show: false,
+    period: 200,
+    color: type === 'sma' ? '#f0b90b' : type === 'ema' ? '#AB47BC' : '#FF7043',
+    lineSize: 1.5,
+    type: type,
+    name: generateMAName(type, 200),
+  }
+];
 
 // Helper function to generate RSI name based on period
 const generateRSIName = (period: number): string => {
@@ -263,6 +323,9 @@ const defaultConfig: GlobalConfig = {
   indicators: {
     rsi: createDefaultRSIs(),
     volume: createDefaultVolume(),
+    ma: createDefaultMAs('sma'),
+    ema: createDefaultMAs('ema'),
+    wma: createDefaultMAs('wma'),
   },
 };
 
@@ -439,6 +502,121 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const updateMA = useCallback((id: string, updates: Partial<MAConfig>) => {
+    setConfig(prev => {
+      const currentMA = prev.indicators.ma.find(ma => ma.id === id);
+      
+      // Auto-update name if period changes and name follows default pattern
+      if (updates.period && currentMA) {
+        const oldPeriod = currentMA.period;
+        const newPeriod = updates.period;
+        const defaultNamePattern = generateMAName(currentMA.type, oldPeriod);
+        
+        if (currentMA.name === defaultNamePattern) {
+          updates.name = generateMAName(currentMA.type, newPeriod);
+        }
+      }
+      
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          ma: prev.indicators.ma.map(ma => 
+            ma.id === id ? { ...ma, ...updates } : ma
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const toggleMA = useCallback((id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        ma: prev.indicators.ma.map(ma => 
+          ma.id === id ? { ...ma, show: !ma.show } : ma
+        ),
+      },
+    }));
+  }, []);
+
+  const updateEMA = useCallback((id: string, updates: Partial<MAConfig>) => {
+    setConfig(prev => {
+      const currentEMA = prev.indicators.ema.find(ema => ema.id === id);
+      
+      if (updates.period && currentEMA) {
+        const oldPeriod = currentEMA.period;
+        const newPeriod = updates.period;
+        const defaultNamePattern = generateMAName(currentEMA.type, oldPeriod);
+        
+        if (currentEMA.name === defaultNamePattern) {
+          updates.name = generateMAName(currentEMA.type, newPeriod);
+        }
+      }
+      
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          ema: prev.indicators.ema.map(ema => 
+            ema.id === id ? { ...ema, ...updates } : ema
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const toggleEMA = useCallback((id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        ema: prev.indicators.ema.map(ema => 
+          ema.id === id ? { ...ema, show: !ema.show } : ema
+        ),
+      },
+    }));
+  }, []);
+
+  const updateWMA = useCallback((id: string, updates: Partial<MAConfig>) => {
+    setConfig(prev => {
+      const currentWMA = prev.indicators.wma.find(wma => wma.id === id);
+      
+      if (updates.period && currentWMA) {
+        const oldPeriod = currentWMA.period;
+        const newPeriod = updates.period;
+        const defaultNamePattern = generateMAName(currentWMA.type, oldPeriod);
+        
+        if (currentWMA.name === defaultNamePattern) {
+          updates.name = generateMAName(currentWMA.type, newPeriod);
+        }
+      }
+      
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          wma: prev.indicators.wma.map(wma => 
+            wma.id === id ? { ...wma, ...updates } : wma
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const toggleWMA = useCallback((id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        wma: prev.indicators.wma.map(wma => 
+          wma.id === id ? { ...wma, show: !wma.show } : wma
+        ),
+      },
+    }));
+  }, []);
+
   const updateChartStyle = useCallback((updates: Partial<ChartStyleConfig>) => {
     setConfig(prev => ({
       ...prev,
@@ -560,6 +738,12 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       toggleVolume,
       updateVolumeMA,
       toggleVolumeMA,
+      updateMA,
+      toggleMA,
+      updateEMA,
+      toggleEMA,
+      updateWMA,
+      toggleWMA,
       updateChartStyle,
       updateChartType,
       resetToDefaults,

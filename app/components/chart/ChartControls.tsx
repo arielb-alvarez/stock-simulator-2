@@ -1,5 +1,5 @@
 'use client';
-import { useGlobalContext, ChartType, RSIConfig, VolumeConfig, VolumeMAConfig } from '@/context/GlobalContext';
+import { useGlobalContext, ChartType, RSIConfig, VolumeConfig, VolumeMAConfig, MAConfig } from '@/context/GlobalContext';
 import { useState, useRef, useEffect } from 'react';
 import { CandleIcon, LineIcon, AreaIcon, BarIcon, ChevronDown, EditIcon, IndicatorsIcon } from './ChartIcons';
 
@@ -28,12 +28,22 @@ interface IndicatorsDialogProps {
   onClose: () => void;
   rsiConfigs: RSIConfig[];
   volumeConfigs: VolumeConfig[];
+  maConfigs: MAConfig[];
+  emaConfigs: MAConfig[];
+  wmaConfigs: MAConfig[];
   onUpdateRSI: (id: string, updates: Partial<RSIConfig>) => void;
   onToggleRSI: (id: string) => void;
   onUpdateVolume: (id: string, updates: Partial<VolumeConfig>) => void;
   onToggleVolume: (id: string) => void;
   onUpdateVolumeMA: (volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => void;
   onToggleVolumeMA: (volumeId: string, maId: string) => void;
+  // Add new handlers for MA indicators
+  onUpdateMA: (id: string, updates: Partial<MAConfig>) => void;
+  onToggleMA: (id: string) => void;
+  onUpdateEMA: (id: string, updates: Partial<MAConfig>) => void;
+  onToggleEMA: (id: string) => void;
+  onUpdateWMA: (id: string, updates: Partial<MAConfig>) => void;
+  onToggleWMA: (id: string) => void;
 }
 
 const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
@@ -41,15 +51,24 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   onClose,
   rsiConfigs,
   volumeConfigs,
+  maConfigs,
+  emaConfigs,
+  wmaConfigs,
   onUpdateRSI,
   onToggleRSI,
   onUpdateVolume,
   onToggleVolume,
   onUpdateVolumeMA,
-  onToggleVolumeMA
+  onToggleVolumeMA,
+  onUpdateMA,
+  onToggleMA,
+  onUpdateEMA,
+  onToggleEMA,
+  onUpdateWMA,
+  onToggleWMA,
 }) => {
-  const [activeTab, setActiveTab] = useState<'main' | 'sub'>('sub');
-  const [activeSubMenu, setActiveSubMenu] = useState<string>('rsi');
+  const [activeTab, setActiveTab] = useState<'main' | 'sub'>('main');
+  const [activeSubMenu, setActiveSubMenu] = useState<string>('ma');
 
   if (!isOpen) return null;
 
@@ -100,6 +119,58 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     onToggleVolumeMA(volumeId, maId);
   };
 
+  
+  // Add MA configuration handlers
+  const handleToggleMA = (maId: string) => {
+    onToggleMA(maId);
+  };
+
+  const handlePeriodChangeMA = (maId: string, period: number) => {
+    onUpdateMA(maId, { period: Math.max(1, period) });
+  };
+
+  const handleLineSizeChangeMA = (maId: string, lineSize: number) => {
+    onUpdateMA(maId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleColorChangeMA = (maId: string, color: string) => {
+    onUpdateMA(maId, { color });
+  };
+
+  // Add EMA configuration handlers (similar to MA)
+  const handleToggleEMA = (emaId: string) => {
+    onToggleEMA(emaId);
+  };
+
+  const handlePeriodChangeEMA = (emaId: string, period: number) => {
+    onUpdateEMA(emaId, { period: Math.max(1, period) });
+  };
+
+  const handleLineSizeChangeEMA = (emaId: string, lineSize: number) => {
+    onUpdateEMA(emaId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleColorChangeEMA = (emaId: string, color: string) => {
+    onUpdateEMA(emaId, { color });
+  };
+
+  // Add WMA configuration handlers (similar to MA)
+  const handleToggleWMA = (wmaId: string) => {
+    onToggleWMA(wmaId);
+  };
+
+  const handlePeriodChangeWMA = (wmaId: string, period: number) => {
+    onUpdateWMA(wmaId, { period: Math.max(1, period) });
+  };
+
+  const handleLineSizeChangeWMA = (wmaId: string, lineSize: number) => {
+    onUpdateWMA(wmaId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleColorChangeWMA = (wmaId: string, color: string) => {
+    onUpdateWMA(wmaId, { color });
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-gray-800 rounded-lg w-[90vw] max-w-6xl h-[80vh] flex flex-col">
@@ -141,17 +212,305 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
         {/* Content */}
         <div className="flex-1 flex">
           {activeTab === 'main' ? (
-            /* Main Indicator Content - Blank for now */
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-gray-400 text-lg">Main Indicator configuration coming soon...</p>
-            </div>
+            /* Main Indicator Content - Now with MA indicators */
+            <>
+              {/* Vertical Menu for Main Indicators */}
+              <div className="w-48 border-r border-gray-700 bg-gray-750">
+                <div className="p-4">
+                  <h3 className="text-sm font-medium text-gray-400 mb-3">MAIN INDICATORS</h3>
+                  <nav className="space-y-1">
+                    <button
+                      onClick={() => setActiveSubMenu('ma')}
+                      className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
+                        activeSubMenu === 'ma'
+                          ? 'bg-yellow-500/20 text-yellow-400'
+                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                      }`}
+                    >
+                      Moving Average
+                    </button>
+                    <button
+                      onClick={() => setActiveSubMenu('ema')}
+                      className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
+                        activeSubMenu === 'ema'
+                          ? 'bg-yellow-500/20 text-yellow-400'
+                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                      }`}
+                    >
+                      Exponential MA
+                    </button>
+                    <button
+                      onClick={() => setActiveSubMenu('wma')}
+                      className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
+                        activeSubMenu === 'wma'
+                          ? 'bg-yellow-500/20 text-yellow-400'
+                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                      }`}
+                    >
+                      Weighted MA
+                    </button>
+                  </nav>
+                </div>
+              </div>
+
+              {/* Content Area for Main Indicators */}
+              <div className="flex-1 p-6 overflow-y-auto">
+                {activeSubMenu === 'ma' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-gray-200">Moving Average (MA)</h3>
+                      <div className="text-sm text-gray-400">
+                        {maConfigs.filter(ma => ma.show).length} of {maConfigs.length} active
+                      </div>
+                    </div>
+
+                    {/* MA Configuration Table */}
+                    <div className="bg-gray-750 rounded-lg border border-gray-700 overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-700">
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-16">
+                              Show
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">
+                              Name
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
+                              Period
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
+                              Line Width
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">
+                              Color
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {maConfigs.map((maConfig) => (
+                            <tr 
+                              key={maConfig.id} 
+                              className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors"
+                            >
+                              <td className="py-3 px-4">
+                                <input
+                                  type="checkbox"
+                                  checked={maConfig.show}
+                                  onChange={() => handleToggleMA(maConfig.id)}
+                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
+                                />
+                              </td>
+                              
+                              <td className="py-3 px-4">
+                                <span className="text-white font-medium">{maConfig.name}</span>
+                              </td>
+                              
+                              <td className="py-3 px-4">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="200"
+                                  value={maConfig.period}
+                                  onChange={(e) => handlePeriodChangeMA(maConfig.id, parseInt(e.target.value) || 20)}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                />
+                              </td>
+                              
+                              <td className="py-3 px-4">
+                                <input
+                                  type="number"
+                                  min="0.5"
+                                  max="5"
+                                  step="0.5"
+                                  value={maConfig.lineSize}
+                                  onChange={(e) => handleLineSizeChangeMA(maConfig.id, parseFloat(e.target.value) || 1.5)}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                />
+                              </td>
+                              
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="color"
+                                    value={maConfig.color}
+                                    onChange={(e) => handleColorChangeMA(maConfig.id, e.target.value)}
+                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
+                                  />
+                                  <span className="text-xs text-gray-400 font-mono">
+                                    {maConfig.color}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {activeSubMenu === 'ema' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-gray-200">Exponential Moving Average (EMA)</h3>
+                      <div className="text-sm text-gray-400">
+                        {emaConfigs.filter(ema => ema.show).length} of {emaConfigs.length} active
+                      </div>
+                    </div>
+
+                    {/* EMA Configuration Table - same structure as MA */}
+                    <div className="bg-gray-750 rounded-lg border border-gray-700 overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-700">
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-16">Show</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Name</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">Period</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">Line Width</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">Color</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {emaConfigs.map((emaConfig) => (
+                            <tr key={emaConfig.id} className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors">
+                              <td className="py-3 px-4">
+                                <input
+                                  type="checkbox"
+                                  checked={emaConfig.show}
+                                  onChange={() => handleToggleEMA(emaConfig.id)}
+                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
+                                />
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="text-white font-medium">{emaConfig.name}</span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="200"
+                                  value={emaConfig.period}
+                                  onChange={(e) => handlePeriodChangeEMA(emaConfig.id, parseInt(e.target.value) || 20)}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                />
+                              </td>
+                              <td className="py-3 px-4">
+                                <input
+                                  type="number"
+                                  min="0.5"
+                                  max="5"
+                                  step="0.5"
+                                  value={emaConfig.lineSize}
+                                  onChange={(e) => handleLineSizeChangeEMA(emaConfig.id, parseFloat(e.target.value) || 1.5)}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                />
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="color"
+                                    value={emaConfig.color}
+                                    onChange={(e) => handleColorChangeEMA(emaConfig.id, e.target.value)}
+                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
+                                  />
+                                  <span className="text-xs text-gray-400 font-mono">
+                                    {emaConfig.color}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {activeSubMenu === 'wma' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-gray-200">Weighted Moving Average (WMA)</h3>
+                      <div className="text-sm text-gray-400">
+                        {wmaConfigs.filter(wma => wma.show).length} of {wmaConfigs.length} active
+                      </div>
+                    </div>
+
+                    {/* WMA Configuration Table - same structure as MA */}
+                    <div className="bg-gray-750 rounded-lg border border-gray-700 overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-700">
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-16">Show</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Name</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">Period</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">Line Width</th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">Color</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {wmaConfigs.map((wmaConfig) => (
+                            <tr key={wmaConfig.id} className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors">
+                              <td className="py-3 px-4">
+                                <input
+                                  type="checkbox"
+                                  checked={wmaConfig.show}
+                                  onChange={() => handleToggleWMA(wmaConfig.id)}
+                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
+                                />
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="text-white font-medium">{wmaConfig.name}</span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="200"
+                                  value={wmaConfig.period}
+                                  onChange={(e) => handlePeriodChangeWMA(wmaConfig.id, parseInt(e.target.value) || 20)}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                />
+                              </td>
+                              <td className="py-3 px-4">
+                                <input
+                                  type="number"
+                                  min="0.5"
+                                  max="5"
+                                  step="0.5"
+                                  value={wmaConfig.lineSize}
+                                  onChange={(e) => handleLineSizeChangeWMA(wmaConfig.id, parseFloat(e.target.value) || 1.5)}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                />
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="color"
+                                    value={wmaConfig.color}
+                                    onChange={(e) => handleColorChangeWMA(wmaConfig.id, e.target.value)}
+                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
+                                  />
+                                  <span className="text-xs text-gray-400 font-mono">
+                                    {wmaConfig.color}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
             /* Sub Indicator Content */
             <>
               {/* Vertical Menu */}
               <div className="w-48 border-r border-gray-700 bg-gray-750">
                 <div className="p-4">
-                  <h3 className="text-sm font-medium text-gray-400 mb-3">INDICATORS</h3>
+                  <h3 className="text-sm font-medium text-gray-400 mb-3">SUB INDICATORS</h3>
                   <nav className="space-y-1">
                     <button
                       onClick={() => setActiveSubMenu('rsi')}
@@ -481,7 +840,13 @@ export default function ChartControls() {
     updateVolume, 
     toggleVolume, 
     updateVolumeMA, 
-    toggleVolumeMA 
+    toggleVolumeMA,
+    updateMA,
+    toggleMA,
+    updateEMA,
+    toggleEMA,
+    updateWMA,
+    toggleWMA,
   } = useGlobalContext();
   const [isChartTypeOpen, setIsChartTypeOpen] = useState(false);
   const [isTimeFrameOpen, setIsTimeFrameOpen] = useState(false);
@@ -589,6 +954,31 @@ export default function ChartControls() {
 
   const handleToggleVolumeMA = (volumeId: string, maId: string) => {
     toggleVolumeMA(volumeId, maId);
+  };
+
+  // Add the new handler functions
+  const handleUpdateMA = (id: string, updates: Partial<MAConfig>) => {
+    updateMA(id, updates);
+  };
+
+  const handleToggleMA = (id: string) => {
+    toggleMA(id);
+  };
+
+  const handleUpdateEMA = (id: string, updates: Partial<MAConfig>) => {
+    updateEMA(id, updates);
+  };
+
+  const handleToggleEMA = (id: string) => {
+    toggleEMA(id);
+  };
+
+  const handleUpdateWMA = (id: string, updates: Partial<MAConfig>) => {
+    updateWMA(id, updates);
+  };
+
+  const handleToggleWMA = (id: string) => {
+    toggleWMA(id);
   };
 
   return (
@@ -792,12 +1182,21 @@ export default function ChartControls() {
         onClose={() => setIsIndicatorsOpen(false)}
         rsiConfigs={config.indicators.rsi}
         volumeConfigs={config.indicators.volume}
+        maConfigs={config.indicators.ma}
+        emaConfigs={config.indicators.ema}
+        wmaConfigs={config.indicators.wma}
         onUpdateRSI={handleUpdateRSI}
         onToggleRSI={handleToggleRSI}
         onUpdateVolume={handleUpdateVolume}
         onToggleVolume={handleToggleVolume}
         onUpdateVolumeMA={handleUpdateVolumeMA}
         onToggleVolumeMA={handleToggleVolumeMA}
+        onUpdateMA={handleUpdateMA}
+        onToggleMA={handleToggleMA}
+        onUpdateEMA={handleUpdateEMA}
+        onToggleEMA={handleToggleEMA}
+        onUpdateWMA={handleUpdateWMA}
+        onToggleWMA={handleToggleWMA}
       />
     </>
   );
