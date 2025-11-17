@@ -181,7 +181,7 @@ const registerCustomVolumeIndicator = (volumeConfig: VolumeConfig) => {
 
 // Register Moving Average (SMA) Indicator
 const registerMAIndicator = (maConfig: MAConfig) => {
-  const indicatorName = `MA_${maConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  const indicatorName = `SMA_${maConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`; // Change to SMA for clarity
   
   try {
     registerIndicator({
@@ -221,6 +221,7 @@ const registerMAIndicator = (maConfig: MAConfig) => {
       },
     });
 
+    console.log(`✅ Registered MA indicator: ${indicatorName}`);
     return indicatorName;
   } catch (error) {
     console.error('Error registering MA indicator:', error);
@@ -451,7 +452,14 @@ export default function MainChart() {
   const chartRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const currentDataRef = useRef<CryptoData[]>([]);
-  const { config, toggleRSI, toggleVolume } = useGlobalContext();
+  const { 
+    config, 
+    toggleRSI, 
+    toggleVolume, 
+    toggleMA,
+    toggleEMA,
+    toggleWMA,
+  } = useGlobalContext();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdateTime, setLastUpdateTime] = useState<number>(0);
@@ -655,6 +663,27 @@ export default function MainChart() {
       toggleVolume(volumeId);
       return;
     }
+
+    // Add MA toggle support
+    if (tool.startsWith('ma-toggle-')) {
+      const maId = tool.replace('ma-toggle-', '');
+      toggleMA(maId);
+      return;
+    }
+
+    // Add EMA toggle support
+    if (tool.startsWith('ema-toggle-')) {
+      const emaId = tool.replace('ema-toggle-', '');
+      toggleEMA(emaId);
+      return;
+    }
+
+    // Add WMA toggle support
+    if (tool.startsWith('wma-toggle-')) {
+      const wmaId = tool.replace('wma-toggle-', '');
+      toggleWMA(wmaId);
+      return;
+    }
     
     if (chartRef.current) {
       try {
@@ -685,7 +714,7 @@ export default function MainChart() {
         console.warn('Error creating overlay:', error);
       }
     }
-  }, [toggleRSI, toggleVolume]);
+  }, [toggleRSI, toggleVolume, toggleMA, toggleEMA, toggleWMA]);
 
   // Setup RSI indicators on chart
   const setupRSIIndicators = useCallback((chart: any) => {
@@ -823,39 +852,63 @@ export default function MainChart() {
 
   // Setup MA indicators on chart
   const setupMAIndicators = useCallback((chart: any) => {
-    if (!chart) return;
+    if (!chart) {
+      console.warn('Chart instance not available for MA setup');
+      return;
+    }
 
     try {
-      // Remove all existing MA indicators first
+      // Remove all existing MA indicators first - USE SMA_ prefix
       const allMANames = config.indicators.ma.map(maConfig => 
-        `MA_${maConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`
+        `SMA_${maConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}` // Changed from MA_ to SMA_
       );
       
+      console.log('🔄 Setting up MA indicators, removing:', allMANames);
+      
+      // Clean up existing indicators
       allMANames.forEach(indicatorName => {
         try {
           chart.removeIndicator(indicatorName);
+          console.log(`✅ Removed MA indicator: ${indicatorName}`);
         } catch (e) {
-          // Ignore removal errors
+          // Indicator might not exist, which is fine
+          console.log(`ℹ️ Could not remove MA indicator (might not exist): ${indicatorName}`);
         }
       });
 
-      // Add visible MA indicators
-      config.indicators.ma
-        .filter(maConfig => maConfig.show)
-        .forEach((maConfig) => {
-          const indicatorName = `MA_${maConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
-          
-          try {
-            chart.createIndicator(indicatorName, false, {
-              id: indicatorName,
-              height: 0, // Main chart (overlay)
-            });
-          } catch (indicatorError) {
-            console.error(`Error creating MA indicator ${indicatorName}:`, indicatorError);
-          }
-        });
+      // Add visible MA indicators - USE SMA_ prefix
+      const visibleMAs = config.indicators.ma.filter(maConfig => maConfig.show);
+      
+      if (visibleMAs.length === 0) {
+        console.log('ℹ️ No visible MA indicators to display');
+        return;
+      }
+
+      console.log(`📊 Creating ${visibleMAs.length} visible MA indicators`);
+
+      visibleMAs.forEach((maConfig, index) => {
+        const indicatorName = `SMA_${maConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`; // Changed from MA_ to SMA_
+        
+        try {
+          // Small delay to ensure proper registration
+          setTimeout(() => {
+            try {
+              chart.createIndicator(indicatorName, false, {
+                id: `sma_${maConfig.id}`, // Also update the id
+                height: 0, // Main chart (overlay)
+              });
+              console.log(`✅ Successfully created MA indicator: ${maConfig.name} (${indicatorName})`);
+            } catch (createError) {
+              console.error(`❌ Failed to create MA indicator ${indicatorName}:`, createError);
+            }
+          }, index * 50); // Stagger creation to avoid conflicts
+        } catch (outerError) {
+          console.error(`❌ Outer error creating MA indicator ${indicatorName}:`, outerError);
+        }
+      });
+
     } catch (error) {
-      console.error('Error in MA setup:', error);
+      console.error('💥 Critical error in MA setup:', error);
     }
   }, [config.indicators.ma]);
 
@@ -885,9 +938,10 @@ export default function MainChart() {
           
           try {
             chart.createIndicator(indicatorName, false, {
-              id: indicatorName,
+              id: `ema_${emaConfig.id}`, // Update id
               height: 0, // Main chart (overlay)
             });
+            console.log(`✅ Successfully created EMA indicator: ${emaConfig.name} (${indicatorName})`);
           } catch (indicatorError) {
             console.error(`Error creating EMA indicator ${indicatorName}:`, indicatorError);
           }
@@ -923,9 +977,10 @@ export default function MainChart() {
           
           try {
             chart.createIndicator(indicatorName, false, {
-              id: indicatorName,
+              id: `wma_${wmaConfig.id}`, // Update id
               height: 0, // Main chart (overlay)
             });
+            console.log(`✅ Successfully created WMA indicator: ${wmaConfig.name} (${indicatorName})`);
           } catch (indicatorError) {
             console.error(`Error creating WMA indicator ${indicatorName}:`, indicatorError);
           }
@@ -1165,7 +1220,21 @@ export default function MainChart() {
       mounted = false;
       cleanup();
     };
-  }, [config.symbol, config.interval, config.limit, initializeChart, updateChartWithData, applyChartStyles, setupRSIIndicators, setupVolumeIndicators, setupWebSocket, cleanup]);
+  }, [
+    config.symbol, 
+    config.interval, 
+    config.limit, 
+    initializeChart, 
+    updateChartWithData, 
+    applyChartStyles, 
+    setupRSIIndicators, 
+    setupMAIndicators,
+    setupEMAIndicators,
+    setupWMAIndicators,
+    setupVolumeIndicators, 
+    setupWebSocket, 
+    cleanup
+  ]);
 
   // Effect for RSI indicator changes
   useEffect(() => {
@@ -1266,6 +1335,9 @@ export default function MainChart() {
             newChart.applyNewData(klineData);
             applyChartStyles(newChart);
             setupRSIIndicators(newChart);
+            setupMAIndicators(newChart);
+            setupEMAIndicators(newChart);
+            setupWMAIndicators(newChart);
             setupVolumeIndicators(newChart);
           }
         }, 100);
@@ -1273,7 +1345,15 @@ export default function MainChart() {
         console.error('❌ Error resetting chart:', error);
       }
     }
-  }, [initializeChart, applyChartStyles, setupRSIIndicators, setupVolumeIndicators]);
+  }, [
+    initializeChart, 
+    applyChartStyles, 
+    setupRSIIndicators, 
+    setupMAIndicators,
+    setupEMAIndicators,
+    setupWMAIndicators,
+    setupVolumeIndicators
+  ]);
 
   // Effect for chart style changes
   useEffect(() => {
@@ -1339,15 +1419,15 @@ export default function MainChart() {
   useEffect(() => {
     if (!chartRef.current || !currentDataRef.current.length) return;
     
-    const updateEMAIndicators = async () => {
+    const updateWMAIndicators = async () => {
       try {
-        // Re-register all EMA indicators first
-        config.indicators.ema.forEach(emaConfig => {
-          registerEMAIndicator(emaConfig);
+        // Re-register all WMA indicators first
+        config.indicators.wma.forEach(wmaConfig => {
+          registerWMAIndicator(wmaConfig);
         });
         
         // Then setup the indicators on chart
-        setupEMAIndicators(chartRef.current);
+        setupWMAIndicators(chartRef.current);
         
         // Force complete refresh
         setTimeout(() => {
@@ -1358,13 +1438,13 @@ export default function MainChart() {
           }
         }, 50);
       } catch (error) {
-        console.error('Error updating EMA indicators:', error);
+        console.error('Error updating WMA indicators:', error);
       }
     };
 
-    const timer = setTimeout(updateEMAIndicators, 50);
+    const timer = setTimeout(updateWMAIndicators, 50);
     return () => clearTimeout(timer);
-  }, [config.indicators.ema, setupEMAIndicators]);
+  }, [config.indicators.wma, setupWMAIndicators]);
 
   // Effect for WMA indicator changes
   useEffect(() => {
