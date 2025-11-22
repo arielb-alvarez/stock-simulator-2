@@ -24,6 +24,9 @@ const convertToKLineData = (cryptoData: CryptoData[]): KLineData[] => {
   }));
 };
 
+// Track registered indicators
+const registeredIndicators = new Set();
+
 // Register Custom MA Indicator that supports multiple periods
 const registerCustomMAIndicator = (maConfigs: MAConfig[]) => {
   const enabledPeriods = maConfigs
@@ -36,8 +39,11 @@ const registerCustomMAIndicator = (maConfigs: MAConfig[]) => {
   const indicatorName = 'CUSTOM_MA';
   
   try {
+    // Force re-registration by using a unique name based on periods
+    const uniqueName = `CUSTOM_MA_${enabledPeriods.join('_')}`;
+    
     registerIndicator({
-      name: indicatorName,
+      name: uniqueName,
       shortName: 'MA',
       calcParams: enabledPeriods,
       figures: enabledPeriods.map((period, index) => ({
@@ -79,7 +85,8 @@ const registerCustomMAIndicator = (maConfigs: MAConfig[]) => {
       },
     });
 
-    return indicatorName;
+    registeredIndicators.add(uniqueName);
+    return uniqueName;
   } catch (error) {
     console.error('Error registering custom MA indicator:', error);
     return indicatorName;
@@ -98,8 +105,10 @@ const registerCustomEMAIndicator = (emaConfigs: MAConfig[]) => {
   const indicatorName = 'CUSTOM_EMA';
   
   try {
+    const uniqueName = `CUSTOM_EMA_${enabledPeriods.join('_')}`;
+    
     registerIndicator({
-      name: indicatorName,
+      name: uniqueName,
       shortName: 'EMA',
       calcParams: enabledPeriods,
       figures: enabledPeriods.map((period, index) => ({
@@ -147,7 +156,8 @@ const registerCustomEMAIndicator = (emaConfigs: MAConfig[]) => {
       },
     });
 
-    return indicatorName;
+    registeredIndicators.add(uniqueName);
+    return uniqueName;
   } catch (error) {
     console.error('Error registering custom EMA indicator:', error);
     return indicatorName;
@@ -166,8 +176,10 @@ const registerCustomWMAIndicator = (wmaConfigs: MAConfig[]) => {
   const indicatorName = 'CUSTOM_WMA';
   
   try {
+    const uniqueName = `CUSTOM_WMA_${enabledPeriods.join('_')}`;
+    
     registerIndicator({
-      name: indicatorName,
+      name: uniqueName,
       shortName: 'WMA',
       calcParams: enabledPeriods,
       figures: enabledPeriods.map((period, index) => ({
@@ -219,11 +231,25 @@ const registerCustomWMAIndicator = (wmaConfigs: MAConfig[]) => {
       },
     });
 
-    return indicatorName;
+    registeredIndicators.add(uniqueName);
+    return uniqueName;
   } catch (error) {
     console.error('Error registering custom WMA indicator:', error);
     return indicatorName;
   }
+};
+
+// Get current indicator names based on config
+const getCurrentIndicatorNames = (maConfigs: MAConfig[], emaConfigs: MAConfig[], wmaConfigs: MAConfig[]) => {
+  const maPeriods = maConfigs.filter(ma => ma.show).map(ma => ma.period).sort((a, b) => a - b);
+  const emaPeriods = emaConfigs.filter(ema => ema.show).map(ema => ema.period).sort((a, b) => a - b);
+  const wmaPeriods = wmaConfigs.filter(wma => wma.show).map(wma => wma.period).sort((a, b) => a - b);
+
+  return {
+    ma: maPeriods.length > 0 ? `CUSTOM_MA_${maPeriods.join('_')}` : null,
+    ema: emaPeriods.length > 0 ? `CUSTOM_EMA_${emaPeriods.join('_')}` : null,
+    wma: wmaPeriods.length > 0 ? `CUSTOM_WMA_${wmaPeriods.join('_')}` : null,
+  };
 };
 
 // Register RSI Indicator with unique name
@@ -421,6 +447,15 @@ export default function MainChart() {
   const [activeDrawingTool, setActiveDrawingTool] = useState<string>(() => getStoredActiveTool());
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const [chartKey, setChartKey] = useState(0); // Add key to force re-render
+
+  // Force chart refresh when MA configurations change
+  const forceChartRefresh = useCallback(() => {
+    if (chartRef.current && chartContainerRef.current) {
+      console.log('🔄 Force refreshing chart due to MA configuration change');
+      setChartKey(prev => prev + 1);
+    }
+  }, []);
 
   // Register all custom indicators
   useEffect(() => {
@@ -697,8 +732,20 @@ export default function MainChart() {
     }
 
     try {
+      // Get current indicator names based on enabled periods
+      const indicatorNames = getCurrentIndicatorNames(
+        config.indicators.ma,
+        config.indicators.ema,
+        config.indicators.wma
+      );
+
       // Remove all existing moving average overlays first
-      const allOverlayNames = ['CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA'];
+      const allOverlayNames = [
+        ...(indicatorNames.ma ? [indicatorNames.ma] : []),
+        ...(indicatorNames.ema ? [indicatorNames.ema] : []),
+        ...(indicatorNames.wma ? [indicatorNames.wma] : []),
+        'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA' // Remove old names too
+      ];
       
       console.log('🔄 Setting up moving average overlays, removing:', allOverlayNames);
       
@@ -708,7 +755,7 @@ export default function MainChart() {
           chart.removeIndicator(indicatorName);
           console.log(`Removed overlay: ${indicatorName}`);
         } catch (e) {
-          console.log(`Could not remove overlay: ${indicatorName}`);
+          // Ignore removal errors
         }
       });
 
@@ -718,9 +765,9 @@ export default function MainChart() {
       const enabledWMA = config.indicators.wma.filter(wma => wma.show);
 
       // Create MA overlay if any MA is enabled
-      if (enabledMA.length > 0) {
+      if (enabledMA.length > 0 && indicatorNames.ma) {
         try {
-          chart.createIndicator('CUSTOM_MA', true, { 
+          chart.createIndicator(indicatorNames.ma, true, { 
             id: "candle_pane"
           });
           console.log(`✅ Created MA overlay with periods:`, enabledMA.map(ma => ma.period));
@@ -730,9 +777,9 @@ export default function MainChart() {
       }
 
       // Create EMA overlay if any EMA is enabled
-      if (enabledEMA.length > 0) {
+      if (enabledEMA.length > 0 && indicatorNames.ema) {
         try {
-          chart.createIndicator('CUSTOM_EMA', true, { 
+          chart.createIndicator(indicatorNames.ema, true, { 
             id: "candle_pane"
           });
           console.log(`✅ Created EMA overlay with periods:`, enabledEMA.map(ema => ema.period));
@@ -742,9 +789,9 @@ export default function MainChart() {
       }
 
       // Create WMA overlay if any WMA is enabled
-      if (enabledWMA.length > 0) {
+      if (enabledWMA.length > 0 && indicatorNames.wma) {
         try {
-          chart.createIndicator('CUSTOM_WMA', true, { 
+          chart.createIndicator(indicatorNames.wma, true, { 
             id: "candle_pane"
           });
           console.log(`✅ Created WMA overlay with periods:`, enabledWMA.map(wma => wma.period));
@@ -1016,8 +1063,23 @@ export default function MainChart() {
     setupMovingAverageOverlays,
     setupVolumeIndicators, 
     setupWebSocket, 
-    cleanup
+    cleanup,
+    chartKey // Add chartKey as dependency to reinitialize when it changes
   ]);
+
+  // Effect for MA, EMA, WMA overlay changes - COMPLETE REFRESH APPROACH
+  useEffect(() => {
+    if (!chartRef.current || !currentDataRef.current.length) return;
+    
+    console.log('🔄 MA configuration changed, forcing complete refresh');
+    
+    // Force a complete chart refresh when MA configurations change
+    const timer = setTimeout(() => {
+      forceChartRefresh();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, forceChartRefresh]);
 
   // Effect for RSI indicator changes
   useEffect(() => {
@@ -1078,37 +1140,6 @@ export default function MainChart() {
     const timer = setTimeout(updateVolumeIndicators, 50);
     return () => clearTimeout(timer);
   }, [config.indicators.volume, setupVolumeIndicators]);
-
-  // Effect for MA, EMA, WMA overlay changes
-  useEffect(() => {
-    if (!chartRef.current || !currentDataRef.current.length) return;
-    
-    const updateMovingAverageOverlays = async () => {
-      try {
-        // Re-register custom indicators with updated configurations
-        registerCustomMAIndicator(config.indicators.ma);
-        registerCustomEMAIndicator(config.indicators.ema);
-        registerCustomWMAIndicator(config.indicators.wma);
-        
-        setupMovingAverageOverlays(chartRef.current);
-        
-        // Force complete refresh with current data
-        setTimeout(() => {
-          if (chartRef.current && currentDataRef.current.length > 0) {
-            const klineData = convertToKLineData(currentDataRef.current);
-            chartRef.current.applyNewData(klineData);
-            chartRef.current.resize();
-          }
-        }, 100);
-      } catch (error) {
-        console.error('Error updating moving average overlays:', error);
-      }
-    };
-
-    // Use a slightly longer delay to ensure chart is ready
-    const timer = setTimeout(updateMovingAverageOverlays, 150);
-    return () => clearTimeout(timer);
-  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, setupMovingAverageOverlays]);
 
   // handle migration from old config structure
   useEffect(() => {
@@ -1217,6 +1248,7 @@ export default function MainChart() {
         
         {/* Main Chart container */}
         <div 
+            key={chartKey} // Add key to force re-render
             ref={chartContainerRef} 
             className="w-full h-full bg-gray-900 rounded-lg"
         />
