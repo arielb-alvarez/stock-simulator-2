@@ -22,6 +22,7 @@ export const useChartIndicators = (): UseChartIndicatorsReturn => {
         grid: config.chart.grid,
         crosshair: config.chart.crosshair,
       });
+      console.log('🎨 Chart styles applied');
     } catch (error) {
       console.error('Error applying chart styles:', error);
     }
@@ -36,6 +37,7 @@ export const useChartIndicators = (): UseChartIndicatorsReturn => {
         `RSI_${rsiConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`
       );
       
+      console.log('🔄 Removing RSI indicators:', allRSINames);
       allRSINames.forEach(indicatorName => {
         try {
           chart.removeIndicator(indicatorName);
@@ -45,45 +47,47 @@ export const useChartIndicators = (): UseChartIndicatorsReturn => {
       });
 
       // Add visible RSI indicators with updated styles
-      config.indicators.rsi
-        .filter(rsiConfig => rsiConfig.show)
-        .forEach((rsiConfig, index) => {
-          const indicatorName = `RSI_${rsiConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
-          
-          try {
-            chart.createIndicator(indicatorName, false, {
-              id: indicatorName,
-              height: 100,
-              gap: {
-                top: 0.2,
-                bottom: 0.2,
+      const enabledRSIs = config.indicators.rsi.filter(rsiConfig => rsiConfig.show);
+      console.log('📊 Setting up RSI indicators:', enabledRSIs.length);
+      
+      enabledRSIs.forEach((rsiConfig, index) => {
+        const indicatorName = `RSI_${rsiConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        
+        try {
+          chart.createIndicator(indicatorName, false, {
+            id: indicatorName,
+            height: 100,
+            gap: {
+              top: 0.2,
+              bottom: 0.2,
+            },
+            styles: {
+              rsi: {
+                color: rsiConfig.lineColor,
+                size: rsiConfig.lineSize,
               },
-              styles: {
-                rsi: {
-                  color: rsiConfig.lineColor,
-                  size: rsiConfig.lineSize,
-                },
-                marginTop: 10 * index,
+              marginTop: 10 * index,
+            },
+            bands: [
+              {
+                value: rsiConfig.overbought,
+                color: rsiConfig.overboughtLineColor,
+                width: 1,
+                style: 'dashed',
               },
-              bands: [
-                {
-                  value: rsiConfig.overbought,
-                  color: rsiConfig.overboughtLineColor,
-                  width: 1,
-                  style: 'dashed',
-                },
-                {
-                  value: rsiConfig.oversold,
-                  color: rsiConfig.oversoldLineColor,
-                  width: 1,
-                  style: 'dashed',
-                },
-              ],
-            });
-          } catch (indicatorError) {
-            console.error(`Error creating RSI indicator ${indicatorName}:`, indicatorError);
-          }
-        });
+              {
+                value: rsiConfig.oversold,
+                color: rsiConfig.oversoldLineColor,
+                width: 1,
+                style: 'dashed',
+              },
+            ],
+          });
+          console.log(`✅ Created RSI indicator: ${indicatorName}`);
+        } catch (indicatorError) {
+          console.error(`Error creating RSI indicator ${indicatorName}:`, indicatorError);
+        }
+      });
     } catch (error) {
       console.error('Error in RSI setup:', error);
     }
@@ -95,6 +99,8 @@ export const useChartIndicators = (): UseChartIndicatorsReturn => {
     try {
       // Remove ALL existing volume indicators
       const volumeIds = ['volume', 'VOL', 'VOLUME', 'volume_1', 'volume_2', 'CUSTOM_VOLUME'];
+      console.log('🔄 Removing volume indicators:', volumeIds);
+      
       volumeIds.forEach(id => {
         try {
           chart.removeIndicator(id);
@@ -105,12 +111,14 @@ export const useChartIndicators = (): UseChartIndicatorsReturn => {
 
       // Only setup volume if at least one volume config is enabled
       const enabledVolumes = config.indicators.volume.filter(vol => vol.show);
+      console.log('📊 Setting up volume indicators:', enabledVolumes.length);
       
       if (enabledVolumes.length > 0) {
         const volumeConfig = enabledVolumes[0];
         const indicatorName = registerCustomVolumeIndicator(volumeConfig);
         
         try {
+          // Create the custom volume indicator
           chart.createIndicator(indicatorName, false, {
             id: 'volume',
             height: 80,
@@ -134,13 +142,17 @@ export const useChartIndicators = (): UseChartIndicatorsReturn => {
                   }
                 }
               });
+              console.log('✅ Volume styles applied');
             } catch (styleError) {
               console.error('Error applying volume styles:', styleError);
             }
           }, 100);
+          console.log(`✅ Created volume indicator: ${indicatorName}`);
         } catch (createError) {
           console.error('Error creating custom volume indicator:', createError);
         }
+      } else {
+        console.log('📊 No volume indicators to setup');
       }
     } catch (error) {
       console.error('Error in volume indicator setup:', error);
@@ -154,25 +166,24 @@ export const useChartIndicators = (): UseChartIndicatorsReturn => {
     }
 
     try {
-      // Get current indicator names based on enabled periods
-      const indicatorNames = getCurrentIndicatorNames(
-        config.indicators.ma,
-        config.indicators.ema,
-        config.indicators.wma
-      );
+      // Get fixed indicator names
+      const indicatorNames = getCurrentIndicatorNames();
 
       // Remove all existing moving average overlays first
       const allOverlayNames = [
-        ...(indicatorNames.ma ? [indicatorNames.ma] : []),
-        ...(indicatorNames.ema ? [indicatorNames.ema] : []),
-        ...(indicatorNames.wma ? [indicatorNames.wma] : []),
+        indicatorNames.ma,
+        indicatorNames.ema,
+        indicatorNames.wma,
         'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA'
       ];
+      
+      console.log('🔄 Removing moving average overlays:', allOverlayNames);
       
       // Clean up existing overlays
       allOverlayNames.forEach(indicatorName => {
         try {
           chart.removeIndicator(indicatorName);
+          console.log(`✅ Removed overlay: ${indicatorName}`);
         } catch (e) {
           // Ignore removal errors
         }
@@ -183,30 +194,54 @@ export const useChartIndicators = (): UseChartIndicatorsReturn => {
       const enabledEMA = config.indicators.ema.filter(ema => ema.show);
       const enabledWMA = config.indicators.wma.filter(wma => wma.show);
 
+      console.log('📊 MA configurations:', {
+        ma: enabledMA.map(m => m.period),
+        ema: enabledEMA.map(e => e.period),
+        wma: enabledWMA.map(w => w.period)
+      });
+
+      // Re-register indicators with current config (force update)
+      registerCustomMAIndicator(config.indicators.ma);
+      registerCustomEMAIndicator(config.indicators.ema);
+      registerCustomWMAIndicator(config.indicators.wma);
+
       // Create overlays for enabled indicators
-      if (enabledMA.length > 0 && indicatorNames.ma) {
+      if (enabledMA.length > 0) {
         try {
-          chart.createIndicator(indicatorNames.ma, true, { id: "candle_pane" });
+          chart.createIndicator(indicatorNames.ma, true, { 
+            id: "candle_pane"
+          });
+          console.log(`✅ Created MA overlay with periods:`, enabledMA.map(ma => ma.period));
         } catch (createError) {
           console.error('❌ Failed to create MA overlay:', createError);
         }
       }
 
-      if (enabledEMA.length > 0 && indicatorNames.ema) {
+      if (enabledEMA.length > 0) {
         try {
-          chart.createIndicator(indicatorNames.ema, true, { id: "candle_pane" });
+          chart.createIndicator(indicatorNames.ema, true, { 
+            id: "candle_pane"
+          });
+          console.log(`✅ Created EMA overlay with periods:`, enabledEMA.map(ema => ema.period));
         } catch (createError) {
           console.error('❌ Failed to create EMA overlay:', createError);
         }
       }
 
-      if (enabledWMA.length > 0 && indicatorNames.wma) {
+      if (enabledWMA.length > 0) {
         try {
-          chart.createIndicator(indicatorNames.wma, true, { id: "candle_pane" });
+          chart.createIndicator(indicatorNames.wma, true, { 
+            id: "candle_pane"
+          });
+          console.log(`✅ Created WMA overlay with periods:`, enabledWMA.map(wma => wma.period));
         } catch (createError) {
           console.error('❌ Failed to create WMA overlay:', createError);
         }
       }
+
+      const totalOverlays = [enabledMA, enabledEMA, enabledWMA]
+        .filter(arr => arr.length > 0).length;
+      console.log(`✅ Created ${totalOverlays} moving average overlays in candle pane`);
 
     } catch (error) {
       console.error('💥 Critical error in moving average overlay setup:', error);
