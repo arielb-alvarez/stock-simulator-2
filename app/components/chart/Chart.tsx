@@ -24,6 +24,208 @@ const convertToKLineData = (cryptoData: CryptoData[]): KLineData[] => {
   }));
 };
 
+// Register Custom MA Indicator that supports multiple periods
+const registerCustomMAIndicator = (maConfigs: MAConfig[]) => {
+  const enabledPeriods = maConfigs
+    .filter(ma => ma.show)
+    .map(ma => ma.period)
+    .sort((a, b) => a - b);
+
+  if (enabledPeriods.length === 0) return 'CUSTOM_MA';
+
+  const indicatorName = 'CUSTOM_MA';
+  
+  try {
+    registerIndicator({
+      name: indicatorName,
+      shortName: 'MA',
+      calcParams: enabledPeriods,
+      figures: enabledPeriods.map((period, index) => ({
+        key: `ma${index + 1}`,
+        title: `MA${period}: `,
+        type: 'line',
+        styles: () => {
+          const config = maConfigs.find(m => m.period === period && m.show);
+          return {
+            color: config?.color || '#2962FF',
+            size: config?.lineSize || 1.5
+          };
+        }
+      })),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        
+        for (let i = 0; i < dataList.length; i++) {
+          const item: any = {};
+          
+          // Calculate MA for each period
+          calcParams.forEach((period, index) => {
+            const key = `ma${index + 1}`;
+            if (i >= period - 1) {
+              let sum = 0;
+              for (let j = 0; j < period; j++) {
+                sum += dataList[i - j].close;
+              }
+              item[key] = sum / period;
+            } else {
+              item[key] = 0;
+            }
+          });
+          
+          result.push(item);
+        }
+        
+        return result;
+      },
+    });
+
+    return indicatorName;
+  } catch (error) {
+    console.error('Error registering custom MA indicator:', error);
+    return indicatorName;
+  }
+};
+
+// Register Custom EMA Indicator that supports multiple periods
+const registerCustomEMAIndicator = (emaConfigs: MAConfig[]) => {
+  const enabledPeriods = emaConfigs
+    .filter(ema => ema.show)
+    .map(ema => ema.period)
+    .sort((a, b) => a - b);
+
+  if (enabledPeriods.length === 0) return 'CUSTOM_EMA';
+
+  const indicatorName = 'CUSTOM_EMA';
+  
+  try {
+    registerIndicator({
+      name: indicatorName,
+      shortName: 'EMA',
+      calcParams: enabledPeriods,
+      figures: enabledPeriods.map((period, index) => ({
+        key: `ema${index + 1}`,
+        title: `EMA${period}: `,
+        type: 'line',
+        styles: () => {
+          const config = emaConfigs.find(e => e.period === period && e.show);
+          return {
+            color: config?.color || '#FF6B6B',
+            size: config?.lineSize || 1.5
+          };
+        }
+      })),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        const multipliers: number[] = calcParams.map(period => 2 / (period + 1));
+        
+        for (let i = 0; i < dataList.length; i++) {
+          const item: any = {};
+          
+          calcParams.forEach((period, index) => {
+            const key = `ema${index + 1}`;
+            if (i === 0) {
+              // First value is just the close price
+              item[key] = dataList[i].close;
+            } else if (i < period - 1) {
+              // Not enough data for proper EMA calculation
+              let sum = 0;
+              for (let j = 0; j <= i; j++) {
+                sum += dataList[j].close;
+              }
+              item[key] = sum / (i + 1);
+            } else {
+              // Standard EMA calculation: (Close - Previous EMA) * multiplier + Previous EMA
+              const previousEMA = result[i - 1][key] || dataList[i - 1].close;
+              item[key] = (dataList[i].close - previousEMA) * multipliers[index] + previousEMA;
+            }
+          });
+          
+          result.push(item);
+        }
+        
+        return result;
+      },
+    });
+
+    return indicatorName;
+  } catch (error) {
+    console.error('Error registering custom EMA indicator:', error);
+    return indicatorName;
+  }
+};
+
+// Register Custom WMA Indicator that supports multiple periods
+const registerCustomWMAIndicator = (wmaConfigs: MAConfig[]) => {
+  const enabledPeriods = wmaConfigs
+    .filter(wma => wma.show)
+    .map(wma => wma.period)
+    .sort((a, b) => a - b);
+
+  if (enabledPeriods.length === 0) return 'CUSTOM_WMA';
+
+  const indicatorName = 'CUSTOM_WMA';
+  
+  try {
+    registerIndicator({
+      name: indicatorName,
+      shortName: 'WMA',
+      calcParams: enabledPeriods,
+      figures: enabledPeriods.map((period, index) => ({
+        key: `wma${index + 1}`,
+        title: `WMA${period}: `,
+        type: 'line',
+        styles: () => {
+          const config = wmaConfigs.find(w => w.period === period && w.show);
+          return {
+            color: config?.color || '#4ECDC4',
+            size: config?.lineSize || 1.5
+          };
+        }
+      })),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        
+        for (let i = 0; i < dataList.length; i++) {
+          const item: any = {};
+          
+          calcParams.forEach((period, index) => {
+            const key = `wma${index + 1}`;
+            if (i >= period - 1) {
+              let weightSum = 0;
+              let weightedSum = 0;
+              
+              // Calculate weighted average
+              for (let j = 0; j < period; j++) {
+                const weight = period - j; // More weight to recent prices
+                weightSum += weight;
+                weightedSum += dataList[i - j].close * weight;
+              }
+              
+              item[key] = weightedSum / weightSum;
+            } else {
+              // Not enough data, use simple average
+              let sum = 0;
+              for (let j = 0; j <= i; j++) {
+                sum += dataList[j].close;
+              }
+              item[key] = sum / (i + 1);
+            }
+          });
+          
+          result.push(item);
+        }
+        
+        return result;
+      },
+    });
+
+    return indicatorName;
+  } catch (error) {
+    console.error('Error registering custom WMA indicator:', error);
+    return indicatorName;
+  }
+};
+
 // Register RSI Indicator with unique name
 const registerRSIIndicator = (rsiConfig: RSIConfig) => {
   const indicatorName = `RSI_${rsiConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
@@ -220,20 +422,28 @@ export default function MainChart() {
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
 
-  // Register all RSI indicators
+  // Register all custom indicators
   useEffect(() => {
     let mounted = true;
     
-    const registerAllRSIIndicators = async () => {
+    const registerAllIndicators = async () => {
       if (!mounted) return;
       
       try {
-        // Clear any previously registered RSI indicators
+        // Register custom MA indicator with multiple periods
+        registerCustomMAIndicator(config.indicators.ma);
+        
+        // Register custom EMA indicator with multiple periods
+        registerCustomEMAIndicator(config.indicators.ema);
+        
+        // Register custom WMA indicator with multiple periods
+        registerCustomWMAIndicator(config.indicators.wma);
+        
+        // Register RSI indicators
         if ((window as any).__registeredRSIIndicators) {
           (window as any).__registeredRSIIndicators = [];
         }
         
-        // Register all RSI indicators
         config.indicators.rsi.forEach(rsiConfig => {
           const indicatorName = registerRSIIndicator(rsiConfig);
           if (!(window as any).__registeredRSIIndicators) {
@@ -241,31 +451,12 @@ export default function MainChart() {
           }
           (window as any).__registeredRSIIndicators.push(indicatorName);
         });
-      } catch (error) {
-        console.error('Error registering RSI indicators:', error);
-      }
-    };
 
-    registerAllRSIIndicators();
-
-    return () => {
-      mounted = false;
-    };
-  }, [config.indicators.rsi]);
-
-  // Register all Volume indicators
-  useEffect(() => {
-    let mounted = true;
-    
-    const registerAllVolumeIndicators = async () => {
-      if (!mounted) return;
-      
-      try {
-        // Clear any previously registered custom volume indicators
+        // Register volume indicators
         if ((window as any).__registeredVolumeIndicators) {
           (window as any).__registeredVolumeIndicators.forEach((indicatorName: string) => {
             try {
-              // You might need to unregister indicators if klinecharts supports it
+              // Clean up previous volume indicators
             } catch (error) {
               // Ignore errors
             }
@@ -273,7 +464,6 @@ export default function MainChart() {
           (window as any).__registeredVolumeIndicators = [];
         }
         
-        // Register all volume indicators
         config.indicators.volume.forEach(volumeConfig => {
           const indicatorName = registerCustomVolumeIndicator(volumeConfig);
           if (!(window as any).__registeredVolumeIndicators) {
@@ -282,16 +472,16 @@ export default function MainChart() {
           (window as any).__registeredVolumeIndicators.push(indicatorName);
         });
       } catch (error) {
-        console.error('Error registering volume indicators:', error);
+        console.error('Error registering indicators:', error);
       }
     };
 
-    registerAllVolumeIndicators();
+    registerAllIndicators();
 
     return () => {
       mounted = false;
     };
-  }, [config.indicators.volume]);
+  }, [config.indicators.rsi, config.indicators.volume, config.indicators.ma, config.indicators.ema, config.indicators.wma]);
 
   // Save active tool to localStorage whenever it changes
   useEffect(() => {
@@ -457,11 +647,6 @@ export default function MainChart() {
         // Register and create custom volume indicator
         const indicatorName = registerCustomVolumeIndicator(volumeConfig);
         
-        // Get enabled MA periods for calcParams
-        const enabledMAPeriods = (volumeConfig.maLines || [])
-          .filter(ma => ma && ma.show)
-          .map(ma => ma.period);
-
         try {
           // Create the custom volume indicator
           chart.createIndicator(indicatorName, false, {
@@ -500,7 +685,7 @@ export default function MainChart() {
         console.log('No enabled volume configurations - volume indicator hidden');
       }
     } catch (error) {
-      console.error('💥 Error in volume indicator setup:', error);
+      console.error('Error in volume indicator setup:', error);
     }
   }, [config.indicators.volume]);
 
@@ -513,98 +698,64 @@ export default function MainChart() {
 
     try {
       // Remove all existing moving average overlays first
-      const allOverlayNames = [
-        ...config.indicators.ma.map(maConfig => `ma_${maConfig.id}`),
-        ...config.indicators.ema.map(emaConfig => `ema_${emaConfig.id}`),
-        ...config.indicators.wma.map(wmaConfig => `wma_${wmaConfig.id}`)
-      ];
+      const allOverlayNames = ['CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA'];
       
       console.log('🔄 Setting up moving average overlays, removing:', allOverlayNames);
       
-      // Clean up existing overlays from all panes
+      // Clean up existing overlays
       allOverlayNames.forEach(indicatorName => {
         try {
           chart.removeIndicator(indicatorName);
-          console.log(`✅ Removed overlay: ${indicatorName}`);
+          console.log(`Removed overlay: ${indicatorName}`);
         } catch (e) {
-          console.log(`ℹ️ Could not remove overlay: ${indicatorName}`);
+          console.log(`Could not remove overlay: ${indicatorName}`);
         }
       });
 
-      // Add visible MA overlays in the candle pane
-      const visibleMAs = config.indicators.ma.filter(maConfig => maConfig.show);
-      visibleMAs.forEach((maConfig) => {
-        const indicatorName = `ma_${maConfig.id}`;
-        
+      // Get enabled configurations for each type
+      const enabledMA = config.indicators.ma.filter(ma => ma.show);
+      const enabledEMA = config.indicators.ema.filter(ema => ema.show);
+      const enabledWMA = config.indicators.wma.filter(wma => wma.show);
+
+      // Create MA overlay if any MA is enabled
+      if (enabledMA.length > 0) {
         try {
-          // Create MA as overlay in the candle pane (true = overlay, not separate pane)
-          chart.createIndicator('MA', true, { 
-            id: "candle_pane",
-            calcParams: [maConfig.period],
-            styles: {
-              line: {
-                color: maConfig.color,
-                size: maConfig.lineSize,
-              }
-            }
+          chart.createIndicator('CUSTOM_MA', true, { 
+            id: "candle_pane"
           });
-          
-          console.log(`✅ Successfully created MA overlay in candle pane: ${maConfig.name} (${indicatorName})`);
+          console.log(`✅ Created MA overlay with periods:`, enabledMA.map(ma => ma.period));
         } catch (createError) {
-          console.error(`❌ Failed to create MA overlay ${indicatorName}:`, createError);
+          console.error('❌ Failed to create MA overlay:', createError);
         }
-      });
+      }
 
-      // Add visible EMA overlays in the candle pane
-      const visibleEMAs = config.indicators.ema.filter(emaConfig => emaConfig.show);
-      visibleEMAs.forEach((emaConfig) => {
-        const indicatorName = `ema_${emaConfig.id}`;
-        
+      // Create EMA overlay if any EMA is enabled
+      if (enabledEMA.length > 0) {
         try {
-          // Create EMA as overlay in the candle pane (true = overlay, not separate pane)
-          chart.createIndicator('EMA', true, { 
-            id: "candle_pane",
-            calcParams: [emaConfig.period],
-            styles: {
-              line: {
-                color: emaConfig.color,
-                size: emaConfig.lineSize,
-              }
-            }
+          chart.createIndicator('CUSTOM_EMA', true, { 
+            id: "candle_pane"
           });
-          
-          console.log(`✅ Successfully created EMA overlay in candle pane: ${emaConfig.name} (${indicatorName})`);
+          console.log(`✅ Created EMA overlay with periods:`, enabledEMA.map(ema => ema.period));
         } catch (createError) {
-          console.error(`❌ Failed to create EMA overlay ${indicatorName}:`, createError);
+          console.error('❌ Failed to create EMA overlay:', createError);
         }
-      });
+      }
 
-      // Add visible WMA overlays in the candle pane
-      const visibleWMAs = config.indicators.wma.filter(wmaConfig => wmaConfig.show);
-      visibleWMAs.forEach((wmaConfig) => {
-        const indicatorName = `wma_${wmaConfig.id}`;
-        
+      // Create WMA overlay if any WMA is enabled
+      if (enabledWMA.length > 0) {
         try {
-          // Create WMA as overlay in the candle pane (true = overlay, not separate pane)
-          chart.createIndicator('WMA', true, { 
-            id: "candle_pane",
-            calcParams: [wmaConfig.period],
-            styles: {
-              line: {
-                color: wmaConfig.color,
-                size: wmaConfig.lineSize,
-              }
-            }
+          chart.createIndicator('CUSTOM_WMA', true, { 
+            id: "candle_pane"
           });
-          
-          console.log(`✅ Successfully created WMA overlay in candle pane: ${wmaConfig.name} (${indicatorName})`);
+          console.log(`✅ Created WMA overlay with periods:`, enabledWMA.map(wma => wma.period));
         } catch (createError) {
-          console.error(`❌ Failed to create WMA overlay ${indicatorName}:`, createError);
+          console.error('❌ Failed to create WMA overlay:', createError);
         }
-      });
+      }
 
-      const totalOverlays = visibleMAs.length + visibleEMAs.length + visibleWMAs.length;
-      console.log(`📊 Created ${totalOverlays} moving average overlays in candle pane`);
+      const totalOverlays = [enabledMA, enabledEMA, enabledWMA]
+        .filter(arr => arr.length > 0).length;
+      console.log(`Created ${totalOverlays} moving average overlays in candle pane`);
 
     } catch (error) {
       console.error('💥 Critical error in moving average overlay setup:', error);
@@ -934,6 +1085,11 @@ export default function MainChart() {
     
     const updateMovingAverageOverlays = async () => {
       try {
+        // Re-register custom indicators with updated configurations
+        registerCustomMAIndicator(config.indicators.ma);
+        registerCustomEMAIndicator(config.indicators.ema);
+        registerCustomWMAIndicator(config.indicators.wma);
+        
         setupMovingAverageOverlays(chartRef.current);
         
         // Force complete refresh with current data
