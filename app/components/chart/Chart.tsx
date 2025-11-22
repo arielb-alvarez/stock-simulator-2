@@ -452,7 +452,7 @@ export default function MainChart() {
   // Force chart refresh when MA configurations change
   const forceChartRefresh = useCallback(() => {
     if (chartRef.current && chartContainerRef.current) {
-      console.log('🔄 Force refreshing chart due to MA configuration change');
+      console.log('Force refreshing chart due to MA configuration change');
       setChartKey(prev => prev + 1);
     }
   }, []);
@@ -747,7 +747,7 @@ export default function MainChart() {
         'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA' // Remove old names too
       ];
       
-      console.log('🔄 Setting up moving average overlays, removing:', allOverlayNames);
+      console.log('Setting up moving average overlays, removing:', allOverlayNames);
       
       // Clean up existing overlays
       allOverlayNames.forEach(indicatorName => {
@@ -770,9 +770,9 @@ export default function MainChart() {
           chart.createIndicator(indicatorNames.ma, true, { 
             id: "candle_pane"
           });
-          console.log(`✅ Created MA overlay with periods:`, enabledMA.map(ma => ma.period));
+          console.log(`Created MA overlay with periods:`, enabledMA.map(ma => ma.period));
         } catch (createError) {
-          console.error('❌ Failed to create MA overlay:', createError);
+          console.error('Failed to create MA overlay:', createError);
         }
       }
 
@@ -782,9 +782,9 @@ export default function MainChart() {
           chart.createIndicator(indicatorNames.ema, true, { 
             id: "candle_pane"
           });
-          console.log(`✅ Created EMA overlay with periods:`, enabledEMA.map(ema => ema.period));
+          console.log(`Created EMA overlay with periods:`, enabledEMA.map(ema => ema.period));
         } catch (createError) {
-          console.error('❌ Failed to create EMA overlay:', createError);
+          console.error('Failed to create EMA overlay:', createError);
         }
       }
 
@@ -794,9 +794,9 @@ export default function MainChart() {
           chart.createIndicator(indicatorNames.wma, true, { 
             id: "candle_pane"
           });
-          console.log(`✅ Created WMA overlay with periods:`, enabledWMA.map(wma => wma.period));
+          console.log(`Created WMA overlay with periods:`, enabledWMA.map(wma => wma.period));
         } catch (createError) {
-          console.error('❌ Failed to create WMA overlay:', createError);
+          console.error('Failed to create WMA overlay:', createError);
         }
       }
 
@@ -805,7 +805,7 @@ export default function MainChart() {
       console.log(`Created ${totalOverlays} moving average overlays in candle pane`);
 
     } catch (error) {
-      console.error('💥 Critical error in moving average overlay setup:', error);
+      console.error('Critical error in moving average overlay setup:', error);
     }
   }, [config.indicators.ma, config.indicators.ema, config.indicators.wma]);
 
@@ -1071,7 +1071,7 @@ export default function MainChart() {
   useEffect(() => {
     if (!chartRef.current || !currentDataRef.current.length) return;
     
-    console.log('🔄 MA configuration changed, forcing complete refresh');
+    console.log('MA configuration changed, forcing complete refresh');
     
     // Force a complete chart refresh when MA configurations change
     const timer = setTimeout(() => {
