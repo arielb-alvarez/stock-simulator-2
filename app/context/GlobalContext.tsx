@@ -202,7 +202,7 @@ const generateMAName = (type: 'sma' | 'ema' | 'wma', period: number): string => 
 const createDefaultMAs = (type: 'sma' | 'ema' | 'wma'): MAConfig[] => [
   {
     id: `${type}-1`,
-    show: false,
+    show: type === 'sma',
     period: 20,
     color: type === 'sma' ? '#2962FF' : type === 'ema' ? '#FF6B6B' : '#4ECDC4',
     lineSize: 1.5,
@@ -221,11 +221,11 @@ const createDefaultMAs = (type: 'sma' | 'ema' | 'wma'): MAConfig[] => [
   {
     id: `${type}-3`,
     show: false,
-    period: 200,
+    period: 100,
     color: type === 'sma' ? '#f0b90b' : type === 'ema' ? '#AB47BC' : '#FF7043',
     lineSize: 1.5,
     type: type,
-    name: generateMAName(type, 200),
+    name: generateMAName(type, 100),
   }
 ];
 
