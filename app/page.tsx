@@ -1,5 +1,5 @@
 // page.tsx
-import Chart from "@/components/chart/Chart";
+import Chart from "@/components/chart/ChartContainer"; // Import ChartContainer instead
 import ChartControls from "@/components/chart/ChartControls";
 
 export default function Home() {
