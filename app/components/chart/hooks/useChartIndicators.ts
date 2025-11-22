@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
 import { useGlobalContext } from '@/context/GlobalContext';
 import {
+  registerRSIIndicator,
+  registerCustomVolumeIndicator,
   registerCustomMAIndicator,
   registerCustomEMAIndicator,
   registerCustomWMAIndicator,
-  registerRSIIndicator,
-  registerCustomVolumeIndicator,
   getCurrentIndicatorNames
 } from '../indicators';
 import { UseChartIndicatorsReturn } from '../types/chart';
@@ -200,7 +200,7 @@ export const useChartIndicators = (): UseChartIndicatorsReturn => {
         wma: enabledWMA.map(w => w.period)
       });
 
-      // Re-register indicators with current config (force update)
+      // Re-register indicators with current config
       registerCustomMAIndicator(config.indicators.ma);
       registerCustomEMAIndicator(config.indicators.ema);
       registerCustomWMAIndicator(config.indicators.wma);

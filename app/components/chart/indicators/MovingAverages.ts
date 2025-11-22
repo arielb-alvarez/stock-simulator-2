@@ -1,7 +1,7 @@
 import { registerIndicator } from 'klinecharts';
 import { MAConfig } from '@/context/GlobalContext';
 
-// Use fixed names instead of period-based names
+// Fixed indicator names
 const FIXED_INDICATOR_NAMES = {
   MA: 'CUSTOM_MA',
   EMA: 'CUSTOM_EMA', 
@@ -31,10 +31,7 @@ export const registerCustomMAIndicator = (maConfigs: MAConfig[]): string => {
         title: `MA${period}: `,
         type: 'line',
         styles: () => {
-          const config = maConfigs.find(m => m.period === period);
-          if (!config) {
-            console.warn(`No config found for MA period ${period}`);
-          }
+          const config = maConfigs.find(m => m.period === period && m.show);
           return {
             color: config?.color || '#2962FF',
             size: config?.lineSize || 1.5
@@ -98,7 +95,7 @@ export const registerCustomEMAIndicator = (emaConfigs: MAConfig[]): string => {
         title: `EMA${period}: `,
         type: 'line',
         styles: () => {
-          const config = emaConfigs.find(e => e.period === period);
+          const config = emaConfigs.find(e => e.period === period && e.show);
           return {
             color: config?.color || '#FF6B6B',
             size: config?.lineSize || 1.5
@@ -166,7 +163,7 @@ export const registerCustomWMAIndicator = (wmaConfigs: MAConfig[]): string => {
         title: `WMA${period}: `,
         type: 'line',
         styles: () => {
-          const config = wmaConfigs.find(w => w.period === period);
+          const config = wmaConfigs.find(w => w.period === period && w.show);
           return {
             color: config?.color || '#4ECDC4',
             size: config?.lineSize || 1.5
