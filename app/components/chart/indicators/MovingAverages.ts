@@ -1,12 +1,8 @@
 import { registerIndicator } from 'klinecharts';
 import { MAConfig } from '@/context/GlobalContext';
 
-// Fixed indicator names
-const FIXED_INDICATOR_NAMES = {
-  MA: 'CUSTOM_MA',
-  EMA: 'CUSTOM_EMA', 
-  WMA: 'CUSTOM_WMA'
-};
+// Track registered indicators to avoid duplicates
+const registeredIndicators = new Set();
 
 export const registerCustomMAIndicator = (maConfigs: MAConfig[]): string => {
   const enabledPeriods = maConfigs
@@ -16,14 +12,23 @@ export const registerCustomMAIndicator = (maConfigs: MAConfig[]): string => {
 
   if (enabledPeriods.length === 0) {
     console.log('📊 No enabled MA periods, skipping registration');
-    return FIXED_INDICATOR_NAMES.MA;
+    return 'CUSTOM_MA';
   }
 
-  console.log('📊 Registering MA indicator with periods:', enabledPeriods);
+  // Create unique name based on periods
+  const uniqueName = `CUSTOM_MA_${enabledPeriods.join('_')}`;
+  
+  // Skip if already registered
+  if (registeredIndicators.has(uniqueName)) {
+    console.log('📊 MA indicator already registered:', uniqueName);
+    return uniqueName;
+  }
+
+  console.log('📊 Registering MA indicator with periods:', enabledPeriods, 'Name:', uniqueName);
 
   try {
     registerIndicator({
-      name: FIXED_INDICATOR_NAMES.MA,
+      name: uniqueName,
       shortName: 'MA',
       calcParams: enabledPeriods,
       figures: enabledPeriods.map((period, index) => ({
@@ -64,11 +69,12 @@ export const registerCustomMAIndicator = (maConfigs: MAConfig[]): string => {
       },
     });
 
-    console.log('✅ MA indicator registered successfully');
-    return FIXED_INDICATOR_NAMES.MA;
+    registeredIndicators.add(uniqueName);
+    console.log('✅ MA indicator registered successfully:', uniqueName);
+    return uniqueName;
   } catch (error) {
     console.error('❌ Error registering custom MA indicator:', error);
-    return FIXED_INDICATOR_NAMES.MA;
+    return uniqueName;
   }
 };
 
@@ -80,14 +86,23 @@ export const registerCustomEMAIndicator = (emaConfigs: MAConfig[]): string => {
 
   if (enabledPeriods.length === 0) {
     console.log('📊 No enabled EMA periods, skipping registration');
-    return FIXED_INDICATOR_NAMES.EMA;
+    return 'CUSTOM_EMA';
   }
 
-  console.log('📊 Registering EMA indicator with periods:', enabledPeriods);
+  // Create unique name based on periods
+  const uniqueName = `CUSTOM_EMA_${enabledPeriods.join('_')}`;
+  
+  // Skip if already registered
+  if (registeredIndicators.has(uniqueName)) {
+    console.log('📊 EMA indicator already registered:', uniqueName);
+    return uniqueName;
+  }
+
+  console.log('📊 Registering EMA indicator with periods:', enabledPeriods, 'Name:', uniqueName);
 
   try {
     registerIndicator({
-      name: FIXED_INDICATOR_NAMES.EMA,
+      name: uniqueName,
       shortName: 'EMA',
       calcParams: enabledPeriods,
       figures: enabledPeriods.map((period, index) => ({
@@ -132,11 +147,12 @@ export const registerCustomEMAIndicator = (emaConfigs: MAConfig[]): string => {
       },
     });
 
-    console.log('✅ EMA indicator registered successfully');
-    return FIXED_INDICATOR_NAMES.EMA;
+    registeredIndicators.add(uniqueName);
+    console.log('✅ EMA indicator registered successfully:', uniqueName);
+    return uniqueName;
   } catch (error) {
     console.error('❌ Error registering custom EMA indicator:', error);
-    return FIXED_INDICATOR_NAMES.EMA;
+    return uniqueName;
   }
 };
 
@@ -148,14 +164,23 @@ export const registerCustomWMAIndicator = (wmaConfigs: MAConfig[]): string => {
 
   if (enabledPeriods.length === 0) {
     console.log('📊 No enabled WMA periods, skipping registration');
-    return FIXED_INDICATOR_NAMES.WMA;
+    return 'CUSTOM_WMA';
   }
 
-  console.log('📊 Registering WMA indicator with periods:', enabledPeriods);
+  // Create unique name based on periods
+  const uniqueName = `CUSTOM_WMA_${enabledPeriods.join('_')}`;
+  
+  // Skip if already registered
+  if (registeredIndicators.has(uniqueName)) {
+    console.log('📊 WMA indicator already registered:', uniqueName);
+    return uniqueName;
+  }
+
+  console.log('📊 Registering WMA indicator with periods:', enabledPeriods, 'Name:', uniqueName);
 
   try {
     registerIndicator({
-      name: FIXED_INDICATOR_NAMES.WMA,
+      name: uniqueName,
       shortName: 'WMA',
       calcParams: enabledPeriods,
       figures: enabledPeriods.map((period, index) => ({
@@ -205,18 +230,29 @@ export const registerCustomWMAIndicator = (wmaConfigs: MAConfig[]): string => {
       },
     });
 
-    console.log('✅ WMA indicator registered successfully');
-    return FIXED_INDICATOR_NAMES.WMA;
+    registeredIndicators.add(uniqueName);
+    console.log('✅ WMA indicator registered successfully:', uniqueName);
+    return uniqueName;
   } catch (error) {
     console.error('❌ Error registering custom WMA indicator:', error);
-    return FIXED_INDICATOR_NAMES.WMA;
+    return uniqueName;
   }
 };
 
-export const getCurrentIndicatorNames = () => {
+// Helper function to get current indicator names based on config
+export const getCurrentIndicatorNames = (maConfigs: MAConfig[], emaConfigs: MAConfig[], wmaConfigs: MAConfig[]) => {
+  const maPeriods = maConfigs.filter(ma => ma.show).map(ma => ma.period).sort((a, b) => a - b);
+  const emaPeriods = emaConfigs.filter(ema => ema.show).map(ema => ema.period).sort((a, b) => a - b);
+  const wmaPeriods = wmaConfigs.filter(wma => wma.show).map(wma => wma.period).sort((a, b) => a - b);
+
   return {
-    ma: FIXED_INDICATOR_NAMES.MA,
-    ema: FIXED_INDICATOR_NAMES.EMA,
-    wma: FIXED_INDICATOR_NAMES.WMA,
+    ma: maPeriods.length > 0 ? `CUSTOM_MA_${maPeriods.join('_')}` : null,
+    ema: emaPeriods.length > 0 ? `CUSTOM_EMA_${emaPeriods.join('_')}` : null,
+    wma: wmaPeriods.length > 0 ? `CUSTOM_WMA_${wmaPeriods.join('_')}` : null,
   };
+};
+
+// Clean up function to remove specific indicators
+export const cleanupIndicator = (indicatorName: string) => {
+  registeredIndicators.delete(indicatorName);
 };

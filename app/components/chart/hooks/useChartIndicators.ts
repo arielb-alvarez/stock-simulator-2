@@ -6,7 +6,8 @@ import {
   registerCustomMAIndicator,
   registerCustomEMAIndicator,
   registerCustomWMAIndicator,
-  getCurrentIndicatorNames
+  getCurrentIndicatorNames,
+  cleanupIndicator
 } from '../indicators';
 import { UseChartIndicatorsReturn } from '../types/chart';
 
@@ -166,28 +167,14 @@ export const useChartIndicators = (): UseChartIndicatorsReturn => {
     }
 
     try {
-      // Get fixed indicator names
-      const indicatorNames = getCurrentIndicatorNames();
+      // Get current indicator names based on enabled periods
+      const indicatorNames = getCurrentIndicatorNames(
+        config.indicators.ma,
+        config.indicators.ema,
+        config.indicators.wma
+      );
 
-      // Remove all existing moving average overlays first
-      const allOverlayNames = [
-        indicatorNames.ma,
-        indicatorNames.ema,
-        indicatorNames.wma,
-        'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA'
-      ];
-      
-      console.log('🔄 Removing moving average overlays:', allOverlayNames);
-      
-      // Clean up existing overlays
-      allOverlayNames.forEach(indicatorName => {
-        try {
-          chart.removeIndicator(indicatorName);
-          console.log(`✅ Removed overlay: ${indicatorName}`);
-        } catch (e) {
-          // Ignore removal errors
-        }
-      });
+      console.log('📊 Current indicator names:', indicatorNames);
 
       // Get enabled configurations for each type
       const enabledMA = config.indicators.ma.filter(ma => ma.show);
@@ -200,40 +187,56 @@ export const useChartIndicators = (): UseChartIndicatorsReturn => {
         wma: enabledWMA.map(w => w.period)
       });
 
-      // Re-register indicators with current config
-      registerCustomMAIndicator(config.indicators.ma);
-      registerCustomEMAIndicator(config.indicators.ema);
-      registerCustomWMAIndicator(config.indicators.wma);
-
-      // Create overlays for enabled indicators
-      if (enabledMA.length > 0) {
+      // Remove ALL existing moving average overlays first
+      const allPossibleNames = [
+        'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA',
+        ...Array.from({ length: 10 }, (_, i) => `CUSTOM_MA_${i+1}`),
+        ...Array.from({ length: 10 }, (_, i) => `CUSTOM_EMA_${i+1}`),
+        ...Array.from({ length: 10 }, (_, i) => `CUSTOM_WMA_${i+1}`),
+      ];
+      
+      console.log('🔄 Removing all possible moving average overlays');
+      
+      allPossibleNames.forEach(indicatorName => {
         try {
-          chart.createIndicator(indicatorNames.ma, true, { 
+          chart.removeIndicator(indicatorName);
+        } catch (e) {
+          // Ignore removal errors
+        }
+      });
+
+      // Register and create indicators for enabled types
+      if (enabledMA.length > 0 && indicatorNames.ma) {
+        const registeredName = registerCustomMAIndicator(config.indicators.ma);
+        try {
+          chart.createIndicator(registeredName, true, { 
             id: "candle_pane"
           });
-          console.log(`✅ Created MA overlay with periods:`, enabledMA.map(ma => ma.period));
+          console.log(`✅ Created MA overlay: ${registeredName}`);
         } catch (createError) {
           console.error('❌ Failed to create MA overlay:', createError);
         }
       }
 
-      if (enabledEMA.length > 0) {
+      if (enabledEMA.length > 0 && indicatorNames.ema) {
+        const registeredName = registerCustomEMAIndicator(config.indicators.ema);
         try {
-          chart.createIndicator(indicatorNames.ema, true, { 
+          chart.createIndicator(registeredName, true, { 
             id: "candle_pane"
           });
-          console.log(`✅ Created EMA overlay with periods:`, enabledEMA.map(ema => ema.period));
+          console.log(`✅ Created EMA overlay: ${registeredName}`);
         } catch (createError) {
           console.error('❌ Failed to create EMA overlay:', createError);
         }
       }
 
-      if (enabledWMA.length > 0) {
+      if (enabledWMA.length > 0 && indicatorNames.wma) {
+        const registeredName = registerCustomWMAIndicator(config.indicators.wma);
         try {
-          chart.createIndicator(indicatorNames.wma, true, { 
+          chart.createIndicator(registeredName, true, { 
             id: "candle_pane"
           });
-          console.log(`✅ Created WMA overlay with periods:`, enabledWMA.map(wma => wma.period));
+          console.log(`✅ Created WMA overlay: ${registeredName}`);
         } catch (createError) {
           console.error('❌ Failed to create WMA overlay:', createError);
         }
@@ -242,6 +245,16 @@ export const useChartIndicators = (): UseChartIndicatorsReturn => {
       const totalOverlays = [enabledMA, enabledEMA, enabledWMA]
         .filter(arr => arr.length > 0).length;
       console.log(`✅ Created ${totalOverlays} moving average overlays in candle pane`);
+
+      // Force a chart resize to ensure proper rendering
+      setTimeout(() => {
+        try {
+          chart.resize();
+          console.log('📐 Chart resized after MA updates');
+        } catch (resizeError) {
+          console.error('Error resizing chart:', resizeError);
+        }
+      }, 50);
 
     } catch (error) {
       console.error('💥 Critical error in moving average overlay setup:', error);

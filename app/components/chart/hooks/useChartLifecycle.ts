@@ -35,16 +35,17 @@ export const useChartLifecycle = (chartContainerRef: any) => {
   // Track previous configs for comparison
   const prevConfigRef = useRef(config);
 
-  // Register all indicators when config changes
+  // Register indicators when config changes
   useEffect(() => {
-    console.log('📊 Config changed, re-registering indicators');
+    console.log('📊 Config changed, registering indicators with unique names');
     
     try {
-      // Re-register all indicators with latest config
+      // Register moving average indicators with unique names
       registerCustomMAIndicator(config.indicators.ma);
       registerCustomEMAIndicator(config.indicators.ema);
       registerCustomWMAIndicator(config.indicators.wma);
       
+      // Register RSI and Volume indicators
       config.indicators.rsi.forEach(rsiConfig => {
         registerRSIIndicator(rsiConfig);
       });
@@ -57,7 +58,7 @@ export const useChartLifecycle = (chartContainerRef: any) => {
     }
   }, [config]);
 
-  // Force complete chart refresh when MA/EMA/WMA configurations change
+  // Handle MA/EMA/WMA config changes - use the original approach
   useEffect(() => {
     if (!chartRef.current) return;
 
@@ -66,16 +67,26 @@ export const useChartLifecycle = (chartContainerRef: any) => {
     const wmaChanged = JSON.stringify(prevConfigRef.current.indicators.wma) !== JSON.stringify(config.indicators.wma);
 
     if (maChanged || emaChanged || wmaChanged) {
-      console.log('🔄 MA/EMA/WMA configurations changed, forcing complete refresh');
+      console.log('🔄 MA/EMA/WMA configurations changed, updating overlays');
       
-      // Force a complete chart reset
+      // Update moving average overlays without full chart reset for real-time performance
       setTimeout(() => {
-        setChartKey(prev => prev + 1);
-      }, 100);
+        if (chartRef.current) {
+          setupMovingAverageOverlays(chartRef.current);
+          
+          // Force indicators to recalculate with new data
+          setTimeout(() => {
+            if (chartRef.current) {
+              chartRef.current.resize();
+              console.log('📐 Chart resized for real-time updates');
+            }
+          }, 100);
+        }
+      }, 50);
     }
 
     prevConfigRef.current = config;
-  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, chartRef]);
+  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, chartRef, setupMovingAverageOverlays]);
 
   // Main initialization effect
   useEffect(() => {
@@ -134,7 +145,7 @@ export const useChartLifecycle = (chartContainerRef: any) => {
     setupWebSocket,
     chartCleanup,
     dataCleanup,
-    chartKey // This will trigger re-initialization when chartKey changes
+    chartKey
   ]);
 
   const forceChartReset = useCallback(() => {
