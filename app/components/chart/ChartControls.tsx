@@ -1,5 +1,5 @@
 'use client';
-import { useGlobalContext, ChartType, RSIConfig, VolumeConfig, VolumeMAConfig, MAConfig } from '@/context/GlobalContext';
+import { useGlobalContext, ChartType, RSIConfig, VolumeConfig, VolumeMAConfig, MAConfig, BBConfig } from '@/context/GlobalContext';
 import { useState, useRef, useEffect } from 'react';
 import { CandleIcon, LineIcon, AreaIcon, BarIcon, ChevronDown, EditIcon, IndicatorsIcon } from './ChartIcons';
 
@@ -31,19 +31,21 @@ interface IndicatorsDialogProps {
   maConfigs: MAConfig[];
   emaConfigs: MAConfig[];
   wmaConfigs: MAConfig[];
+  bbConfigs: BBConfig[];
   onUpdateRSI: (id: string, updates: Partial<RSIConfig>) => void;
   onToggleRSI: (id: string) => void;
   onUpdateVolume: (id: string, updates: Partial<VolumeConfig>) => void;
   onToggleVolume: (id: string) => void;
   onUpdateVolumeMA: (volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => void;
   onToggleVolumeMA: (volumeId: string, maId: string) => void;
-  // Add new handlers for MA indicators
   onUpdateMA: (id: string, updates: Partial<MAConfig>) => void;
   onToggleMA: (id: string) => void;
   onUpdateEMA: (id: string, updates: Partial<MAConfig>) => void;
   onToggleEMA: (id: string) => void;
   onUpdateWMA: (id: string, updates: Partial<MAConfig>) => void;
   onToggleWMA: (id: string) => void;
+  onUpdateBB: (id: string, updates: Partial<BBConfig>) => void;
+  onToggleBB: (id: string) => void;
 }
 
 const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
@@ -54,6 +56,7 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   maConfigs,
   emaConfigs,
   wmaConfigs,
+  bbConfigs,
   onUpdateRSI,
   onToggleRSI,
   onUpdateVolume,
@@ -66,6 +69,8 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   onToggleEMA,
   onUpdateWMA,
   onToggleWMA,
+  onUpdateBB,
+  onToggleBB,
 }) => {
   const [activeTab, setActiveTab] = useState<'main' | 'sub'>('main');
   const [activeSubMenu, setActiveSubMenu] = useState<string>('ma');
@@ -171,6 +176,31 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     onUpdateWMA(wmaId, { color });
   };
 
+  // Add BB configuration handlers
+  const handleToggleBB = (bbId: string) => {
+    onToggleBB(bbId);
+  };
+
+  const handlePeriodChangeBB = (bbId: string, period: number) => {
+    onUpdateBB(bbId, { period: Math.max(1, period) });
+  };
+
+  const handleStdDevChangeBB = (bbId: string, stdDev: number) => {
+    onUpdateBB(bbId, { stdDev: Math.max(0.1, Math.min(5, stdDev)) });
+  };
+
+  const handleLineSizeChangeBB = (bbId: string, lineSize: number) => {
+    onUpdateBB(bbId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleColorChangeBB = (bbId: string, color: string) => {
+    onUpdateBB(bbId, { color });
+  };
+
+  const handleBandColorChangeBB = (bbId: string, bandColor: string) => {
+    onUpdateBB(bbId, { bandColor });
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-gray-800 rounded-lg w-[90vw] max-w-6xl h-[80vh] flex flex-col">
@@ -248,6 +278,16 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                       }`}
                     >
                       Weighted MA
+                    </button>
+                    <button
+                      onClick={() => setActiveSubMenu('bb')}
+                      className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
+                        activeSubMenu === 'bb'
+                          ? 'bg-yellow-500/20 text-yellow-400'
+                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                      }`}
+                    >
+                      Bollinger Bands
                     </button>
                   </nav>
                 </div>
@@ -492,6 +532,133 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                                   />
                                   <span className="text-xs text-gray-400 font-mono">
                                     {wmaConfig.color}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Bollinger Bands Configuration Section */}
+                {activeSubMenu === 'bb' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-gray-200">Bollinger Bands</h3>
+                      <div className="text-sm text-gray-400">
+                        {bbConfigs.filter(bb => bb.show).length} of {bbConfigs.length} active
+                      </div>
+                    </div>
+
+                    {/* BB Configuration Table */}
+                    <div className="bg-gray-750 rounded-lg border border-gray-700 overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-700">
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-16">
+                              Show
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">
+                              Name
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
+                              Period
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
+                              Std Dev
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
+                              Line Width
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">
+                              Color
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">
+                              Band Color
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {bbConfigs.map((bbConfig) => (
+                            <tr 
+                              key={bbConfig.id} 
+                              className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors"
+                            >
+                              <td className="py-3 px-4">
+                                <input
+                                  type="checkbox"
+                                  checked={bbConfig.show}
+                                  onChange={() => handleToggleBB(bbConfig.id)}
+                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
+                                />
+                              </td>
+                              
+                              <td className="py-3 px-4">
+                                <span className="text-white font-medium">{bbConfig.name}</span>
+                              </td>
+                              
+                              <td className="py-3 px-4">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="200"
+                                  value={bbConfig.period}
+                                  onChange={(e) => handlePeriodChangeBB(bbConfig.id, parseInt(e.target.value) || 20)}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                />
+                              </td>
+                              
+                              <td className="py-3 px-4">
+                                <input
+                                  type="number"
+                                  min="0.1"
+                                  max="5"
+                                  step="0.1"
+                                  value={bbConfig.stdDev}
+                                  onChange={(e) => handleStdDevChangeBB(bbConfig.id, parseFloat(e.target.value) || 2)}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                />
+                              </td>
+                              
+                              <td className="py-3 px-4">
+                                <input
+                                  type="number"
+                                  min="0.5"
+                                  max="5"
+                                  step="0.5"
+                                  value={bbConfig.lineSize}
+                                  onChange={(e) => handleLineSizeChangeBB(bbConfig.id, parseFloat(e.target.value) || 1.5)}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                />
+                              </td>
+                              
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="color"
+                                    value={bbConfig.color}
+                                    onChange={(e) => handleColorChangeBB(bbConfig.id, e.target.value)}
+                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
+                                  />
+                                  <span className="text-xs text-gray-400 font-mono">
+                                    {bbConfig.color}
+                                  </span>
+                                </div>
+                              </td>
+
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="color"
+                                    value={bbConfig.bandColor}
+                                    onChange={(e) => handleBandColorChangeBB(bbConfig.id, e.target.value)}
+                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
+                                  />
+                                  <span className="text-xs text-gray-400 font-mono">
+                                    {bbConfig.bandColor}
                                   </span>
                                 </div>
                               </td>
@@ -847,6 +1014,8 @@ export default function ChartControls() {
     toggleEMA,
     updateWMA,
     toggleWMA,
+    updateBB,
+    toggleBB,
   } = useGlobalContext();
   const [isChartTypeOpen, setIsChartTypeOpen] = useState(false);
   const [isTimeFrameOpen, setIsTimeFrameOpen] = useState(false);
@@ -979,6 +1148,14 @@ export default function ChartControls() {
 
   const handleToggleWMA = (id: string) => {
     toggleWMA(id);
+  };
+
+  const handleUpdateBB = (id: string, updates: Partial<BBConfig>) => {
+    updateBB(id, updates);
+  };
+
+  const handleToggleBB = (id: string) => {
+    toggleBB(id);
   };
 
   return (
@@ -1185,6 +1362,7 @@ export default function ChartControls() {
         maConfigs={config.indicators.ma}
         emaConfigs={config.indicators.ema}
         wmaConfigs={config.indicators.wma}
+        bbConfigs={config.indicators.bb}
         onUpdateRSI={handleUpdateRSI}
         onToggleRSI={handleToggleRSI}
         onUpdateVolume={handleUpdateVolume}
@@ -1197,6 +1375,8 @@ export default function ChartControls() {
         onToggleEMA={handleToggleEMA}
         onUpdateWMA={handleUpdateWMA}
         onToggleWMA={handleToggleWMA}
+        onUpdateBB={handleUpdateBB}
+        onToggleBB={handleToggleBB}
       />
     </>
   );
