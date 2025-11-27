@@ -49,6 +49,18 @@ export interface MAConfig {
   name: string;
 }
 
+export interface BBConfig {
+  id: string;
+  show: boolean;
+  period: number;
+  stdDev: number;
+  color: string;
+  bandColor: string;
+  lineSize: number;
+  type: 'bb';
+  name: string;
+}
+
 // Chart Style Configuration
 interface ChartStyleConfig {
   layout: {
@@ -114,6 +126,7 @@ interface GlobalConfig {
     ma: MAConfig[];
     ema: MAConfig[];
     wma: MAConfig[];
+    bb: BBConfig[];
   };
 }
 
@@ -132,6 +145,8 @@ interface GlobalContextType {
   toggleEMA: (id: string) => void;
   updateWMA: (id: string, updates: Partial<MAConfig>) => void;
   toggleWMA: (id: string) => void;
+  updateBB: (id: string, updates: Partial<BBConfig>) => void;
+  toggleBB: (id: string) => void;
   updateChartStyle: (updates: Partial<ChartStyleConfig>) => void;
   updateChartType: (chartType: ChartType) => void;
   resetToDefaults: () => void;
@@ -313,6 +328,38 @@ const createDefaultVolume = (): VolumeConfig[] => [
   }
 ];
 
+// Add helper function to generate BB name
+const generateBBName = (period: number, stdDev: number): string => {
+  return `BB ${period} (${stdDev})`;
+};
+
+// Create default BB configurations
+const createDefaultBBs = (): BBConfig[] => [
+  {
+    id: 'bb-1',
+    show: false,
+    period: 20,
+    stdDev: 2,
+    color: '#9C27B0',
+    bandColor: 'rgba(156, 39, 176, 0.1)',
+    lineSize: 1.5,
+    type: 'bb',
+    name: generateBBName(20, 2),
+  },
+  {
+    id: 'bb-2',
+    show: false,
+    period: 50,
+    stdDev: 2,
+    color: '#7B1FA2',
+    bandColor: 'rgba(123, 31, 162, 0.1)',
+    lineSize: 1.5,
+    type: 'bb',
+    name: generateBBName(50, 2),
+  }
+];
+
+
 const defaultConfig: GlobalConfig = {
   chartType: 'candle',
   symbol: 'BTCUSDT',
@@ -326,6 +373,7 @@ const defaultConfig: GlobalConfig = {
     ma: createDefaultMAs('sma'),
     ema: createDefaultMAs('ema'),
     wma: createDefaultMAs('wma'),
+    bb: createDefaultBBs(),
   },
 };
 
@@ -617,6 +665,47 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const updateBB = useCallback((id: string, updates: Partial<BBConfig>) => {
+    setConfig(prev => {
+      const currentBB = prev.indicators.bb.find(bb => bb.id === id);
+      
+      // Auto-update name if period or stdDev changes and name follows default pattern
+      if ((updates.period || updates.stdDev) && currentBB) {
+        const oldPeriod = currentBB.period;
+        const oldStdDev = currentBB.stdDev;
+        const newPeriod = updates.period || oldPeriod;
+        const newStdDev = updates.stdDev || oldStdDev;
+        const defaultNamePattern = generateBBName(oldPeriod, oldStdDev);
+        
+        if (currentBB.name === defaultNamePattern) {
+          updates.name = generateBBName(newPeriod, newStdDev);
+        }
+      }
+      
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          bb: prev.indicators.bb.map(bb => 
+            bb.id === id ? { ...bb, ...updates } : bb
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const toggleBB = useCallback((id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        bb: prev.indicators.bb.map(bb => 
+          bb.id === id ? { ...bb, show: !bb.show } : bb
+        ),
+      },
+    }));
+  }, []);
+
   const updateChartStyle = useCallback((updates: Partial<ChartStyleConfig>) => {
     setConfig(prev => ({
       ...prev,
@@ -744,6 +833,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       toggleEMA,
       updateWMA,
       toggleWMA,
+      updateBB,
+      toggleBB,
       updateChartStyle,
       updateChartType,
       resetToDefaults,

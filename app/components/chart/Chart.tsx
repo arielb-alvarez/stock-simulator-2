@@ -7,7 +7,7 @@ import {
   KLineData,
   registerIndicator,
 } from 'klinecharts';
-import { useGlobalContext, RSIConfig, VolumeConfig, MAConfig } from '@/context/GlobalContext';
+import { useGlobalContext, RSIConfig, VolumeConfig, MAConfig, BBConfig } from '@/context/GlobalContext';
 import { cryptoService, CryptoData } from '@/services/cryptoService';
 import DrawingTools from './DrawingTools';
 
@@ -240,15 +240,20 @@ const registerCustomWMAIndicator = (wmaConfigs: MAConfig[]) => {
 };
 
 // Get current indicator names based on config
-const getCurrentIndicatorNames = (maConfigs: MAConfig[], emaConfigs: MAConfig[], wmaConfigs: MAConfig[]) => {
+const getCurrentIndicatorNames = (maConfigs: MAConfig[], emaConfigs: MAConfig[], wmaConfigs: MAConfig[], bbConfigs: BBConfig[]) => {
   const maPeriods = maConfigs.filter(ma => ma.show).map(ma => ma.period).sort((a, b) => a - b);
   const emaPeriods = emaConfigs.filter(ema => ema.show).map(ema => ema.period).sort((a, b) => a - b);
   const wmaPeriods = wmaConfigs.filter(wma => wma.show).map(wma => wma.period).sort((a, b) => a - b);
+  const bbConfigParams = bbConfigs
+    .filter(bb => bb.show)
+    .map(bb => `${bb.period}_${bb.stdDev}`)
+    .sort();
 
   return {
     ma: maPeriods.length > 0 ? `CUSTOM_MA_${maPeriods.join('_')}` : null,
     ema: emaPeriods.length > 0 ? `CUSTOM_EMA_${emaPeriods.join('_')}` : null,
     wma: wmaPeriods.length > 0 ? `CUSTOM_WMA_${wmaPeriods.join('_')}` : null,
+    bb: bbConfigParams.length > 0 ? `CUSTOM_BB_${bbConfigParams.join('_')}` : null,
   };
 };
 
@@ -407,6 +412,113 @@ const registerCustomVolumeIndicator = (volumeConfig: VolumeConfig) => {
   }
 };
 
+// Register Custom Bollinger Bands Indicator
+const registerCustomBBIndicator = (bbConfigs: BBConfig[]) => {
+  const enabledConfigs = bbConfigs
+    .filter(bb => bb.show)
+    .sort((a, b) => a.period - b.period);
+
+  if (enabledConfigs.length === 0) return 'CUSTOM_BB';
+
+  const indicatorName = 'CUSTOM_BB';
+  
+  try {
+    const uniqueName = `CUSTOM_BB_${enabledConfigs.map(bb => `${bb.period}_${bb.stdDev}`).join('_')}`;
+    
+    registerIndicator({
+      name: uniqueName,
+      shortName: 'BB',
+      calcParams: enabledConfigs.map(bb => [bb.period, bb.stdDev]).flat(),
+      figures: enabledConfigs.flatMap((bbConfig, index) => [
+        {
+          key: `bb_upper_${index}`,
+          title: `BB Upper ${bbConfig.period}: `,
+          type: 'line',
+          styles: () => ({
+            color: bbConfig.color,
+            size: bbConfig.lineSize,
+          })
+        },
+        {
+          key: `bb_middle_${index}`,
+          title: `BB Middle ${bbConfig.period}: `,
+          type: 'line',
+          styles: () => ({
+            color: bbConfig.color,
+            size: bbConfig.lineSize,
+            style: 'dashed',
+          })
+        },
+        {
+          key: `bb_lower_${index}`,
+          title: `BB Lower ${bbConfig.period}: `,
+          type: 'line',
+          styles: () => ({
+            color: bbConfig.color,
+            size: bbConfig.lineSize,
+          })
+        }
+      ]),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        
+        // Group params by config (each config has period and stdDev)
+        const configs: { period: number, stdDev: number }[] = [];
+        for (let i = 0; i < calcParams.length; i += 2) {
+          configs.push({
+            period: calcParams[i],
+            stdDev: calcParams[i + 1]
+          });
+        }
+        
+        for (let i = 0; i < dataList.length; i++) {
+          const item: any = {};
+          
+          configs.forEach((config, configIndex) => {
+            const { period, stdDev } = config;
+            
+            if (i >= period - 1) {
+              // Calculate SMA (middle band)
+              let sum = 0;
+              for (let j = 0; j < period; j++) {
+                sum += dataList[i - j].close;
+              }
+              const sma = sum / period;
+              
+              // Calculate standard deviation
+              let variance = 0;
+              for (let j = 0; j < period; j++) {
+                variance += Math.pow(dataList[i - j].close - sma, 2);
+              }
+              const deviation = Math.sqrt(variance / period);
+              
+              // Set Bollinger Bands values
+              item[`bb_upper_${configIndex}`] = sma + (deviation * stdDev);
+              item[`bb_middle_${configIndex}`] = sma;
+              item[`bb_lower_${configIndex}`] = sma - (deviation * stdDev);
+            } else {
+              // Not enough data
+              item[`bb_upper_${configIndex}`] = 0;
+              item[`bb_middle_${configIndex}`] = 0;
+              item[`bb_lower_${configIndex}`] = 0;
+            }
+          });
+          
+          result.push(item);
+        }
+        
+        return result;
+      },
+    });
+
+    registeredIndicators.add(uniqueName);
+    return uniqueName;
+  } catch (error) {
+    console.error('Error registering custom BB indicator:', error);
+    return indicatorName;
+  }
+};
+
 // Helper function to get active tool from localStorage
 const getStoredActiveTool = (): string => {
   if (typeof window === 'undefined') return '';
@@ -440,6 +552,7 @@ export default function MainChart() {
     toggleMA,
     toggleEMA,
     toggleWMA,
+    toggleBB,
   } = useGlobalContext();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -473,6 +586,9 @@ export default function MainChart() {
         
         // Register custom WMA indicator with multiple periods
         registerCustomWMAIndicator(config.indicators.wma);
+
+        // Register custom Bollinger Bands indicator
+        registerCustomBBIndicator(config.indicators.bb);
         
         // Register RSI indicators
         if ((window as any).__registeredRSIIndicators) {
@@ -516,7 +632,14 @@ export default function MainChart() {
     return () => {
       mounted = false;
     };
-  }, [config.indicators.rsi, config.indicators.volume, config.indicators.ma, config.indicators.ema, config.indicators.wma]);
+  }, [
+    config.indicators.rsi, 
+    config.indicators.volume, 
+    config.indicators.ma, 
+    config.indicators.ema, 
+    config.indicators.wma,
+    config.indicators.bb
+  ]);
 
   // Save active tool to localStorage whenever it changes
   useEffect(() => {
@@ -563,6 +686,12 @@ export default function MainChart() {
       toggleWMA(wmaId);
       return;
     }
+
+    if (tool.startsWith('bb-toggle-')) {
+      const bbId = tool.replace('bb-toggle-', '');
+      toggleBB(bbId);
+      return;
+    }
     
     if (chartRef.current) {
       try {
@@ -593,7 +722,7 @@ export default function MainChart() {
         console.warn('Error creating overlay:', error);
       }
     }
-  }, [toggleRSI, toggleVolume, toggleMA, toggleEMA, toggleWMA]);
+  }, [toggleRSI, toggleVolume, toggleMA, toggleEMA, toggleWMA, toggleBB]);
 
   // Setup RSI indicators on chart
   const setupRSIIndicators = useCallback((chart: any) => {
@@ -736,7 +865,8 @@ export default function MainChart() {
       const indicatorNames = getCurrentIndicatorNames(
         config.indicators.ma,
         config.indicators.ema,
-        config.indicators.wma
+        config.indicators.wma,
+        config.indicators.bb
       );
 
       // Remove all existing moving average overlays first
@@ -744,6 +874,7 @@ export default function MainChart() {
         ...(indicatorNames.ma ? [indicatorNames.ma] : []),
         ...(indicatorNames.ema ? [indicatorNames.ema] : []),
         ...(indicatorNames.wma ? [indicatorNames.wma] : []),
+        ...(indicatorNames.bb ? [indicatorNames.bb] : []),
         'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA' // Remove old names too
       ];
       
@@ -763,6 +894,7 @@ export default function MainChart() {
       const enabledMA = config.indicators.ma.filter(ma => ma.show);
       const enabledEMA = config.indicators.ema.filter(ema => ema.show);
       const enabledWMA = config.indicators.wma.filter(wma => wma.show);
+      const enabledBB = config.indicators.bb.filter(bb => bb.show);
 
       // Create MA overlay if any MA is enabled
       if (enabledMA.length > 0 && indicatorNames.ma) {
@@ -800,14 +932,25 @@ export default function MainChart() {
         }
       }
 
-      const totalOverlays = [enabledMA, enabledEMA, enabledWMA]
+      if (enabledBB.length > 0 && indicatorNames.bb) {
+      try {
+        chart.createIndicator(indicatorNames.bb, true, { 
+          id: "candle_pane"
+        });
+        console.log(`Created BB overlay with periods:`, enabledBB.map(bb => bb.period));
+      } catch (createError) {
+        console.error('Failed to create BB overlay:', createError);
+      }
+    }
+
+      const totalOverlays = [enabledMA, enabledEMA, enabledWMA, enabledBB]
         .filter(arr => arr.length > 0).length;
       console.log(`Created ${totalOverlays} moving average overlays in candle pane`);
 
     } catch (error) {
       console.error('Critical error in moving average overlay setup:', error);
     }
-  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma]);
+  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, config.indicators.bb]);
 
   // Apply chart styles from global config
   const applyChartStyles = useCallback((chart: any) => {
@@ -1067,11 +1210,11 @@ export default function MainChart() {
     chartKey // Add chartKey as dependency to reinitialize when it changes
   ]);
 
-  // Effect for MA, EMA, WMA overlay changes - COMPLETE REFRESH APPROACH
+  // Effect for MA, EMA, WMA, BB overlay changes
   useEffect(() => {
     if (!chartRef.current || !currentDataRef.current.length) return;
     
-    console.log('MA configuration changed, forcing complete refresh');
+    console.log('configuration changed, forcing complete refresh');
     
     // Force a complete chart refresh when MA configurations change
     const timer = setTimeout(() => {
@@ -1079,7 +1222,7 @@ export default function MainChart() {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, forceChartRefresh]);
+  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, config.indicators.bb, forceChartRefresh]);
 
   // Effect for RSI indicator changes
   useEffect(() => {
