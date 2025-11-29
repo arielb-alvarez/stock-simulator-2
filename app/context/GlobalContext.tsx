@@ -49,14 +49,31 @@ export interface MAConfig {
   name: string;
 }
 
+// Update the BBConfig interface
 export interface BBConfig {
   id: string;
   show: boolean;
   period: number;
   stdDev: number;
-  color: string;
-  bandColor: string;
-  lineSize: number;
+  background: {
+    show: boolean;
+    color: string;
+  };
+  upLine: {
+    show: boolean;
+    lineWidth: number;
+    color: string;
+  };
+  middleLine: {
+    show: boolean;
+    lineWidth: number;
+    color: string;
+  };
+  downLine: {
+    show: boolean;
+    lineWidth: number;
+    color: string;
+  };
   type: 'bb';
   name: string;
 }
@@ -352,22 +369,27 @@ const createDefaultBBs = (): BBConfig[] => [
     show: false,
     period: 20,
     stdDev: 2,
-    color: '#9C27B0',
-    bandColor: 'rgba(156, 39, 176, 0.1)',
-    lineSize: 1.5,
+    background: {
+      show: true,
+      color: 'rgba(156, 39, 176, 0.1)',
+    },
+    upLine: {
+      show: true,
+      lineWidth: 1.5,
+      color: '#9C27B0',
+    },
+    middleLine: {
+      show: true,
+      lineWidth: 1.5,
+      color: '#7B1FA2',
+    },
+    downLine: {
+      show: true,
+      lineWidth: 1.5,
+      color: '#9C27B0',
+    },
     type: 'bb',
     name: generateBBName(20, 2),
-  },
-  {
-    id: 'bb-2',
-    show: false,
-    period: 50,
-    stdDev: 2,
-    color: '#7B1FA2',
-    bandColor: 'rgba(123, 31, 162, 0.1)',
-    lineSize: 1.5,
-    type: 'bb',
-    name: generateBBName(50, 2),
   }
 ];
 

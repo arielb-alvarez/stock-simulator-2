@@ -195,16 +195,128 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     onUpdateBB(bbId, { stdDev: Math.max(0.1, Math.min(5, stdDev)) });
   };
 
-  const handleLineSizeChangeBB = (bbId: string, lineSize: number) => {
-    onUpdateBB(bbId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  // Background toggle
+  const handleToggleBackgroundBB = (bbId: string, show: boolean) => {
+  const bbConfig = bbConfigs.find(bb => bb.id === bbId);
+  if (bbConfig) {
+    onUpdateBB(bbId, { 
+      background: { 
+        ...bbConfig.background, // Keep existing properties
+        show 
+      }
+    });
+  }
+};
+
+  // UP Line handlers
+  const handleToggleUpLineBB = (bbId: string, show: boolean) => {
+    const bbConfig = bbConfigs.find(bb => bb.id === bbId);
+    if (bbConfig) {
+      onUpdateBB(bbId, { 
+        upLine: { 
+          ...bbConfig.upLine, // Keep existing properties
+          show 
+        }
+      });
+    }
   };
 
-  const handleColorChangeBB = (bbId: string, color: string) => {
-    onUpdateBB(bbId, { color });
+  const handleUpLineWidthChangeBB = (bbId: string, lineWidth: number) => {
+    const bbConfig = bbConfigs.find(bb => bb.id === bbId);
+    if (bbConfig) {
+      onUpdateBB(bbId, { 
+        upLine: { 
+          ...bbConfig.upLine, // Keep existing properties
+          lineWidth: Math.max(0.5, Math.min(5, lineWidth)) 
+        }
+      });
+    }
   };
 
-  const handleBandColorChangeBB = (bbId: string, bandColor: string) => {
-    onUpdateBB(bbId, { bandColor });
+  const handleUpLineColorChangeBB = (bbId: string, color: string) => {
+    const bbConfig = bbConfigs.find(bb => bb.id === bbId);
+    if (bbConfig) {
+      onUpdateBB(bbId, { 
+        upLine: { 
+          ...bbConfig.upLine, // Keep existing properties
+          color 
+        }
+      });
+    }
+  };
+
+  // Middle Line handlers
+  const handleToggleMiddleLineBB = (bbId: string, show: boolean) => {
+    const bbConfig = bbConfigs.find(bb => bb.id === bbId);
+    if (bbConfig) {
+      onUpdateBB(bbId, { 
+        middleLine: { 
+          ...bbConfig.middleLine, // Keep existing properties
+          show 
+        }
+      });
+    }
+  };
+
+  const handleMiddleLineWidthChangeBB = (bbId: string, lineWidth: number) => {
+    const bbConfig = bbConfigs.find(bb => bb.id === bbId);
+    if (bbConfig) {
+      onUpdateBB(bbId, { 
+        middleLine: { 
+          ...bbConfig.middleLine, // Keep existing properties
+          lineWidth: Math.max(0.5, Math.min(5, lineWidth)) 
+        }
+      });
+    }
+  };
+
+  const handleMiddleLineColorChangeBB = (bbId: string, color: string) => {
+    const bbConfig = bbConfigs.find(bb => bb.id === bbId);
+    if (bbConfig) {
+      onUpdateBB(bbId, { 
+        middleLine: { 
+          ...bbConfig.middleLine, // Keep existing properties
+          color 
+        }
+      });
+    }
+  };
+
+  // Down Line handlers
+  const handleToggleDownLineBB = (bbId: string, show: boolean) => {
+    const bbConfig = bbConfigs.find(bb => bb.id === bbId);
+    if (bbConfig) {
+      onUpdateBB(bbId, { 
+        downLine: { 
+          ...bbConfig.downLine, // Keep existing properties
+          show 
+        }
+      });
+    }
+  };
+
+  const handleDownLineWidthChangeBB = (bbId: string, lineWidth: number) => {
+    const bbConfig = bbConfigs.find(bb => bb.id === bbId);
+    if (bbConfig) {
+      onUpdateBB(bbId, { 
+        downLine: { 
+          ...bbConfig.downLine, // Keep existing properties
+          lineWidth: Math.max(0.5, Math.min(5, lineWidth)) 
+        }
+      });
+    }
+  };
+
+  const handleDownLineColorChangeBB = (bbId: string, color: string) => {
+    const bbConfig = bbConfigs.find(bb => bb.id === bbId);
+    if (bbConfig) {
+      onUpdateBB(bbId, { 
+        downLine: { 
+          ...bbConfig.downLine, // Keep existing properties
+          color 
+        }
+      });
+    }
   };
 
   // VWAP configuration handlers
@@ -589,119 +701,253 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                       </div>
                     </div>
 
-                    {/* BB Configuration Table */}
-                    <div className="bg-gray-750 rounded-lg border border-gray-700 overflow-hidden">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-700">
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-16">
-                              Show
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">
-                              Name
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
-                              Period
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
-                              Std Dev
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
-                              Line Width
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">
-                              Color
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">
-                              Band Color
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {bbConfigs.map((bbConfig) => (
-                            <tr 
-                              key={bbConfig.id} 
-                              className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors"
-                            >
-                              <td className="py-3 px-4">
+                    {/* BB Configuration */}
+                    <div className="space-y-4">
+                      {bbConfigs.map((bbConfig) => (
+                        <div key={bbConfig.id} className="bg-gray-750 rounded-lg border border-gray-700 p-6">
+                          {/* Main BB Toggle */}
+                          <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
+                                checked={bbConfig.show}
+                                onChange={() => handleToggleBB(bbConfig.id)}
+                                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
+                              />
+                              <h4 className="text-md font-medium text-white">{bbConfig.name}</h4>
+                            </div>
+                          </div>
+
+                          {/* Basic Settings */}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                            {/* Period */}
+                            <div>
+                              <label className="block text-sm text-gray-400 mb-2">Length</label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="200"
+                                value={bbConfig.period}
+                                onChange={(e) => handlePeriodChangeBB(bbConfig.id, parseInt(e.target.value) || 20)}
+                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                              />
+                            </div>
+
+                            {/* Standard Deviation */}
+                            <div>
+                              <label className="block text-sm text-gray-400 mb-2">Multiplier</label>
+                              <input
+                                type="number"
+                                min="0.1"
+                                max="5"
+                                step="0.1"
+                                value={bbConfig.stdDev}
+                                onChange={(e) => handleStdDevChangeBB(bbConfig.id, parseFloat(e.target.value) || 2)}
+                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Background Settings */}
+                          <div className="border-t border-gray-700 pt-4 mb-6">
+                            <div className="flex items-center justify-between mb-4">
+                              <h5 className="text-sm font-medium text-gray-300">Background</h5>
+                              <input
+                                type="checkbox"
+                                checked={bbConfig.background.show}
+                                onChange={(e) => handleToggleBackgroundBB(bbConfig.id, e.target.checked)}
+                                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
+                              />
+                            </div>
+                            
+                            {bbConfig.background.show && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-sm text-gray-400 mb-2">Background Color</label>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="color"
+                                      value={bbConfig.background.color}
+                                      onChange={(e) => {
+                                        const bbConfig = bbConfigs.find(bb => bb.id === bbConfig.id);
+                                        if (bbConfig) {
+                                          onUpdateBB(bbConfig.id, { 
+                                            background: { 
+                                              ...bbConfig.background, 
+                                              color: e.target.value 
+                                            }
+                                          });
+                                        }
+                                      }}
+                                      className="w-10 h-10 rounded border border-gray-600 cursor-pointer bg-transparent"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={bbConfig.background.color}
+                                      onChange={(e) => {
+                                        const bbConfig = bbConfigs.find(bb => bb.id === bbConfig.id);
+                                        if (bbConfig) {
+                                          onUpdateBB(bbConfig.id, { 
+                                            background: { 
+                                              ...bbConfig.background, 
+                                              color: e.target.value 
+                                            }
+                                          });
+                                        }
+                                      }}
+                                      className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500 font-mono text-xs"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Line Settings */}
+                          <div className="space-y-4">
+                            {/* UP Line Settings */}
+                            <div className="border border-gray-700 rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <h5 className="text-sm font-medium text-gray-300">UP Line</h5>
                                 <input
                                   type="checkbox"
-                                  checked={bbConfig.show}
-                                  onChange={() => handleToggleBB(bbConfig.id)}
+                                  checked={bbConfig.upLine.show}
+                                  onChange={(e) => handleToggleUpLineBB(bbConfig.id, e.target.checked)}
                                   className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
                                 />
-                              </td>
+                              </div>
                               
-                              <td className="py-3 px-4">
-                                <span className="text-white font-medium">{bbConfig.name}</span>
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="200"
-                                  value={bbConfig.period}
-                                  onChange={(e) => handlePeriodChangeBB(bbConfig.id, parseInt(e.target.value) || 20)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="0.1"
-                                  max="5"
-                                  step="0.1"
-                                  value={bbConfig.stdDev}
-                                  onChange={(e) => handleStdDevChangeBB(bbConfig.id, parseFloat(e.target.value) || 2)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="0.5"
-                                  max="5"
-                                  step="0.5"
-                                  value={bbConfig.lineSize}
-                                  onChange={(e) => handleLineSizeChangeBB(bbConfig.id, parseFloat(e.target.value) || 1.5)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="color"
-                                    value={bbConfig.color}
-                                    onChange={(e) => handleColorChangeBB(bbConfig.id, e.target.value)}
-                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
-                                  />
-                                  <span className="text-xs text-gray-400 font-mono">
-                                    {bbConfig.color}
-                                  </span>
+                              {bbConfig.upLine.show && (
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-xs text-gray-400 mb-1">Line Width</label>
+                                    <input
+                                      type="number"
+                                      min="0.5"
+                                      max="5"
+                                      step="0.5"
+                                      value={bbConfig.upLine.lineWidth}
+                                      onChange={(e) => handleUpLineWidthChangeBB(bbConfig.id, parseFloat(e.target.value) || 1.5)}
+                                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-400 mb-1">Color</label>
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="color"
+                                        value={bbConfig.upLine.color}
+                                        onChange={(e) => handleUpLineColorChangeBB(bbConfig.id, e.target.value)}
+                                        className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={bbConfig.upLine.color}
+                                        onChange={(e) => handleUpLineColorChangeBB(bbConfig.id, e.target.value)}
+                                        className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500 font-mono text-xs"
+                                      />
+                                    </div>
+                                  </div>
                                 </div>
-                              </td>
+                              )}
+                            </div>
 
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="color"
-                                    value={bbConfig.bandColor}
-                                    onChange={(e) => handleBandColorChangeBB(bbConfig.id, e.target.value)}
-                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
-                                  />
-                                  <span className="text-xs text-gray-400 font-mono">
-                                    {bbConfig.bandColor}
-                                  </span>
+                            {/* Middle Line Settings */}
+                            <div className="border border-gray-700 rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <h5 className="text-sm font-medium text-gray-300">MB Line</h5>
+                                <input
+                                  type="checkbox"
+                                  checked={bbConfig.middleLine.show}
+                                  onChange={(e) => handleToggleMiddleLineBB(bbConfig.id, e.target.checked)}
+                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
+                                />
+                              </div>
+                              
+                              {bbConfig.middleLine.show && (
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-xs text-gray-400 mb-1">Line Width</label>
+                                    <input
+                                      type="number"
+                                      min="0.5"
+                                      max="5"
+                                      step="0.5"
+                                      value={bbConfig.middleLine.lineWidth}
+                                      onChange={(e) => handleMiddleLineWidthChangeBB(bbConfig.id, parseFloat(e.target.value) || 1.5)}
+                                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-400 mb-1">Color</label>
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="color"
+                                        value={bbConfig.middleLine.color}
+                                        onChange={(e) => handleMiddleLineColorChangeBB(bbConfig.id, e.target.value)}
+                                        className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={bbConfig.middleLine.color}
+                                        onChange={(e) => handleMiddleLineColorChangeBB(bbConfig.id, e.target.value)}
+                                        className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500 font-mono text-xs"
+                                      />
+                                    </div>
+                                  </div>
                                 </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                              )}
+                            </div>
+
+                            {/* Down Line Settings */}
+                            <div className="border border-gray-700 rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <h5 className="text-sm font-medium text-gray-300">DN Line</h5>
+                                <input
+                                  type="checkbox"
+                                  checked={bbConfig.downLine.show}
+                                  onChange={(e) => handleToggleDownLineBB(bbConfig.id, e.target.checked)}
+                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
+                                />
+                              </div>
+                              
+                              {bbConfig.downLine.show && (
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-xs text-gray-400 mb-1">Line Width</label>
+                                    <input
+                                      type="number"
+                                      min="0.5"
+                                      max="5"
+                                      step="0.5"
+                                      value={bbConfig.downLine.lineWidth}
+                                      onChange={(e) => handleDownLineWidthChangeBB(bbConfig.id, parseFloat(e.target.value) || 1.5)}
+                                      className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs text-gray-400 mb-1">Color</label>
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="color"
+                                        value={bbConfig.downLine.color}
+                                        onChange={(e) => handleDownLineColorChangeBB(bbConfig.id, e.target.value)}
+                                        className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
+                                      />
+                                      <input
+                                        type="text"
+                                        value={bbConfig.downLine.color}
+                                        onChange={(e) => handleDownLineColorChangeBB(bbConfig.id, e.target.value)}
+                                        className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500 font-mono text-xs"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
