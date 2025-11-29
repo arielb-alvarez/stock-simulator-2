@@ -7,7 +7,7 @@ import {
   KLineData,
   registerIndicator,
 } from 'klinecharts';
-import { useGlobalContext, RSIConfig, VolumeConfig, MAConfig, BBConfig } from '@/context/GlobalContext';
+import { useGlobalContext, RSIConfig, VolumeConfig, MAConfig, BBConfig, VWAPConfig } from '@/context/GlobalContext';
 import { cryptoService, CryptoData } from '@/services/cryptoService';
 import DrawingTools from './DrawingTools';
 
@@ -34,14 +34,16 @@ const registerCustomMAIndicator = (maConfigs: MAConfig[]) => {
     .map(ma => ma.period)
     .sort((a, b) => a - b);
 
-  if (enabledPeriods.length === 0) return 'CUSTOM_MA';
+  if (enabledPeriods.length === 0) return null;
 
-  const indicatorName = 'CUSTOM_MA';
+  const uniqueName = `CUSTOM_MA_${enabledPeriods.join('_')}`;
   
-  try {
-    // Force re-registration by using a unique name based on periods
-    const uniqueName = `CUSTOM_MA_${enabledPeriods.join('_')}`;
-    
+  // Check if already registered
+  if (registeredIndicators.has(uniqueName)) {
+    return uniqueName;
+  }
+  
+  try {    
     registerIndicator({
       name: uniqueName,
       shortName: 'MA',
@@ -100,13 +102,16 @@ const registerCustomEMAIndicator = (emaConfigs: MAConfig[]) => {
     .map(ema => ema.period)
     .sort((a, b) => a - b);
 
-  if (enabledPeriods.length === 0) return 'CUSTOM_EMA';
+  if (enabledPeriods.length === 0) return null;
 
-  const indicatorName = 'CUSTOM_EMA';
+  const uniqueName = `CUSTOM_EMA_${enabledPeriods.join('_')}`;
   
-  try {
-    const uniqueName = `CUSTOM_EMA_${enabledPeriods.join('_')}`;
-    
+  // Check if already registered
+  if (registeredIndicators.has(uniqueName)) {
+    return uniqueName;
+  }
+  
+  try {    
     registerIndicator({
       name: uniqueName,
       shortName: 'EMA',
@@ -171,13 +176,16 @@ const registerCustomWMAIndicator = (wmaConfigs: MAConfig[]) => {
     .map(wma => wma.period)
     .sort((a, b) => a - b);
 
-  if (enabledPeriods.length === 0) return 'CUSTOM_WMA';
+  if (enabledPeriods.length === 0) return null;
 
-  const indicatorName = 'CUSTOM_WMA';
+  const uniqueName = `CUSTOM_WMA_${enabledPeriods.join('_')}`;
   
-  try {
-    const uniqueName = `CUSTOM_WMA_${enabledPeriods.join('_')}`;
-    
+  // Check if already registered
+  if (registeredIndicators.has(uniqueName)) {
+    return uniqueName;
+  }
+  
+  try {    
     registerIndicator({
       name: uniqueName,
       shortName: 'WMA',
@@ -240,7 +248,13 @@ const registerCustomWMAIndicator = (wmaConfigs: MAConfig[]) => {
 };
 
 // Get current indicator names based on config
-const getCurrentIndicatorNames = (maConfigs: MAConfig[], emaConfigs: MAConfig[], wmaConfigs: MAConfig[], bbConfigs: BBConfig[]) => {
+const getCurrentIndicatorNames = (
+  maConfigs: MAConfig[], 
+  emaConfigs: MAConfig[], 
+  wmaConfigs: MAConfig[], 
+  bbConfigs: BBConfig[],
+  vwapConfigs: VWAPConfig[]
+) => {
   const maPeriods = maConfigs.filter(ma => ma.show).map(ma => ma.period).sort((a, b) => a - b);
   const emaPeriods = emaConfigs.filter(ema => ema.show).map(ema => ema.period).sort((a, b) => a - b);
   const wmaPeriods = wmaConfigs.filter(wma => wma.show).map(wma => wma.period).sort((a, b) => a - b);
@@ -248,12 +262,17 @@ const getCurrentIndicatorNames = (maConfigs: MAConfig[], emaConfigs: MAConfig[],
     .filter(bb => bb.show)
     .map(bb => `${bb.period}_${bb.stdDev}`)
     .sort();
+  const vwapConfigIds = vwapConfigs
+    .filter(vwap => vwap.show)
+    .map(vwap => vwap.id)
+    .sort();
 
   return {
     ma: maPeriods.length > 0 ? `CUSTOM_MA_${maPeriods.join('_')}` : null,
     ema: emaPeriods.length > 0 ? `CUSTOM_EMA_${emaPeriods.join('_')}` : null,
     wma: wmaPeriods.length > 0 ? `CUSTOM_WMA_${wmaPeriods.join('_')}` : null,
     bb: bbConfigParams.length > 0 ? `CUSTOM_BB_${bbConfigParams.join('_')}` : null,
+    vwap: vwapConfigIds.length > 0 ? `CUSTOM_VWAP_${vwapConfigIds.join('_')}` : null,
   };
 };
 
@@ -418,13 +437,16 @@ const registerCustomBBIndicator = (bbConfigs: BBConfig[]) => {
     .filter(bb => bb.show)
     .sort((a, b) => a.period - b.period);
 
-  if (enabledConfigs.length === 0) return 'CUSTOM_BB';
+  if (enabledConfigs.length === 0) return null;
 
-  const indicatorName = 'CUSTOM_BB';
+  const uniqueName = `CUSTOM_BB_${enabledConfigs.join('_')}`;
   
-  try {
-    const uniqueName = `CUSTOM_BB_${enabledConfigs.map(bb => `${bb.period}_${bb.stdDev}`).join('_')}`;
-    
+  // Check if already registered
+  if (registeredIndicators.has(uniqueName)) {
+    return uniqueName;
+  }
+  
+  try {    
     registerIndicator({
       name: uniqueName,
       shortName: 'BB',
@@ -519,6 +541,138 @@ const registerCustomBBIndicator = (bbConfigs: BBConfig[]) => {
   }
 };
 
+// Register Custom VWAP Indicator
+const registerCustomVWAPIndicator = (vwapConfigs: VWAPConfig[]) => {
+  const enabledConfigs = vwapConfigs.filter(vwap => vwap.show);
+
+  if (enabledConfigs.length === 0) return null;
+
+  try {
+    const uniqueName = `CUSTOM_VWAP_${enabledConfigs.map(vwap => `${vwap.id}_${vwap.length}`).join('_')}`;
+    
+    // Check if already registered to avoid duplicates
+    if (registeredIndicators.has(uniqueName)) {
+      return uniqueName;
+    }
+
+    registerIndicator({
+      name: uniqueName,
+      shortName: 'VWAP',
+      calcParams: enabledConfigs.map(config => config.length),
+      figures: enabledConfigs.map((vwapConfig, index) => ({
+        key: `vwap${index}`,
+        title: `VWAP${vwapConfig.length > 0 ? ` (${vwapConfig.length})` : ''}: `,
+        type: 'line',
+        styles: () => ({
+          color: vwapConfig.color,
+          size: vwapConfig.lineSize,
+        })
+      })),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        
+        if (!dataList || dataList.length === 0) {
+          return result;
+        }
+
+        // Pre-calculate typical prices for performance
+        const typicalPrices = dataList.map(data => 
+          (data.high + data.low + data.close) / 3
+        );
+
+        // Initialize cumulative arrays for each config
+        const cumulativeVolumes = new Array(enabledConfigs.length).fill(0);
+        const cumulativeVolumePrices = new Array(enabledConfigs.length).fill(0);
+        const sessionStarts = new Array(enabledConfigs.length).fill('');
+        
+        for (let i = 0; i < dataList.length; i++) {
+          const currentData = dataList[i];
+          const typicalPrice = typicalPrices[i];
+          const volume = currentData.volume || 0;
+          const volumePrice = typicalPrice * volume;
+          
+          const item: any = {};
+          
+          enabledConfigs.forEach((config, configIndex) => {
+            const length = calcParams[configIndex];
+            
+            if (length === 0) {
+              // Session-based VWAP (resets at UTC midnight)
+              const timestamp = currentData.timestamp;
+              const date = new Date(timestamp);
+              const sessionKey = `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}-${date.getUTCDate()}`;
+              
+              // Reset cumulative values if session changed
+              if (sessionKey !== sessionStarts[configIndex]) {
+                cumulativeVolumes[configIndex] = 0;
+                cumulativeVolumePrices[configIndex] = 0;
+                sessionStarts[configIndex] = sessionKey;
+              }
+              
+              cumulativeVolumes[configIndex] += volume;
+              cumulativeVolumePrices[configIndex] += volumePrice;
+              
+              const vwap = cumulativeVolumes[configIndex] > 0 
+                ? cumulativeVolumePrices[configIndex] / cumulativeVolumes[configIndex] 
+                : typicalPrice;
+              
+              item[`vwap${configIndex}`] = vwap;
+            } else {
+              // Rolling VWAP with specified length
+              if (i >= length - 1) {
+                let cumulativeVolume = 0;
+                let cumulativeVolumePrice = 0;
+                
+                for (let j = 0; j < length; j++) {
+                  const dataIndex = i - j;
+                  const typicalPrice = typicalPrices[dataIndex];
+                  const volume = dataList[dataIndex].volume || 0;
+                  const volumePrice = typicalPrice * volume;
+                  
+                  cumulativeVolume += volume;
+                  cumulativeVolumePrice += volumePrice;
+                }
+                
+                item[`vwap${configIndex}`] = cumulativeVolume > 0 
+                  ? cumulativeVolumePrice / cumulativeVolume 
+                  : typicalPrice;
+              } else {
+                // Not enough data for rolling VWAP, use all available data
+                let cumulativeVolume = 0;
+                let cumulativeVolumePrice = 0;
+                
+                for (let j = 0; j <= i; j++) {
+                  const typicalPrice = typicalPrices[j];
+                  const volume = dataList[j].volume || 0;
+                  const volumePrice = typicalPrice * volume;
+                  
+                  cumulativeVolume += volume;
+                  cumulativeVolumePrice += volumePrice;
+                }
+                
+                item[`vwap${configIndex}`] = cumulativeVolume > 0 
+                  ? cumulativeVolumePrice / cumulativeVolume 
+                  : typicalPrice;
+              }
+            }
+          });
+          
+          result.push(item);
+        }
+        
+        return result;
+      },
+    });
+
+    registeredIndicators.add(uniqueName);
+    console.log(`✅ Registered VWAP indicator: ${uniqueName}`);
+    return uniqueName;
+  } catch (error) {
+    console.error('❌ Error registering custom VWAP indicator:', error);
+    return null;
+  }
+};
+
 // Helper function to get active tool from localStorage
 const getStoredActiveTool = (): string => {
   if (typeof window === 'undefined') return '';
@@ -553,6 +707,7 @@ export default function MainChart() {
     toggleEMA,
     toggleWMA,
     toggleBB,
+    toggleVWAP
   } = useGlobalContext();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -560,7 +715,7 @@ export default function MainChart() {
   const [activeDrawingTool, setActiveDrawingTool] = useState<string>(() => getStoredActiveTool());
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
-  const [chartKey, setChartKey] = useState(0); // Add key to force re-render
+  const [chartKey, setChartKey] = useState(0);
 
   // Force chart refresh when MA configurations change
   const forceChartRefresh = useCallback(() => {
@@ -578,17 +733,14 @@ export default function MainChart() {
       if (!mounted) return;
       
       try {
-        // Register custom MA indicator with multiple periods
+        console.log('🔄 Registering all custom indicators...');
+        
+        // Register all custom indicators
         registerCustomMAIndicator(config.indicators.ma);
-        
-        // Register custom EMA indicator with multiple periods
         registerCustomEMAIndicator(config.indicators.ema);
-        
-        // Register custom WMA indicator with multiple periods
         registerCustomWMAIndicator(config.indicators.wma);
-
-        // Register custom Bollinger Bands indicator
         registerCustomBBIndicator(config.indicators.bb);
+        registerCustomVWAPIndicator(config.indicators.vwap);
         
         // Register RSI indicators
         if ((window as any).__registeredRSIIndicators) {
@@ -605,13 +757,6 @@ export default function MainChart() {
 
         // Register volume indicators
         if ((window as any).__registeredVolumeIndicators) {
-          (window as any).__registeredVolumeIndicators.forEach((indicatorName: string) => {
-            try {
-              // Clean up previous volume indicators
-            } catch (error) {
-              // Ignore errors
-            }
-          });
           (window as any).__registeredVolumeIndicators = [];
         }
         
@@ -622,8 +767,10 @@ export default function MainChart() {
           }
           (window as any).__registeredVolumeIndicators.push(indicatorName);
         });
+
+        console.log('✅ All indicators registered successfully');
       } catch (error) {
-        console.error('Error registering indicators:', error);
+        console.error('❌ Error registering indicators:', error);
       }
     };
 
@@ -637,8 +784,9 @@ export default function MainChart() {
     config.indicators.volume, 
     config.indicators.ma, 
     config.indicators.ema, 
-    config.indicators.wma,
-    config.indicators.bb
+    config.indicators.wma, 
+    config.indicators.bb,
+    config.indicators.vwap
   ]);
 
   // Save active tool to localStorage whenever it changes
@@ -692,6 +840,12 @@ export default function MainChart() {
       toggleBB(bbId);
       return;
     }
+
+    if (tool.startsWith('vwap-toggle-')) {
+      const vwapId = tool.replace('vwap-toggle-', '');
+      toggleVWAP(vwapId);
+      return;
+    }
     
     if (chartRef.current) {
       try {
@@ -722,7 +876,7 @@ export default function MainChart() {
         console.warn('Error creating overlay:', error);
       }
     }
-  }, [toggleRSI, toggleVolume, toggleMA, toggleEMA, toggleWMA, toggleBB]);
+  }, [toggleRSI, toggleVolume, toggleMA, toggleEMA, toggleWMA, toggleBB, toggleVWAP]);
 
   // Setup RSI indicators on chart
   const setupRSIIndicators = useCallback((chart: any) => {
@@ -861,32 +1015,30 @@ export default function MainChart() {
     }
 
     try {
-      // Get current indicator names based on enabled periods
-      const indicatorNames = getCurrentIndicatorNames(
-        config.indicators.ma,
-        config.indicators.ema,
-        config.indicators.wma,
-        config.indicators.bb
-      );
+      // Register indicators first and get their unique names
+      const maUniqueName = registerCustomMAIndicator(config.indicators.ma);
+      const emaUniqueName = registerCustomEMAIndicator(config.indicators.ema);
+      const wmaUniqueName = registerCustomWMAIndicator(config.indicators.wma);
+      const bbUniqueName = registerCustomBBIndicator(config.indicators.bb);
+      const vwapUniqueName = registerCustomVWAPIndicator(config.indicators.vwap);
 
       // Remove all existing moving average overlays first
       const allOverlayNames = [
-        ...(indicatorNames.ma ? [indicatorNames.ma] : []),
-        ...(indicatorNames.ema ? [indicatorNames.ema] : []),
-        ...(indicatorNames.wma ? [indicatorNames.wma] : []),
-        ...(indicatorNames.bb ? [indicatorNames.bb] : []),
-        'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA' // Remove old names too
-      ];
+        maUniqueName, emaUniqueName, wmaUniqueName, bbUniqueName, vwapUniqueName,
+        'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA', 'CUSTOM_BB', 'CUSTOM_VWAP'
+      ].filter(Boolean); // Remove null values
       
       console.log('Setting up moving average overlays, removing:', allOverlayNames);
       
       // Clean up existing overlays
       allOverlayNames.forEach(indicatorName => {
         try {
-          chart.removeIndicator(indicatorName);
-          console.log(`Removed overlay: ${indicatorName}`);
+          if (indicatorName) {
+            chart.removeIndicator(indicatorName);
+            console.log(`Removed overlay: ${indicatorName}`);
+          }
         } catch (e) {
-          // Ignore removal errors
+          // Ignore removal errors - indicator might not exist
         }
       });
 
@@ -895,11 +1047,12 @@ export default function MainChart() {
       const enabledEMA = config.indicators.ema.filter(ema => ema.show);
       const enabledWMA = config.indicators.wma.filter(wma => wma.show);
       const enabledBB = config.indicators.bb.filter(bb => bb.show);
+      const enabledVWAP = config.indicators.vwap.filter(vwap => vwap.show);
 
-      // Create MA overlay if any MA is enabled
-      if (enabledMA.length > 0 && indicatorNames.ma) {
+      // Create overlays for enabled indicators
+      if (enabledMA.length > 0 && maUniqueName) {
         try {
-          chart.createIndicator(indicatorNames.ma, true, { 
+          chart.createIndicator(maUniqueName, true, { 
             id: "candle_pane"
           });
           console.log(`Created MA overlay with periods:`, enabledMA.map(ma => ma.period));
@@ -908,10 +1061,9 @@ export default function MainChart() {
         }
       }
 
-      // Create EMA overlay if any EMA is enabled
-      if (enabledEMA.length > 0 && indicatorNames.ema) {
+      if (enabledEMA.length > 0 && emaUniqueName) {
         try {
-          chart.createIndicator(indicatorNames.ema, true, { 
+          chart.createIndicator(emaUniqueName, true, { 
             id: "candle_pane"
           });
           console.log(`Created EMA overlay with periods:`, enabledEMA.map(ema => ema.period));
@@ -920,10 +1072,9 @@ export default function MainChart() {
         }
       }
 
-      // Create WMA overlay if any WMA is enabled
-      if (enabledWMA.length > 0 && indicatorNames.wma) {
+      if (enabledWMA.length > 0 && wmaUniqueName) {
         try {
-          chart.createIndicator(indicatorNames.wma, true, { 
+          chart.createIndicator(wmaUniqueName, true, { 
             id: "candle_pane"
           });
           console.log(`Created WMA overlay with periods:`, enabledWMA.map(wma => wma.period));
@@ -932,25 +1083,36 @@ export default function MainChart() {
         }
       }
 
-      if (enabledBB.length > 0 && indicatorNames.bb) {
-      try {
-        chart.createIndicator(indicatorNames.bb, true, { 
-          id: "candle_pane"
-        });
-        console.log(`Created BB overlay with periods:`, enabledBB.map(bb => bb.period));
-      } catch (createError) {
-        console.error('Failed to create BB overlay:', createError);
+      if (enabledBB.length > 0 && bbUniqueName) {
+        try {
+          chart.createIndicator(bbUniqueName, true, { 
+            id: "candle_pane"
+          });
+          console.log(`Created BB overlay with periods:`, enabledBB.map(bb => bb.period));
+        } catch (createError) {
+          console.error('Failed to create BB overlay:', createError);
+        }
       }
-    }
 
-      const totalOverlays = [enabledMA, enabledEMA, enabledWMA, enabledBB]
+      if (enabledVWAP.length > 0 && vwapUniqueName) {
+        try {
+          chart.createIndicator(vwapUniqueName, true, { 
+            id: "candle_pane"
+          });
+          console.log(`Created VWAP overlay with lengths:`, enabledVWAP.map(vwap => vwap.length));
+        } catch (createError) {
+          console.error('Failed to create VWAP overlay:', createError);
+        }
+      }
+
+      const totalOverlays = [enabledMA, enabledEMA, enabledWMA, enabledBB, enabledVWAP]
         .filter(arr => arr.length > 0).length;
       console.log(`Created ${totalOverlays} moving average overlays in candle pane`);
 
     } catch (error) {
       console.error('Critical error in moving average overlay setup:', error);
     }
-  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, config.indicators.bb]);
+  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, config.indicators.bb, config.indicators.vwap]);
 
   // Apply chart styles from global config
   const applyChartStyles = useCallback((chart: any) => {
@@ -1222,7 +1384,14 @@ export default function MainChart() {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, config.indicators.bb, forceChartRefresh]);
+  }, [
+    config.indicators.ma, 
+    config.indicators.ema, 
+    config.indicators.wma, 
+    config.indicators.bb, 
+    config.indicators.vwap, 
+    forceChartRefresh
+  ]);
 
   // Effect for RSI indicator changes
   useEffect(() => {

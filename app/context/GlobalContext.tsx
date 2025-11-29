@@ -61,6 +61,15 @@ export interface BBConfig {
   name: string;
 }
 
+export interface VWAPConfig {
+  id: string;
+  show: boolean;
+  color: string;
+  lineSize: number;
+  type: 'vwap';
+  length: number;
+}
+
 // Chart Style Configuration
 interface ChartStyleConfig {
   layout: {
@@ -127,6 +136,7 @@ interface GlobalConfig {
     ema: MAConfig[];
     wma: MAConfig[];
     bb: BBConfig[];
+    vwap: VWAPConfig[];
   };
 }
 
@@ -147,6 +157,8 @@ interface GlobalContextType {
   toggleWMA: (id: string) => void;
   updateBB: (id: string, updates: Partial<BBConfig>) => void;
   toggleBB: (id: string) => void;
+  updateVWAP: (id: string, updates: Partial<VWAPConfig>) => void;
+  toggleVWAP: (id: string) => void;
   updateChartStyle: (updates: Partial<ChartStyleConfig>) => void;
   updateChartType: (chartType: ChartType) => void;
   resetToDefaults: () => void;
@@ -359,6 +371,26 @@ const createDefaultBBs = (): BBConfig[] => [
   }
 ];
 
+// Create default VWAP configurations
+const createDefaultVWAPs = (): VWAPConfig[] => [
+  {
+    id: 'vwap-1',
+    show: false,
+    color: '#FF9800',
+    lineSize: 1.5,
+    type: 'vwap',
+    length: 0, // 0 means entire session, or specify period for rolling VWAP
+  },
+  {
+    id: 'vwap-2',
+    show: false,
+    color: '#2196F3',
+    lineSize: 1.5,
+    type: 'vwap',
+    length: 50, // Rolling VWAP with 50-period lookback
+  }
+];
+
 
 const defaultConfig: GlobalConfig = {
   chartType: 'candle',
@@ -374,6 +406,7 @@ const defaultConfig: GlobalConfig = {
     ema: createDefaultMAs('ema'),
     wma: createDefaultMAs('wma'),
     bb: createDefaultBBs(),
+    vwap: createDefaultVWAPs(),
   },
 };
 
@@ -706,6 +739,30 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const updateVWAP = useCallback((id: string, updates: Partial<VWAPConfig>) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        vwap: prev.indicators.vwap.map(vwap => 
+          vwap.id === id ? { ...vwap, ...updates } : vwap
+        ),
+      },
+    }));
+  }, []);
+
+  const toggleVWAP = useCallback((id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        vwap: prev.indicators.vwap.map(vwap => 
+          vwap.id === id ? { ...vwap, show: !vwap.show } : vwap
+        ),
+      },
+    }));
+  }, []);
+
   const updateChartStyle = useCallback((updates: Partial<ChartStyleConfig>) => {
     setConfig(prev => ({
       ...prev,
@@ -835,6 +892,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       toggleWMA,
       updateBB,
       toggleBB,
+      updateVWAP,
+      toggleVWAP,
       updateChartStyle,
       updateChartType,
       resetToDefaults,

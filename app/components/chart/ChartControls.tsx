@@ -1,5 +1,5 @@
 'use client';
-import { useGlobalContext, ChartType, RSIConfig, VolumeConfig, VolumeMAConfig, MAConfig, BBConfig } from '@/context/GlobalContext';
+import { useGlobalContext, ChartType, RSIConfig, VolumeConfig, VolumeMAConfig, MAConfig, BBConfig, VWAPConfig } from '@/context/GlobalContext';
 import { useState, useRef, useEffect } from 'react';
 import { CandleIcon, LineIcon, AreaIcon, BarIcon, ChevronDown, EditIcon, IndicatorsIcon } from './ChartIcons';
 
@@ -32,6 +32,7 @@ interface IndicatorsDialogProps {
   emaConfigs: MAConfig[];
   wmaConfigs: MAConfig[];
   bbConfigs: BBConfig[];
+  vwapConfigs: VWAPConfig[];
   onUpdateRSI: (id: string, updates: Partial<RSIConfig>) => void;
   onToggleRSI: (id: string) => void;
   onUpdateVolume: (id: string, updates: Partial<VolumeConfig>) => void;
@@ -46,6 +47,8 @@ interface IndicatorsDialogProps {
   onToggleWMA: (id: string) => void;
   onUpdateBB: (id: string, updates: Partial<BBConfig>) => void;
   onToggleBB: (id: string) => void;
+  onUpdateVWAP: (id: string, updates: Partial<VWAPConfig>) => void;
+  onToggleVWAP: (id: string) => void;
 }
 
 const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
@@ -57,6 +60,7 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   emaConfigs,
   wmaConfigs,
   bbConfigs,
+  vwapConfigs,
   onUpdateRSI,
   onToggleRSI,
   onUpdateVolume,
@@ -71,6 +75,8 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   onToggleWMA,
   onUpdateBB,
   onToggleBB,
+  onUpdateVWAP,
+  onToggleVWAP,
 }) => {
   const [activeTab, setActiveTab] = useState<'main' | 'sub'>('main');
   const [activeSubMenu, setActiveSubMenu] = useState<string>('ma');
@@ -125,7 +131,7 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   };
 
   
-  // Add MA configuration handlers
+  // MA configuration handlers
   const handleToggleMA = (maId: string) => {
     onToggleMA(maId);
   };
@@ -142,7 +148,7 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     onUpdateMA(maId, { color });
   };
 
-  // Add EMA configuration handlers (similar to MA)
+  // EMA configuration handlers (similar to MA)
   const handleToggleEMA = (emaId: string) => {
     onToggleEMA(emaId);
   };
@@ -159,7 +165,7 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     onUpdateEMA(emaId, { color });
   };
 
-  // Add WMA configuration handlers (similar to MA)
+  // WMA configuration handlers (similar to MA)
   const handleToggleWMA = (wmaId: string) => {
     onToggleWMA(wmaId);
   };
@@ -176,7 +182,7 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     onUpdateWMA(wmaId, { color });
   };
 
-  // Add BB configuration handlers
+  // BB configuration handlers
   const handleToggleBB = (bbId: string) => {
     onToggleBB(bbId);
   };
@@ -199,6 +205,23 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
 
   const handleBandColorChangeBB = (bbId: string, bandColor: string) => {
     onUpdateBB(bbId, { bandColor });
+  };
+
+  // VWAP configuration handlers
+  const handleToggleVWAP = (vwapId: string) => {
+    onToggleVWAP(vwapId);
+  };
+
+  const handleLengthChangeVWAP = (vwapId: string, length: number) => {
+    onUpdateVWAP(vwapId, { length: Math.max(0, length) });
+  };
+
+  const handleLineSizeChangeVWAP = (vwapId: string, lineSize: number) => {
+    onUpdateVWAP(vwapId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleColorChangeVWAP = (vwapId: string, color: string) => {
+    onUpdateVWAP(vwapId, { color });
   };
 
   return (
@@ -289,12 +312,23 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                     >
                       Bollinger Bands
                     </button>
+                    <button
+                      onClick={() => setActiveSubMenu('vwap')}
+                      className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
+                        activeSubMenu === 'vwap'
+                          ? 'bg-yellow-500/20 text-yellow-400'
+                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                      }`}
+                    >
+                      VWAP
+                    </button>
                   </nav>
                 </div>
               </div>
 
               {/* Content Area for Main Indicators */}
               <div className="flex-1 p-6 overflow-y-auto">
+                {/* MA Configuration Section */}
                 {activeSubMenu === 'ma' && (
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
@@ -389,6 +423,7 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                   </div>
                 )}
 
+                {/* EMA Configuration Section */}
                 {activeSubMenu === 'ema' && (
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
@@ -466,6 +501,7 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                   </div>
                 )}
 
+                {/* WMA Configuration Section */}
                 {activeSubMenu === 'wma' && (
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
@@ -666,6 +702,151 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* VWAP Configuration Section */}
+                {activeSubMenu === 'vwap' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-gray-200">Volume Weighted Average Price (VWAP)</h3>
+                      <div className="text-sm text-gray-400">
+                        {vwapConfigs.filter(vwap => vwap.show).length} of {vwapConfigs.length} active
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-700/50 rounded-lg p-4 mb-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
+                        <div>
+                          <h4 className="font-medium text-yellow-400 mb-2">Session VWAP (Length: 0)</h4>
+                          <p className="text-xs">
+                            Calculates VWAP from the start of the trading session (resets at midnight UTC).
+                            Uses all available data in the current session.
+                          </p>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-yellow-400 mb-2">Rolling VWAP (Length: &gt; 0)</h4>
+                          <p className="text-xs">
+                            Calculates VWAP over a specific number of periods.
+                            Uses a rolling window of the specified length.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* VWAP Configuration Table */}
+                    <div className="bg-gray-750 rounded-lg border border-gray-700 overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-gray-700">
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-16">
+                              Show
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">
+                              Type
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
+                              Length
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
+                              Line Width
+                            </th>
+                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">
+                              Color
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {vwapConfigs.map((vwapConfig) => (
+                            <tr 
+                              key={vwapConfig.id} 
+                              className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors"
+                            >
+                              <td className="py-3 px-4">
+                                <input
+                                  type="checkbox"
+                                  checked={vwapConfig.show}
+                                  onChange={() => handleToggleVWAP(vwapConfig.id)}
+                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
+                                />
+                              </td>
+                              
+                              <td className="py-3 px-4">
+                                <span className="text-white font-medium">
+                                  {vwapConfig.length === 0 ? 'Session VWAP' : 'Rolling VWAP'}
+                                </span>
+                              </td>
+                              
+                              <td className="py-3 px-4">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="1000"
+                                  value={vwapConfig.length}
+                                  onChange={(e) => handleLengthChangeVWAP(vwapConfig.id, parseInt(e.target.value) || 0)}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                  title="0 for session-based, or set period count for rolling VWAP"
+                                />
+                                <div className="text-xs text-gray-400 mt-1">
+                                  {vwapConfig.length === 0 ? 'Session' : `${vwapConfig.length} periods`}
+                                </div>
+                              </td>
+                              
+                              <td className="py-3 px-4">
+                                <input
+                                  type="number"
+                                  min="0.5"
+                                  max="5"
+                                  step="0.5"
+                                  value={vwapConfig.lineSize}
+                                  onChange={(e) => handleLineSizeChangeVWAP(vwapConfig.id, parseFloat(e.target.value) || 1.5)}
+                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                                />
+                              </td>
+                              
+                              <td className="py-3 px-4">
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    type="color"
+                                    value={vwapConfig.color}
+                                    onChange={(e) => handleColorChangeVWAP(vwapConfig.id, e.target.value)}
+                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
+                                  />
+                                  <span className="text-xs text-gray-400 font-mono">
+                                    {vwapConfig.color}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* VWAP Legend */}
+                    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                      <h4 className="text-sm font-medium text-gray-300 mb-2">VWAP Calculation Methods</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-400">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span className="font-medium">Session VWAP (Length = 0)</span>
+                          </div>
+                          <p>VWAP = Σ(Price × Volume) / Σ(Volume) for current trading session</p>
+                          <p className="mt-1">• Resets at midnight UTC</p>
+                          <p>• Uses typical price: (High + Low + Close) / 3</p>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                            <span className="font-medium">Rolling VWAP (Length &gt; 0)</span>
+                          </div>
+                          <p>VWAP = Σ(Price × Volume) / Σ(Volume) for last N periods</p>
+                          <p className="mt-1">• Continuous calculation</p>
+                          <p>• Uses rolling window of specified length</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1016,6 +1197,8 @@ export default function ChartControls() {
     toggleWMA,
     updateBB,
     toggleBB,
+    updateVWAP,
+    toggleVWAP,
   } = useGlobalContext();
   const [isChartTypeOpen, setIsChartTypeOpen] = useState(false);
   const [isTimeFrameOpen, setIsTimeFrameOpen] = useState(false);
@@ -1125,7 +1308,6 @@ export default function ChartControls() {
     toggleVolumeMA(volumeId, maId);
   };
 
-  // Add the new handler functions
   const handleUpdateMA = (id: string, updates: Partial<MAConfig>) => {
     updateMA(id, updates);
   };
@@ -1156,6 +1338,15 @@ export default function ChartControls() {
 
   const handleToggleBB = (id: string) => {
     toggleBB(id);
+  };
+
+  // VWAP handlers
+  const handleUpdateVWAP = (id: string, updates: Partial<VWAPConfig>) => {
+    updateVWAP(id, updates);
+  };
+
+  const handleToggleVWAP = (id: string) => {
+    toggleVWAP(id);
   };
 
   return (
@@ -1363,6 +1554,7 @@ export default function ChartControls() {
         emaConfigs={config.indicators.ema}
         wmaConfigs={config.indicators.wma}
         bbConfigs={config.indicators.bb}
+        vwapConfigs={config.indicators.vwap}
         onUpdateRSI={handleUpdateRSI}
         onToggleRSI={handleToggleRSI}
         onUpdateVolume={handleUpdateVolume}
@@ -1377,6 +1569,8 @@ export default function ChartControls() {
         onToggleWMA={handleToggleWMA}
         onUpdateBB={handleUpdateBB}
         onToggleBB={handleToggleBB}
+        onUpdateVWAP={handleUpdateVWAP}
+        onToggleVWAP={handleToggleVWAP}
       />
     </>
   );
