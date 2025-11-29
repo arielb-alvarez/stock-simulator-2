@@ -22,6 +22,452 @@ const CHART_TYPES: { value: ChartType; label: string; icon: React.ReactNode }[] 
   { value: 'bar', label: 'Bar', icon: <BarIcon /> },
 ];
 
+// Compact configuration components moved outside
+interface CompactMAConfigProps {
+  configs: MAConfig[];
+  title: string;
+  onToggle: (id: string) => void;
+  onPeriodChange: (id: string, period: number) => void;
+  onLineSizeChange: (id: string, lineSize: number) => void;
+  onColorChange: (id: string, color: string) => void;
+}
+
+const CompactMAConfig: React.FC<CompactMAConfigProps> = ({ 
+  configs, 
+  title, 
+  onToggle, 
+  onPeriodChange, 
+  onLineSizeChange, 
+  onColorChange 
+}) => (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <h3 className="text-base font-medium text-gray-200">{title}</h3>
+      <div className="text-sm text-gray-400">
+        {configs.filter(c => c.show).length} active
+      </div>
+    </div>
+
+    <div className="space-y-3">
+      {configs.map((config) => (
+        <div key={config.id} className="flex items-center gap-4 p-3 bg-gray-750 rounded-lg border border-gray-600">
+          <input
+            type="checkbox"
+            checked={config.show}
+            onChange={() => onToggle(config.id)}
+            className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-yellow-500 focus:ring-2 focus:ring-yellow-500"
+          />
+          
+          <span className="text-sm text-white font-medium min-w-[80px]">{config.name}</span>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">Period:</span>
+            <input
+              type="number"
+              min="1"
+              max="200"
+              value={config.period}
+              onChange={(e) => onPeriodChange(config.id, parseInt(e.target.value) || 20)}
+              className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">Width:</span>
+            <input
+              type="number"
+              min="0.5"
+              max="5"
+              step="0.5"
+              value={config.lineSize}
+              onChange={(e) => onLineSizeChange(config.id, parseFloat(e.target.value) || 1.5)}
+              className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={config.color}
+              onChange={(e) => onColorChange(config.id, e.target.value)}
+              className="w-8 h-8 rounded border border-gray-500 cursor-pointer bg-transparent"
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+interface CompactRSIConfigProps {
+  rsiConfigs: RSIConfig[];
+  onToggle: (id: string) => void;
+  onPeriodChange: (id: string, period: number) => void;
+  onLineSizeChange: (id: string, lineSize: number) => void;
+  onColorChange: (id: string, color: string) => void;
+}
+
+const CompactRSIConfig: React.FC<CompactRSIConfigProps> = ({
+  rsiConfigs,
+  onToggle,
+  onPeriodChange,
+  onLineSizeChange,
+  onColorChange
+}) => (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <h3 className="text-base font-medium text-gray-200">RSI</h3>
+      <div className="text-sm text-gray-400">
+        {rsiConfigs.filter(rsi => rsi.show).length} active
+      </div>
+    </div>
+
+    <div className="space-y-3">
+      {rsiConfigs.map((rsiConfig) => (
+        <div key={rsiConfig.id} className="flex items-center gap-4 p-3 bg-gray-750 rounded-lg border border-gray-600">
+          <input
+            type="checkbox"
+            checked={rsiConfig.show}
+            onChange={() => onToggle(rsiConfig.id)}
+            className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-yellow-500 focus:ring-2 focus:ring-yellow-500"
+          />
+          
+          <span className="text-sm text-white font-medium min-w-[60px]">RSI</span>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">Period:</span>
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={rsiConfig.period}
+              onChange={(e) => onPeriodChange(rsiConfig.id, parseInt(e.target.value) || 14)}
+              className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">Width:</span>
+            <input
+              type="number"
+              min="0.5"
+              max="5"
+              step="0.5"
+              value={rsiConfig.lineSize}
+              onChange={(e) => onLineSizeChange(rsiConfig.id, parseFloat(e.target.value) || 1.5)}
+              className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={rsiConfig.lineColor}
+              onChange={(e) => onColorChange(rsiConfig.id, e.target.value)}
+              className="w-8 h-8 rounded border border-gray-500 cursor-pointer bg-transparent"
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+interface CompactVolumeConfigProps {
+  volumeConfigs: VolumeConfig[];
+  onToggle: (id: string) => void;
+  onNameChange: (id: string, name: string) => void;
+  onUpColorChange: (id: string, color: string) => void;
+  onDownColorChange: (id: string, color: string) => void;
+  onOpacityChange: (id: string, opacity: number) => void;
+  onUpdateVolumeMA: (volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => void;
+  onToggleVolumeMA: (volumeId: string, maId: string) => void;
+}
+
+const CompactVolumeConfig: React.FC<CompactVolumeConfigProps> = ({
+  volumeConfigs,
+  onToggle,
+  onNameChange,
+  onUpColorChange,
+  onDownColorChange,
+  onOpacityChange,
+  onUpdateVolumeMA,
+  onToggleVolumeMA
+}) => (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <h3 className="text-base font-medium text-gray-200">Volume</h3>
+      <div className="text-sm text-gray-400">
+        {volumeConfigs.filter(volume => volume.show).length} active
+      </div>
+    </div>
+
+    <div className="space-y-4">
+      {volumeConfigs.map((volumeConfig) => (
+        <div key={volumeConfig.id} className="p-4 bg-gray-750 rounded-lg border border-gray-600">
+          <div className="flex items-center gap-4 mb-4">
+            <input
+              type="checkbox"
+              checked={volumeConfig.show}
+              onChange={() => onToggle(volumeConfig.id)}
+              className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-yellow-500 focus:ring-2 focus:ring-yellow-500"
+            />
+            <input
+              type="text"
+              value={volumeConfig.name}
+              onChange={(e) => onNameChange(volumeConfig.id, e.target.value)}
+              className="flex-1 bg-gray-700 border border-gray-500 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-400">Up:</span>
+              <input
+                type="color"
+                value={volumeConfig.upColor}
+                onChange={(e) => onUpColorChange(volumeConfig.id, e.target.value)}
+                className="w-8 h-8 rounded border border-gray-500 cursor-pointer bg-transparent"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-400">Down:</span>
+              <input
+                type="color"
+                value={volumeConfig.downColor}
+                onChange={(e) => onDownColorChange(volumeConfig.id, e.target.value)}
+                className="w-8 h-8 rounded border border-gray-500 cursor-pointer bg-transparent"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-400">Opacity:</span>
+              <input
+                type="number"
+                min="0.1"
+                max="1"
+                step="0.1"
+                value={volumeConfig.opacity}
+                onChange={(e) => onOpacityChange(volumeConfig.id, parseFloat(e.target.value) || 0.6)}
+                className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+              />
+            </div>
+          </div>
+
+          {/* Volume MA Lines */}
+          <div className="space-y-2">
+            <div className="text-sm text-gray-400 font-medium">MA Lines:</div>
+            {volumeConfig.maLines.map((maConfig) => (
+              <div key={maConfig.id} className="flex items-center gap-3 p-2 bg-gray-800 rounded">
+                <input
+                  type="checkbox"
+                  checked={maConfig.show}
+                  onChange={() => onToggleVolumeMA(volumeConfig.id, maConfig.id)}
+                  className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-yellow-500 focus:ring-2 focus:ring-yellow-500"
+                />
+                <span className="text-sm text-gray-300">MA {maConfig.period}</span>
+                <input
+                  type="color"
+                  value={maConfig.color}
+                  onChange={(e) => onUpdateVolumeMA(volumeConfig.id, maConfig.id, { color: e.target.value })}
+                  className="w-6 h-6 rounded border border-gray-500 cursor-pointer bg-transparent"
+                />
+                <input
+                  type="number"
+                  min="0.5"
+                  max="5"
+                  step="0.5"
+                  value={maConfig.lineSize}
+                  onChange={(e) => onUpdateVolumeMA(volumeConfig.id, maConfig.id, { lineSize: parseFloat(e.target.value) || 1.5 })}
+                  className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+interface CompactBBConfigProps {
+  bbConfigs: BBConfig[];
+  onToggle: (id: string) => void;
+  onPeriodChange: (id: string, period: number) => void;
+  onStdDevChange: (id: string, stdDev: number) => void;
+  onUpdateBB: (id: string, updates: Partial<BBConfig>) => void;
+}
+
+const CompactBBConfig: React.FC<CompactBBConfigProps> = ({
+  bbConfigs,
+  onToggle,
+  onPeriodChange,
+  onStdDevChange,
+  onUpdateBB
+}) => (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <h3 className="text-base font-medium text-gray-200">Bollinger Bands</h3>
+      <div className="text-sm text-gray-400">
+        {bbConfigs.filter(bb => bb.show).length} active
+      </div>
+    </div>
+
+    <div className="space-y-4">
+      {bbConfigs.map((bbConfig) => (
+        <div key={bbConfig.id} className="p-4 bg-gray-750 rounded-lg border border-gray-600">
+          <div className="flex items-center gap-4 mb-4">
+            <input
+              type="checkbox"
+              checked={bbConfig.show}
+              onChange={() => onToggle(bbConfig.id)}
+              className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-yellow-500 focus:ring-2 focus:ring-yellow-500"
+            />
+            <span className="text-sm text-white font-medium">{bbConfig.name}</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-400">Period:</span>
+              <input
+                type="number"
+                min="1"
+                max="200"
+                value={bbConfig.period}
+                onChange={(e) => onPeriodChange(bbConfig.id, parseInt(e.target.value) || 20)}
+                className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-400">Multiplier:</span>
+              <input
+                type="number"
+                min="0.1"
+                max="5"
+                step="0.1"
+                value={bbConfig.stdDev}
+                onChange={(e) => onStdDevChange(bbConfig.id, parseFloat(e.target.value) || 2)}
+                className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {[
+              { key: 'upLine', label: 'UP Line', config: bbConfig.upLine },
+              { key: 'middleLine', label: 'MB Line', config: bbConfig.middleLine },
+              { key: 'downLine', label: 'DN Line', config: bbConfig.downLine }
+            ].map((line) => (
+              <div key={line.key} className="flex items-center gap-4 p-3 bg-gray-800 rounded border border-gray-700">
+                <span className="text-sm text-gray-400 w-16">{line.label}</span>
+                <input
+                  type="color"
+                  value={line.config.color}
+                  onChange={(e) => {
+                    onUpdateBB(bbConfig.id, { 
+                      [line.key]: { ...line.config, color: e.target.value }
+                    });
+                  }}
+                  className="w-8 h-8 rounded border border-gray-500 cursor-pointer bg-transparent"
+                />
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-400">Width:</span>
+                  <input
+                    type="number"
+                    min="0.5"
+                    max="5"
+                    step="0.5"
+                    value={line.config.lineWidth}
+                    onChange={(e) => {
+                      onUpdateBB(bbConfig.id, { 
+                        [line.key]: { ...line.config, lineWidth: parseFloat(e.target.value) || 1.5 }
+                      });
+                    }}
+                    className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+interface CompactVWAPConfigProps {
+  vwapConfigs: VWAPConfig[];
+  onToggle: (id: string) => void;
+  onLengthChange: (id: string, length: number) => void;
+  onLineSizeChange: (id: string, lineSize: number) => void;
+  onColorChange: (id: string, color: string) => void;
+}
+
+const CompactVWAPConfig: React.FC<CompactVWAPConfigProps> = ({
+  vwapConfigs,
+  onToggle,
+  onLengthChange,
+  onLineSizeChange,
+  onColorChange
+}) => (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <h3 className="text-base font-medium text-gray-200">VWAP</h3>
+      <div className="text-sm text-gray-400">
+        {vwapConfigs.filter(vwap => vwap.show).length} active
+      </div>
+    </div>
+
+    <div className="space-y-3">
+      {vwapConfigs.map((vwapConfig) => (
+        <div key={vwapConfig.id} className="flex items-center gap-4 p-3 bg-gray-750 rounded-lg border border-gray-600">
+          <input
+            type="checkbox"
+            checked={vwapConfig.show}
+            onChange={() => onToggle(vwapConfig.id)}
+            className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-yellow-500 focus:ring-2 focus:ring-yellow-500"
+          />
+          
+          <span className="text-sm text-white font-medium min-w-[80px]">VWAP</span>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">Length:</span>
+            <input
+              type="number"
+              min="0"
+              max="1000"
+              value={vwapConfig.length}
+              onChange={(e) => onLengthChange(vwapConfig.id, parseInt(e.target.value) || 20)}
+              className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">Width:</span>
+            <input
+              type="number"
+              min="0.5"
+              max="5"
+              step="0.5"
+              value={vwapConfig.lineSize}
+              onChange={(e) => onLineSizeChange(vwapConfig.id, parseFloat(e.target.value) || 1.5)}
+              className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={vwapConfig.color}
+              onChange={(e) => onColorChange(vwapConfig.id, e.target.value)}
+              className="w-8 h-8 rounded border border-gray-500 cursor-pointer bg-transparent"
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 // Indicators Dialog Component
 interface IndicatorsDialogProps {
   isOpen: boolean;
@@ -89,7 +535,6 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   };
 
   const handlePeriodChangeRSI = (rsiId: string, period: number) => {
-    // Update the period - the GlobalContext will handle auto-updating the name
     onUpdateRSI(rsiId, { period: Math.max(1, period) });
   };
 
@@ -130,7 +575,6 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     onToggleVolumeMA(volumeId, maId);
   };
 
-  
   // MA configuration handlers
   const handleToggleMA = (maId: string) => {
     onToggleMA(maId);
@@ -148,7 +592,7 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     onUpdateMA(maId, { color });
   };
 
-  // EMA configuration handlers (similar to MA)
+  // EMA configuration handlers
   const handleToggleEMA = (emaId: string) => {
     onToggleEMA(emaId);
   };
@@ -165,7 +609,7 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     onUpdateEMA(emaId, { color });
   };
 
-  // WMA configuration handlers (similar to MA)
+  // WMA configuration handlers
   const handleToggleWMA = (wmaId: string) => {
     onToggleWMA(wmaId);
   };
@@ -195,18 +639,6 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     onUpdateBB(bbId, { stdDev: Math.max(0.1, Math.min(5, stdDev)) });
   };
 
-  const handleLineSizeChangeBB = (bbId: string, lineSize: number) => {
-    onUpdateBB(bbId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
-
-  const handleColorChangeBB = (bbId: string, color: string) => {
-    onUpdateBB(bbId, { color });
-  };
-
-  const handleBandColorChangeBB = (bbId: string, bandColor: string) => {
-    onUpdateBB(bbId, { bandColor });
-  };
-
   // VWAP configuration handlers
   const handleToggleVWAP = (vwapId: string) => {
     onToggleVWAP(vwapId);
@@ -225,14 +657,14 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg w-[90vw] max-w-6xl h-[80vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
+      <div className="bg-gray-800 rounded-xl w-[680px] max-h-[85vh] flex flex-col border border-gray-600 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-700">
-          <h2 className="text-xl font-semibold text-white">Indicators</h2>
+          <h2 className="text-lg font-semibold text-white">Indicators</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-gray-400 hover:text-white transition-colors text-lg p-1 rounded hover:bg-gray-700"
           >
             ✕
           </button>
@@ -242,933 +674,165 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
         <div className="flex border-b border-gray-700">
           <button
             onClick={() => setActiveTab('main')}
-            className={`px-6 py-3 font-medium text-sm transition-colors ${
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${
               activeTab === 'main'
                 ? 'text-yellow-400 border-b-2 border-yellow-400'
                 : 'text-gray-400 hover:text-gray-200'
             }`}
           >
-            Main Indicator
+            Main Chart
           </button>
           <button
             onClick={() => setActiveTab('sub')}
-            className={`px-6 py-3 font-medium text-sm transition-colors ${
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${
               activeTab === 'sub'
                 ? 'text-yellow-400 border-b-2 border-yellow-400'
                 : 'text-gray-400 hover:text-gray-200'
             }`}
           >
-            Sub Indicator
+            Sub Chart
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 flex">
+        <div className="flex-1 flex min-h-[500px]">
           {activeTab === 'main' ? (
-            /* Main Indicator Content - Now with MA indicators */
+            /* Main Indicator Content */
             <>
-              {/* Vertical Menu for Main Indicators */}
-              <div className="w-48 border-r border-gray-700 bg-gray-750">
-                <div className="p-4">
-                  <h3 className="text-sm font-medium text-gray-400 mb-3">MAIN INDICATORS</h3>
+              {/* Vertical Menu - Increased width to fit text */}
+              <div className="w-44 border-r border-gray-700 bg-gray-750/50">
+                <div className="p-3">
+                  <h3 className="text-xs text-gray-400 mb-3 font-medium">MAIN INDICATORS</h3>
                   <nav className="space-y-1">
-                    <button
-                      onClick={() => setActiveSubMenu('ma')}
-                      className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
-                        activeSubMenu === 'ma'
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
-                      }`}
-                    >
-                      Moving Average
-                    </button>
-                    <button
-                      onClick={() => setActiveSubMenu('ema')}
-                      className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
-                        activeSubMenu === 'ema'
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
-                      }`}
-                    >
-                      Exponential MA
-                    </button>
-                    <button
-                      onClick={() => setActiveSubMenu('wma')}
-                      className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
-                        activeSubMenu === 'wma'
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
-                      }`}
-                    >
-                      Weighted MA
-                    </button>
-                    <button
-                      onClick={() => setActiveSubMenu('bb')}
-                      className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
-                        activeSubMenu === 'bb'
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
-                      }`}
-                    >
-                      Bollinger Bands
-                    </button>
-                    <button
-                      onClick={() => setActiveSubMenu('vwap')}
-                      className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
-                        activeSubMenu === 'vwap'
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
-                      }`}
-                    >
-                      VWAP
-                    </button>
+                    {[
+                      { id: 'ma', label: 'Moving Average' },
+                      { id: 'ema', label: 'Exponential MA' },
+                      { id: 'wma', label: 'Weighted MA' },
+                      { id: 'bb', label: 'Bollinger Bands' },
+                      { id: 'vwap', label: 'VWAP' }
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveSubMenu(item.id)}
+                        className={`w-full text-left px-3 py-2.5 rounded text-sm font-medium transition-colors whitespace-nowrap ${
+                          activeSubMenu === item.id
+                            ? 'bg-yellow-500/20 text-yellow-400'
+                            : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
                   </nav>
                 </div>
               </div>
 
-              {/* Content Area for Main Indicators */}
-              <div className="flex-1 p-6 overflow-y-auto">
-                {/* MA Configuration Section */}
+              {/* Content Area */}
+              <div className="flex-1 p-4 overflow-y-auto">
                 {activeSubMenu === 'ma' && (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-gray-200">Moving Average (MA)</h3>
-                      <div className="text-sm text-gray-400">
-                        {maConfigs.filter(ma => ma.show).length} of {maConfigs.length} active
-                      </div>
-                    </div>
-
-                    {/* MA Configuration Table */}
-                    <div className="bg-gray-750 rounded-lg border border-gray-700 overflow-hidden">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-700">
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-16">
-                              Show
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">
-                              Name
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
-                              Period
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
-                              Line Width
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">
-                              Color
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {maConfigs.map((maConfig) => (
-                            <tr 
-                              key={maConfig.id} 
-                              className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors"
-                            >
-                              <td className="py-3 px-4">
-                                <input
-                                  type="checkbox"
-                                  checked={maConfig.show}
-                                  onChange={() => handleToggleMA(maConfig.id)}
-                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
-                                />
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <span className="text-white font-medium">{maConfig.name}</span>
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="200"
-                                  value={maConfig.period}
-                                  onChange={(e) => handlePeriodChangeMA(maConfig.id, parseInt(e.target.value) || 20)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="0.5"
-                                  max="5"
-                                  step="0.5"
-                                  value={maConfig.lineSize}
-                                  onChange={(e) => handleLineSizeChangeMA(maConfig.id, parseFloat(e.target.value) || 1.5)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="color"
-                                    value={maConfig.color}
-                                    onChange={(e) => handleColorChangeMA(maConfig.id, e.target.value)}
-                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
-                                  />
-                                  <span className="text-xs text-gray-400 font-mono">
-                                    {maConfig.color}
-                                  </span>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                  <CompactMAConfig
+                    configs={maConfigs}
+                    title="Moving Average"
+                    onToggle={handleToggleMA}
+                    onPeriodChange={handlePeriodChangeMA}
+                    onLineSizeChange={handleLineSizeChangeMA}
+                    onColorChange={handleColorChangeMA}
+                  />
                 )}
 
-                {/* EMA Configuration Section */}
                 {activeSubMenu === 'ema' && (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-gray-200">Exponential Moving Average (EMA)</h3>
-                      <div className="text-sm text-gray-400">
-                        {emaConfigs.filter(ema => ema.show).length} of {emaConfigs.length} active
-                      </div>
-                    </div>
-
-                    {/* EMA Configuration Table - same structure as MA */}
-                    <div className="bg-gray-750 rounded-lg border border-gray-700 overflow-hidden">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-700">
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-16">Show</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Name</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">Period</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">Line Width</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">Color</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {emaConfigs.map((emaConfig) => (
-                            <tr key={emaConfig.id} className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors">
-                              <td className="py-3 px-4">
-                                <input
-                                  type="checkbox"
-                                  checked={emaConfig.show}
-                                  onChange={() => handleToggleEMA(emaConfig.id)}
-                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
-                                />
-                              </td>
-                              <td className="py-3 px-4">
-                                <span className="text-white font-medium">{emaConfig.name}</span>
-                              </td>
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="200"
-                                  value={emaConfig.period}
-                                  onChange={(e) => handlePeriodChangeEMA(emaConfig.id, parseInt(e.target.value) || 20)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                              </td>
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="0.5"
-                                  max="5"
-                                  step="0.5"
-                                  value={emaConfig.lineSize}
-                                  onChange={(e) => handleLineSizeChangeEMA(emaConfig.id, parseFloat(e.target.value) || 1.5)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="color"
-                                    value={emaConfig.color}
-                                    onChange={(e) => handleColorChangeEMA(emaConfig.id, e.target.value)}
-                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
-                                  />
-                                  <span className="text-xs text-gray-400 font-mono">
-                                    {emaConfig.color}
-                                  </span>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                  <CompactMAConfig
+                    configs={emaConfigs}
+                    title="Exponential MA"
+                    onToggle={handleToggleEMA}
+                    onPeriodChange={handlePeriodChangeEMA}
+                    onLineSizeChange={handleLineSizeChangeEMA}
+                    onColorChange={handleColorChangeEMA}
+                  />
                 )}
 
-                {/* WMA Configuration Section */}
                 {activeSubMenu === 'wma' && (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-gray-200">Weighted Moving Average (WMA)</h3>
-                      <div className="text-sm text-gray-400">
-                        {wmaConfigs.filter(wma => wma.show).length} of {wmaConfigs.length} active
-                      </div>
-                    </div>
-
-                    {/* WMA Configuration Table - same structure as MA */}
-                    <div className="bg-gray-750 rounded-lg border border-gray-700 overflow-hidden">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-700">
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-16">Show</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">Name</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">Period</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">Line Width</th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">Color</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {wmaConfigs.map((wmaConfig) => (
-                            <tr key={wmaConfig.id} className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors">
-                              <td className="py-3 px-4">
-                                <input
-                                  type="checkbox"
-                                  checked={wmaConfig.show}
-                                  onChange={() => handleToggleWMA(wmaConfig.id)}
-                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
-                                />
-                              </td>
-                              <td className="py-3 px-4">
-                                <span className="text-white font-medium">{wmaConfig.name}</span>
-                              </td>
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="200"
-                                  value={wmaConfig.period}
-                                  onChange={(e) => handlePeriodChangeWMA(wmaConfig.id, parseInt(e.target.value) || 20)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                              </td>
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="0.5"
-                                  max="5"
-                                  step="0.5"
-                                  value={wmaConfig.lineSize}
-                                  onChange={(e) => handleLineSizeChangeWMA(wmaConfig.id, parseFloat(e.target.value) || 1.5)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="color"
-                                    value={wmaConfig.color}
-                                    onChange={(e) => handleColorChangeWMA(wmaConfig.id, e.target.value)}
-                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
-                                  />
-                                  <span className="text-xs text-gray-400 font-mono">
-                                    {wmaConfig.color}
-                                  </span>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                  <CompactMAConfig
+                    configs={wmaConfigs}
+                    title="Weighted MA"
+                    onToggle={handleToggleWMA}
+                    onPeriodChange={handlePeriodChangeWMA}
+                    onLineSizeChange={handleLineSizeChangeWMA}
+                    onColorChange={handleColorChangeWMA}
+                  />
                 )}
 
-                {/* Bollinger Bands Configuration Section */}
                 {activeSubMenu === 'bb' && (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-gray-200">Bollinger Bands</h3>
-                      <div className="text-sm text-gray-400">
-                        {bbConfigs.filter(bb => bb.show).length} of {bbConfigs.length} active
-                      </div>
-                    </div>
-
-                    {/* BB Configuration Table */}
-                    <div className="bg-gray-750 rounded-lg border border-gray-700 overflow-hidden">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-700">
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-16">
-                              Show
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">
-                              Name
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
-                              Period
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
-                              Std Dev
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
-                              Line Width
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">
-                              Color
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">
-                              Band Color
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {bbConfigs.map((bbConfig) => (
-                            <tr 
-                              key={bbConfig.id} 
-                              className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors"
-                            >
-                              <td className="py-3 px-4">
-                                <input
-                                  type="checkbox"
-                                  checked={bbConfig.show}
-                                  onChange={() => handleToggleBB(bbConfig.id)}
-                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
-                                />
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <span className="text-white font-medium">{bbConfig.name}</span>
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="200"
-                                  value={bbConfig.period}
-                                  onChange={(e) => handlePeriodChangeBB(bbConfig.id, parseInt(e.target.value) || 20)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="0.1"
-                                  max="5"
-                                  step="0.1"
-                                  value={bbConfig.stdDev}
-                                  onChange={(e) => handleStdDevChangeBB(bbConfig.id, parseFloat(e.target.value) || 2)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="0.5"
-                                  max="5"
-                                  step="0.5"
-                                  value={bbConfig.lineSize}
-                                  onChange={(e) => handleLineSizeChangeBB(bbConfig.id, parseFloat(e.target.value) || 1.5)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="color"
-                                    value={bbConfig.color}
-                                    onChange={(e) => handleColorChangeBB(bbConfig.id, e.target.value)}
-                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
-                                  />
-                                  <span className="text-xs text-gray-400 font-mono">
-                                    {bbConfig.color}
-                                  </span>
-                                </div>
-                              </td>
-
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="color"
-                                    value={bbConfig.bandColor}
-                                    onChange={(e) => handleBandColorChangeBB(bbConfig.id, e.target.value)}
-                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
-                                  />
-                                  <span className="text-xs text-gray-400 font-mono">
-                                    {bbConfig.bandColor}
-                                  </span>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                  <CompactBBConfig
+                    bbConfigs={bbConfigs}
+                    onToggle={handleToggleBB}
+                    onPeriodChange={handlePeriodChangeBB}
+                    onStdDevChange={handleStdDevChangeBB}
+                    onUpdateBB={onUpdateBB}
+                  />
                 )}
 
-                {/* VWAP Configuration Section */}
                 {activeSubMenu === 'vwap' && (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-gray-200">Volume Weighted Average Price (VWAP)</h3>
-                      <div className="text-sm text-gray-400">
-                        {vwapConfigs.filter(vwap => vwap.show).length} of {vwapConfigs.length} active
-                      </div>
-                    </div>
-
-                    <div className="bg-gray-700/50 rounded-lg p-4 mb-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
-                        <div>
-                          <h4 className="font-medium text-yellow-400 mb-2">Session VWAP (Length: 0)</h4>
-                          <p className="text-xs">
-                            Calculates VWAP from the start of the trading session (resets at midnight UTC).
-                            Uses all available data in the current session.
-                          </p>
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-yellow-400 mb-2">Rolling VWAP (Length: &gt; 0)</h4>
-                          <p className="text-xs">
-                            Calculates VWAP over a specific number of periods.
-                            Uses a rolling window of the specified length.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* VWAP Configuration Table */}
-                    <div className="bg-gray-750 rounded-lg border border-gray-700 overflow-hidden">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-700">
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-16">
-                              Show
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">
-                              Type
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
-                              Length
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
-                              Line Width
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">
-                              Color
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {vwapConfigs.map((vwapConfig) => (
-                            <tr 
-                              key={vwapConfig.id} 
-                              className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors"
-                            >
-                              <td className="py-3 px-4">
-                                <input
-                                  type="checkbox"
-                                  checked={vwapConfig.show}
-                                  onChange={() => handleToggleVWAP(vwapConfig.id)}
-                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
-                                />
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <span className="text-white font-medium">
-                                  {vwapConfig.length === 0 ? 'Session VWAP' : 'Rolling VWAP'}
-                                </span>
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="1000"
-                                  value={vwapConfig.length}
-                                  onChange={(e) => handleLengthChangeVWAP(vwapConfig.id, parseInt(e.target.value) || 0)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                  title="0 for session-based, or set period count for rolling VWAP"
-                                />
-                                <div className="text-xs text-gray-400 mt-1">
-                                  {vwapConfig.length === 0 ? 'Session' : `${vwapConfig.length} periods`}
-                                </div>
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="0.5"
-                                  max="5"
-                                  step="0.5"
-                                  value={vwapConfig.lineSize}
-                                  onChange={(e) => handleLineSizeChangeVWAP(vwapConfig.id, parseFloat(e.target.value) || 1.5)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                              </td>
-                              
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="color"
-                                    value={vwapConfig.color}
-                                    onChange={(e) => handleColorChangeVWAP(vwapConfig.id, e.target.value)}
-                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
-                                  />
-                                  <span className="text-xs text-gray-400 font-mono">
-                                    {vwapConfig.color}
-                                  </span>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* VWAP Legend */}
-                    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-                      <h4 className="text-sm font-medium text-gray-300 mb-2">VWAP Calculation Methods</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-400">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <span className="font-medium">Session VWAP (Length = 0)</span>
-                          </div>
-                          <p>VWAP = Σ(Price × Volume) / Σ(Volume) for current trading session</p>
-                          <p className="mt-1">• Resets at midnight UTC</p>
-                          <p>• Uses typical price: (High + Low + Close) / 3</p>
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                            <span className="font-medium">Rolling VWAP (Length &gt; 0)</span>
-                          </div>
-                          <p>VWAP = Σ(Price × Volume) / Σ(Volume) for last N periods</p>
-                          <p className="mt-1">• Continuous calculation</p>
-                          <p>• Uses rolling window of specified length</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <CompactVWAPConfig
+                    vwapConfigs={vwapConfigs}
+                    onToggle={handleToggleVWAP}
+                    onLengthChange={handleLengthChangeVWAP}
+                    onLineSizeChange={handleLineSizeChangeVWAP}
+                    onColorChange={handleColorChangeVWAP}
+                  />
                 )}
               </div>
             </>
           ) : (
             /* Sub Indicator Content */
             <>
-              {/* Vertical Menu */}
-              <div className="w-48 border-r border-gray-700 bg-gray-750">
-                <div className="p-4">
-                  <h3 className="text-sm font-medium text-gray-400 mb-3">SUB INDICATORS</h3>
+              {/* Vertical Menu - Increased width to fit text */}
+              <div className="w-44 border-r border-gray-700 bg-gray-750/50">
+                <div className="p-3">
+                  <h3 className="text-xs text-gray-400 mb-3 font-medium">SUB INDICATORS</h3>
                   <nav className="space-y-1">
-                    <button
-                      onClick={() => setActiveSubMenu('rsi')}
-                      className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
-                        activeSubMenu === 'rsi'
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
-                      }`}
-                    >
-                      RSI
-                    </button>
-                    <button
-                      onClick={() => setActiveSubMenu('volume')}
-                      className={`w-full text-left px-3 py-2 rounded text-sm font-medium transition-colors ${
-                        activeSubMenu === 'volume'
-                          ? 'bg-yellow-500/20 text-yellow-400'
-                          : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
-                      }`}
-                    >
-                      Volume
-                    </button>
+                    {[
+                      { id: 'rsi', label: 'RSI' },
+                      { id: 'volume', label: 'Volume' }
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveSubMenu(item.id)}
+                        className={`w-full text-left px-3 py-2.5 rounded text-sm font-medium transition-colors whitespace-nowrap ${
+                          activeSubMenu === item.id
+                            ? 'bg-yellow-500/20 text-yellow-400'
+                            : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
                   </nav>
                 </div>
               </div>
 
               {/* Content Area */}
-              <div className="flex-1 p-6 overflow-y-auto">
+              <div className="flex-1 p-4 overflow-y-auto">
                 {activeSubMenu === 'rsi' && (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-gray-200">RSI Indicators</h3>
-                      <div className="text-sm text-gray-400">
-                        {rsiConfigs.filter(rsi => rsi.show).length} of {rsiConfigs.length} active
-                      </div>
-                    </div>
-
-                    {/* RSI Configuration Table */}
-                    <div className="bg-gray-750 rounded-lg border border-gray-700 overflow-hidden">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-700">
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-16">
-                              Show
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400">
-                              Name
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
-                              Period
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-24">
-                              Line Width
-                            </th>
-                            <th className="text-left py-3 px-4 text-sm font-medium text-gray-400 w-32">
-                              Color
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rsiConfigs.map((rsiConfig) => (
-                            <tr 
-                              key={rsiConfig.id} 
-                              className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors"
-                            >
-                              {/* Checkbox for visibility */}
-                              <td className="py-3 px-4">
-                                <input
-                                  type="checkbox"
-                                  checked={rsiConfig.show}
-                                  onChange={() => handleToggleRSI(rsiConfig.id)}
-                                  className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
-                                />
-                              </td>
-                              
-                              {/* Static RSI Name */}
-                              <td className="py-3 px-4">
-                                <span className="text-white font-medium">RSI</span>
-                              </td>
-                              
-                              {/* Editable Period */}
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="100"
-                                  value={rsiConfig.period}
-                                  onChange={(e) => handlePeriodChangeRSI(rsiConfig.id, parseInt(e.target.value) || 14)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                              </td>
-                              
-                              {/* Editable Line Width */}
-                              <td className="py-3 px-4">
-                                <input
-                                  type="number"
-                                  min="0.5"
-                                  max="5"
-                                  step="0.5"
-                                  value={rsiConfig.lineSize}
-                                  onChange={(e) => handleLineSizeChangeRSI(rsiConfig.id, parseFloat(e.target.value) || 1.5)}
-                                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                />
-                              </td>
-                              
-                              {/* Color Picker */}
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="color"
-                                    value={rsiConfig.lineColor}
-                                    onChange={(e) => handleColorChangeRSI(rsiConfig.id, e.target.value)}
-                                    className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
-                                  />
-                                  <span className="text-xs text-gray-400 font-mono">
-                                    {rsiConfig.lineColor}
-                                  </span>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                  <CompactRSIConfig
+                    rsiConfigs={rsiConfigs}
+                    onToggle={handleToggleRSI}
+                    onPeriodChange={handlePeriodChangeRSI}
+                    onLineSizeChange={handleLineSizeChangeRSI}
+                    onColorChange={handleColorChangeRSI}
+                  />
                 )}
-
                 {activeSubMenu === 'volume' && (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-gray-200">Volume Indicators</h3>
-                      <div className="text-sm text-gray-400">
-                        {volumeConfigs.filter(volume => volume.show).length} of {volumeConfigs.length} active
-                      </div>
-                    </div>
-
-                    {/* Volume Configuration */}
-                    <div className="space-y-4">
-                      {volumeConfigs.map((volumeConfig) => (
-                        <div key={volumeConfig.id} className="bg-gray-750 rounded-lg border border-gray-700 p-4">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <input
-                                type="checkbox"
-                                checked={volumeConfig.show}
-                                onChange={() => handleToggleVolume(volumeConfig.id)}
-                                className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
-                              />
-                              <h4 className="text-md font-medium text-white">{volumeConfig.name}</h4>
-                            </div>
-                          </div>
-
-                          {/* Basic Volume Settings */}
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                            {/* Up Color */}
-                            <div>
-                              <label className="block text-sm text-gray-400 mb-2">Up Color</label>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="color"
-                                  value={volumeConfig.upColor}
-                                  onChange={(e) => handleUpColorChange(volumeConfig.id, e.target.value)}
-                                  className="w-10 h-10 rounded border border-gray-600 cursor-pointer bg-transparent"
-                                />
-                                <input
-                                  type="text"
-                                  value={volumeConfig.upColor}
-                                  onChange={(e) => handleUpColorChange(volumeConfig.id, e.target.value)}
-                                  className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500 font-mono text-xs"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Down Color */}
-                            <div>
-                              <label className="block text-sm text-gray-400 mb-2">Down Color</label>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="color"
-                                  value={volumeConfig.downColor}
-                                  onChange={(e) => handleDownColorChange(volumeConfig.id, e.target.value)}
-                                  className="w-10 h-10 rounded border border-gray-600 cursor-pointer bg-transparent"
-                                />
-                                <input
-                                  type="text"
-                                  value={volumeConfig.downColor}
-                                  onChange={(e) => handleDownColorChange(volumeConfig.id, e.target.value)}
-                                  className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500 font-mono text-xs"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Opacity */}
-                            <div>
-                              <label className="block text-sm text-gray-400 mb-2">Opacity</label>
-                              <input
-                                type="number"
-                                min="0.1"
-                                max="1"
-                                step="0.1"
-                                value={volumeConfig.opacity}
-                                onChange={(e) => handleOpacityChange(volumeConfig.id, parseFloat(e.target.value) || 0.6)}
-                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                              />
-                            </div>
-
-                            {/* Name */}
-                            <div>
-                              <label className="block text-sm text-gray-400 mb-2">Name</label>
-                              <input
-                                type="text"
-                                value={volumeConfig.name}
-                                onChange={(e) => handleNameChangeVolume(volumeConfig.id, e.target.value)}
-                                className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Volume MA Configuration Table */}
-                          <div className="border-t border-gray-700 pt-4">
-                            <h5 className="text-sm font-medium text-gray-300 mb-3">Moving Average (MA) Settings</h5>
-                            
-                            <div className="bg-gray-800 rounded border border-gray-700 overflow-hidden">
-                              <table className="w-full">
-                                <thead>
-                                  <tr className="border-b border-gray-700">
-                                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-400 w-16">Show</th>
-                                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-400">MA Line</th>
-                                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-400 w-24">Period</th>
-                                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-400 w-32">Color</th>
-                                    <th className="text-left py-3 px-4 text-xs font-medium text-gray-400 w-24">Line Width</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {volumeConfig.maLines.map((maConfig, index) => (
-                                    <tr key={maConfig.id} className="border-b border-gray-700 last:border-b-0 hover:bg-gray-700/30 transition-colors">
-                                      {/* Show/Hide MA */}
-                                      <td className="py-3 px-4">
-                                        <input
-                                          type="checkbox"
-                                          checked={maConfig.show}
-                                          onChange={() => handleToggleVolumeMA(volumeConfig.id, maConfig.id)}
-                                          className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-2"
-                                        />
-                                      </td>
-                                      
-                                      {/* MA Label */}
-                                      <td className="py-3 px-4">
-                                        <span className="text-white font-medium">MA {index + 1}</span>
-                                      </td>
-                                      
-                                      {/* MA Period */}
-                                      <td className="py-3 px-4">
-                                        <input
-                                          type="number"
-                                          min="1"
-                                          max="50"
-                                          value={maConfig.period}
-                                          onChange={(e) => handleUpdateVolumeMA(volumeConfig.id, maConfig.id, { 
-                                            period: parseInt(e.target.value) || 5 
-                                          })}
-                                          className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                        />
-                                      </td>
-                                      
-                                      {/* MA Color */}
-                                      <td className="py-3 px-4">
-                                        <div className="flex items-center gap-2">
-                                          <input
-                                            type="color"
-                                            value={maConfig.color}
-                                            onChange={(e) => handleUpdateVolumeMA(volumeConfig.id, maConfig.id, { 
-                                              color: e.target.value 
-                                            })}
-                                            className="w-8 h-8 rounded border border-gray-600 cursor-pointer bg-transparent"
-                                          />
-                                          <input
-                                            type="text"
-                                            value={maConfig.color}
-                                            onChange={(e) => handleUpdateVolumeMA(volumeConfig.id, maConfig.id, { 
-                                              color: e.target.value 
-                                            })}
-                                            className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500 font-mono text-xs"
-                                          />
-                                        </div>
-                                      </td>
-                                      
-                                      {/* MA Line Size */}
-                                      <td className="py-3 px-4">
-                                        <input
-                                          type="number"
-                                          min="0.5"
-                                          max="5"
-                                          step="0.5"
-                                          value={maConfig.lineSize}
-                                          onChange={(e) => handleUpdateVolumeMA(volumeConfig.id, maConfig.id, { 
-                                            lineSize: parseFloat(e.target.value) || 1.5 
-                                          })}
-                                          className="w-20 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
-                                        />
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <CompactVolumeConfig
+                    volumeConfigs={volumeConfigs}
+                    onToggle={handleToggleVolume}
+                    onNameChange={handleNameChangeVolume}
+                    onUpColorChange={handleUpColorChange}
+                    onDownColorChange={handleDownColorChange}
+                    onOpacityChange={handleOpacityChange}
+                    onUpdateVolumeMA={handleUpdateVolumeMA}
+                    onToggleVolumeMA={handleToggleVolumeMA}
+                  />
                 )}
               </div>
             </>
@@ -1179,6 +843,7 @@ const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   );
 };
 
+// Rest of the ChartControls component remains exactly the same...
 export default function ChartControls() {
   const { 
     config, 

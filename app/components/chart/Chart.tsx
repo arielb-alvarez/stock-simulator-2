@@ -40,7 +40,7 @@ const generateMAKey = (maConfigs: MAConfig[]): string => {
 const generateBBKey = (bbConfigs: BBConfig[]): string => {
   return bbConfigs
     .filter(bb => bb.show)
-    .map(bb => `${bb.period}_${bb.stdDev}_${bb.color}_${bb.lineSize}`)
+    .map(bb => `${bb.period}_${bb.stdDev}_${bb.background.show ? 'bg' : 'nobg'}_${bb.upLine.show ? 'up' : 'noup'}_${bb.middleLine.show ? 'mid' : 'nomid'}_${bb.downLine.show ? 'dn' : 'nodn'}`)
     .sort()
     .join('_');
 };
@@ -281,34 +281,37 @@ const registerCustomBBIndicator = (bbConfigs: BBConfig[]) => {
       shortName: 'BB',
       calcParams: enabledConfigs.map(bb => [bb.period, bb.stdDev]).flat(),
       figures: enabledConfigs.flatMap((bbConfig, index) => [
-        {
+        // Upper band - only include if show is true
+        ...(bbConfig.upLine.show ? [{
           key: `bb_upper_${index}`,
           title: `BB Upper ${bbConfig.period}: `,
           type: 'line',
           styles: () => ({
-            color: bbConfig.color,
-            size: bbConfig.lineSize,
+            color: bbConfig.upLine.color,
+            size: bbConfig.upLine.lineWidth,
           })
-        },
-        {
+        }] : []),
+        // Middle band - only include if show is true
+        ...(bbConfig.middleLine.show ? [{
           key: `bb_middle_${index}`,
           title: `BB Middle ${bbConfig.period}: `,
           type: 'line',
           styles: () => ({
-            color: bbConfig.color,
-            size: bbConfig.lineSize,
+            color: bbConfig.middleLine.color,
+            size: bbConfig.middleLine.lineWidth,
             style: 'dashed',
           })
-        },
-        {
+        }] : []),
+        // Lower band - only include if show is true
+        ...(bbConfig.downLine.show ? [{
           key: `bb_lower_${index}`,
           title: `BB Lower ${bbConfig.period}: `,
           type: 'line',
           styles: () => ({
-            color: bbConfig.color,
-            size: bbConfig.lineSize,
+            color: bbConfig.downLine.color,
+            size: bbConfig.downLine.lineWidth,
           })
-        }
+        }] : [])
       ]),
       calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
         const result: any[] = [];
@@ -1117,7 +1120,7 @@ export default function MainChart() {
           chart.createIndicator(vwapUniqueName, true, { 
             id: "candle_pane"
           });
-          console.log(`✅ Created VWAP overlay with lengths:`, enabledVWAP.map(vwap => vwap.length));
+          console.log(`✅ Created VWAP overlay with length:`, enabledVWAP[0].length);
         } catch (createError) {
           console.error('❌ Failed to create VWAP overlay:', createError);
         }
