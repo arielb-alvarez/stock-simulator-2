@@ -83,7 +83,6 @@ export interface VWAPConfig {
   show: boolean;
   color: string;
   lineSize: number;
-  type: 'vwap';
   length: number;
 }
 
@@ -400,16 +399,7 @@ const createDefaultVWAPs = (): VWAPConfig[] => [
     show: false,
     color: '#FF9800',
     lineSize: 1.5,
-    type: 'vwap',
-    length: 0, // 0 means entire session, or specify period for rolling VWAP
-  },
-  {
-    id: 'vwap-2',
-    show: false,
-    color: '#2196F3',
-    lineSize: 1.5,
-    type: 'vwap',
-    length: 50, // Rolling VWAP with 50-period lookback
+    length: 20, // Default length is 20
   }
 ];
 

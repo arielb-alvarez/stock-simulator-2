@@ -1120,7 +1120,7 @@ export default function MainChart() {
           chart.createIndicator(vwapUniqueName, true, { 
             id: "candle_pane"
           });
-          console.log(`✅ Created VWAP overlay with lengths:`, enabledVWAP.map(vwap => vwap.length));
+          console.log(`✅ Created VWAP overlay with length:`, enabledVWAP[0].length);
         } catch (createError) {
           console.error('❌ Failed to create VWAP overlay:', createError);
         }
