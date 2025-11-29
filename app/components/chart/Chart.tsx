@@ -7,7 +7,7 @@ import {
   KLineData,
   registerIndicator,
 } from 'klinecharts';
-import { useGlobalContext, RSIConfig, VolumeConfig, MAConfig, BBConfig } from '@/context/GlobalContext';
+import { useGlobalContext, RSIConfig, VolumeConfig, MAConfig, BBConfig, VWAPConfig } from '@/context/GlobalContext';
 import { cryptoService, CryptoData } from '@/services/cryptoService';
 import DrawingTools from './DrawingTools';
 
@@ -24,8 +24,35 @@ const convertToKLineData = (cryptoData: CryptoData[]): KLineData[] => {
   }));
 };
 
-// Track registered indicators
-const registeredIndicators = new Set();
+// Track registered indicators - reset on each config change
+let registeredIndicators = new Set();
+
+// Generate a unique key for MA configurations
+const generateMAKey = (maConfigs: MAConfig[]): string => {
+  return maConfigs
+    .filter(ma => ma.show)
+    .map(ma => `${ma.period}_${ma.color}_${ma.lineSize}`)
+    .sort()
+    .join('_');
+};
+
+// Generate a unique key for BB configurations  
+const generateBBKey = (bbConfigs: BBConfig[]): string => {
+  return bbConfigs
+    .filter(bb => bb.show)
+    .map(bb => `${bb.period}_${bb.stdDev}_${bb.color}_${bb.lineSize}`)
+    .sort()
+    .join('_');
+};
+
+// Generate a unique key for VWAP configurations
+const generateVWAPKey = (vwapConfigs: VWAPConfig[]): string => {
+  return vwapConfigs
+    .filter(vwap => vwap.show)
+    .map(vwap => `${vwap.id}_${vwap.length}_${vwap.color}_${vwap.lineSize}`)
+    .sort()
+    .join('_');
+};
 
 // Register Custom MA Indicator that supports multiple periods
 const registerCustomMAIndicator = (maConfigs: MAConfig[]) => {
@@ -34,14 +61,13 @@ const registerCustomMAIndicator = (maConfigs: MAConfig[]) => {
     .map(ma => ma.period)
     .sort((a, b) => a - b);
 
-  if (enabledPeriods.length === 0) return 'CUSTOM_MA';
+  if (enabledPeriods.length === 0) return null;
 
-  const indicatorName = 'CUSTOM_MA';
+  const configKey = generateMAKey(maConfigs);
+  const uniqueName = `CUSTOM_MA_${configKey}`;
   
-  try {
-    // Force re-registration by using a unique name based on periods
-    const uniqueName = `CUSTOM_MA_${enabledPeriods.join('_')}`;
-    
+  // Always re-register to ensure latest config is used
+  try {    
     registerIndicator({
       name: uniqueName,
       shortName: 'MA',
@@ -85,11 +111,12 @@ const registerCustomMAIndicator = (maConfigs: MAConfig[]) => {
       },
     });
 
+    // Always update the set to track current registration
     registeredIndicators.add(uniqueName);
     return uniqueName;
   } catch (error) {
     console.error('Error registering custom MA indicator:', error);
-    return indicatorName;
+    return uniqueName;
   }
 };
 
@@ -100,13 +127,12 @@ const registerCustomEMAIndicator = (emaConfigs: MAConfig[]) => {
     .map(ema => ema.period)
     .sort((a, b) => a - b);
 
-  if (enabledPeriods.length === 0) return 'CUSTOM_EMA';
+  if (enabledPeriods.length === 0) return null;
 
-  const indicatorName = 'CUSTOM_EMA';
+  const configKey = generateMAKey(emaConfigs);
+  const uniqueName = `CUSTOM_EMA_${configKey}`;
   
-  try {
-    const uniqueName = `CUSTOM_EMA_${enabledPeriods.join('_')}`;
-    
+  try {    
     registerIndicator({
       name: uniqueName,
       shortName: 'EMA',
@@ -160,7 +186,7 @@ const registerCustomEMAIndicator = (emaConfigs: MAConfig[]) => {
     return uniqueName;
   } catch (error) {
     console.error('Error registering custom EMA indicator:', error);
-    return indicatorName;
+    return uniqueName;
   }
 };
 
@@ -171,13 +197,12 @@ const registerCustomWMAIndicator = (wmaConfigs: MAConfig[]) => {
     .map(wma => wma.period)
     .sort((a, b) => a - b);
 
-  if (enabledPeriods.length === 0) return 'CUSTOM_WMA';
+  if (enabledPeriods.length === 0) return null;
 
-  const indicatorName = 'CUSTOM_WMA';
+  const configKey = generateMAKey(wmaConfigs);
+  const uniqueName = `CUSTOM_WMA_${configKey}`;
   
-  try {
-    const uniqueName = `CUSTOM_WMA_${enabledPeriods.join('_')}`;
-    
+  try {    
     registerIndicator({
       name: uniqueName,
       shortName: 'WMA',
@@ -235,26 +260,242 @@ const registerCustomWMAIndicator = (wmaConfigs: MAConfig[]) => {
     return uniqueName;
   } catch (error) {
     console.error('Error registering custom WMA indicator:', error);
-    return indicatorName;
+    return uniqueName;
   }
 };
 
-// Get current indicator names based on config
-const getCurrentIndicatorNames = (maConfigs: MAConfig[], emaConfigs: MAConfig[], wmaConfigs: MAConfig[], bbConfigs: BBConfig[]) => {
-  const maPeriods = maConfigs.filter(ma => ma.show).map(ma => ma.period).sort((a, b) => a - b);
-  const emaPeriods = emaConfigs.filter(ema => ema.show).map(ema => ema.period).sort((a, b) => a - b);
-  const wmaPeriods = wmaConfigs.filter(wma => wma.show).map(wma => wma.period).sort((a, b) => a - b);
-  const bbConfigParams = bbConfigs
+// Register Custom Bollinger Bands Indicator
+const registerCustomBBIndicator = (bbConfigs: BBConfig[]) => {
+  const enabledConfigs = bbConfigs
     .filter(bb => bb.show)
-    .map(bb => `${bb.period}_${bb.stdDev}`)
-    .sort();
+    .sort((a, b) => a.period - b.period);
 
-  return {
-    ma: maPeriods.length > 0 ? `CUSTOM_MA_${maPeriods.join('_')}` : null,
-    ema: emaPeriods.length > 0 ? `CUSTOM_EMA_${emaPeriods.join('_')}` : null,
-    wma: wmaPeriods.length > 0 ? `CUSTOM_WMA_${wmaPeriods.join('_')}` : null,
-    bb: bbConfigParams.length > 0 ? `CUSTOM_BB_${bbConfigParams.join('_')}` : null,
-  };
+  if (enabledConfigs.length === 0) return null;
+
+  const configKey = generateBBKey(bbConfigs);
+  const uniqueName = `CUSTOM_BB_${configKey}`;
+  
+  try {    
+    registerIndicator({
+      name: uniqueName,
+      shortName: 'BB',
+      calcParams: enabledConfigs.map(bb => [bb.period, bb.stdDev]).flat(),
+      figures: enabledConfigs.flatMap((bbConfig, index) => [
+        {
+          key: `bb_upper_${index}`,
+          title: `BB Upper ${bbConfig.period}: `,
+          type: 'line',
+          styles: () => ({
+            color: bbConfig.color,
+            size: bbConfig.lineSize,
+          })
+        },
+        {
+          key: `bb_middle_${index}`,
+          title: `BB Middle ${bbConfig.period}: `,
+          type: 'line',
+          styles: () => ({
+            color: bbConfig.color,
+            size: bbConfig.lineSize,
+            style: 'dashed',
+          })
+        },
+        {
+          key: `bb_lower_${index}`,
+          title: `BB Lower ${bbConfig.period}: `,
+          type: 'line',
+          styles: () => ({
+            color: bbConfig.color,
+            size: bbConfig.lineSize,
+          })
+        }
+      ]),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        
+        // Group params by config (each config has period and stdDev)
+        const configs: { period: number, stdDev: number }[] = [];
+        for (let i = 0; i < calcParams.length; i += 2) {
+          configs.push({
+            period: calcParams[i],
+            stdDev: calcParams[i + 1]
+          });
+        }
+        
+        for (let i = 0; i < dataList.length; i++) {
+          const item: any = {};
+          
+          configs.forEach((config, configIndex) => {
+            const { period, stdDev } = config;
+            
+            if (i >= period - 1) {
+              // Calculate SMA (middle band)
+              let sum = 0;
+              for (let j = 0; j < period; j++) {
+                sum += dataList[i - j].close;
+              }
+              const sma = sum / period;
+              
+              // Calculate standard deviation
+              let variance = 0;
+              for (let j = 0; j < period; j++) {
+                variance += Math.pow(dataList[i - j].close - sma, 2);
+              }
+              const deviation = Math.sqrt(variance / period);
+              
+              // Set Bollinger Bands values
+              item[`bb_upper_${configIndex}`] = sma + (deviation * stdDev);
+              item[`bb_middle_${configIndex}`] = sma;
+              item[`bb_lower_${configIndex}`] = sma - (deviation * stdDev);
+            } else {
+              // Not enough data
+              item[`bb_upper_${configIndex}`] = 0;
+              item[`bb_middle_${configIndex}`] = 0;
+              item[`bb_lower_${configIndex}`] = 0;
+            }
+          });
+          
+          result.push(item);
+        }
+        
+        return result;
+      },
+    });
+
+    registeredIndicators.add(uniqueName);
+    return uniqueName;
+  } catch (error) {
+    console.error('Error registering custom BB indicator:', error);
+    return uniqueName;
+  }
+};
+
+// Register Custom VWAP Indicator
+const registerCustomVWAPIndicator = (vwapConfigs: VWAPConfig[]) => {
+  const enabledConfigs = vwapConfigs.filter(vwap => vwap.show);
+
+  if (enabledConfigs.length === 0) return null;
+
+  try {
+    const configKey = generateVWAPKey(vwapConfigs);
+    const uniqueName = `CUSTOM_VWAP_${configKey}`;
+
+    registerIndicator({
+      name: uniqueName,
+      shortName: 'VWAP',
+      calcParams: enabledConfigs.map(config => config.length),
+      figures: enabledConfigs.map((vwapConfig, index) => ({
+        key: `vwap${index}`,
+        title: `VWAP${vwapConfig.length > 0 ? ` (${vwapConfig.length})` : ''}: `,
+        type: 'line',
+        styles: () => ({
+          color: vwapConfig.color,
+          size: vwapConfig.lineSize,
+        })
+      })),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        
+        if (!dataList || dataList.length === 0) {
+          return result;
+        }
+
+        // Pre-calculate typical prices for performance
+        const typicalPrices = dataList.map(data => 
+          (data.high + data.low + data.close) / 3
+        );
+
+        // Initialize cumulative arrays for each config
+        const cumulativeVolumes = new Array(enabledConfigs.length).fill(0);
+        const cumulativeVolumePrices = new Array(enabledConfigs.length).fill(0);
+        const sessionStarts = new Array(enabledConfigs.length).fill('');
+        
+        for (let i = 0; i < dataList.length; i++) {
+          const currentData = dataList[i];
+          const typicalPrice = typicalPrices[i];
+          const volume = currentData.volume || 0;
+          const volumePrice = typicalPrice * volume;
+          
+          const item: any = {};
+          
+          enabledConfigs.forEach((config, configIndex) => {
+            const length = calcParams[configIndex];
+            
+            if (length === 0) {
+              // Session-based VWAP (resets at UTC midnight)
+              const timestamp = currentData.timestamp;
+              const date = new Date(timestamp);
+              const sessionKey = `${date.getUTCFullYear()}-${date.getUTCMonth() + 1}-${date.getUTCDate()}`;
+              
+              // Reset cumulative values if session changed
+              if (sessionKey !== sessionStarts[configIndex]) {
+                cumulativeVolumes[configIndex] = 0;
+                cumulativeVolumePrices[configIndex] = 0;
+                sessionStarts[configIndex] = sessionKey;
+              }
+              
+              cumulativeVolumes[configIndex] += volume;
+              cumulativeVolumePrices[configIndex] += volumePrice;
+              
+              const vwap = cumulativeVolumes[configIndex] > 0 
+                ? cumulativeVolumePrices[configIndex] / cumulativeVolumes[configIndex] 
+                : typicalPrice;
+              
+              item[`vwap${configIndex}`] = vwap;
+            } else {
+              // Rolling VWAP with specified length
+              if (i >= length - 1) {
+                let cumulativeVolume = 0;
+                let cumulativeVolumePrice = 0;
+                
+                for (let j = 0; j < length; j++) {
+                  const dataIndex = i - j;
+                  const typicalPrice = typicalPrices[dataIndex];
+                  const volume = dataList[dataIndex].volume || 0;
+                  const volumePrice = typicalPrice * volume;
+                  
+                  cumulativeVolume += volume;
+                  cumulativeVolumePrice += volumePrice;
+                }
+                
+                item[`vwap${configIndex}`] = cumulativeVolume > 0 
+                  ? cumulativeVolumePrice / cumulativeVolume 
+                  : typicalPrice;
+              } else {
+                // Not enough data for rolling VWAP, use all available data
+                let cumulativeVolume = 0;
+                let cumulativeVolumePrice = 0;
+                
+                for (let j = 0; j <= i; j++) {
+                  const typicalPrice = typicalPrices[j];
+                  const volume = dataList[j].volume || 0;
+                  const volumePrice = typicalPrice * volume;
+                  
+                  cumulativeVolume += volume;
+                  cumulativeVolumePrice += volumePrice;
+                }
+                
+                item[`vwap${configIndex}`] = cumulativeVolume > 0 
+                  ? cumulativeVolumePrice / cumulativeVolume 
+                  : typicalPrice;
+              }
+            }
+          });
+          
+          result.push(item);
+        }
+        
+        return result;
+      },
+    });
+
+    registeredIndicators.add(uniqueName);
+    console.log(`✅ Registered VWAP indicator: ${uniqueName}`);
+    return uniqueName;
+  } catch (error) {
+    console.error('❌ Error registering custom VWAP indicator:', error);
+    return null;
+  }
 };
 
 // Register RSI Indicator with unique name
@@ -412,113 +653,6 @@ const registerCustomVolumeIndicator = (volumeConfig: VolumeConfig) => {
   }
 };
 
-// Register Custom Bollinger Bands Indicator
-const registerCustomBBIndicator = (bbConfigs: BBConfig[]) => {
-  const enabledConfigs = bbConfigs
-    .filter(bb => bb.show)
-    .sort((a, b) => a.period - b.period);
-
-  if (enabledConfigs.length === 0) return 'CUSTOM_BB';
-
-  const indicatorName = 'CUSTOM_BB';
-  
-  try {
-    const uniqueName = `CUSTOM_BB_${enabledConfigs.map(bb => `${bb.period}_${bb.stdDev}`).join('_')}`;
-    
-    registerIndicator({
-      name: uniqueName,
-      shortName: 'BB',
-      calcParams: enabledConfigs.map(bb => [bb.period, bb.stdDev]).flat(),
-      figures: enabledConfigs.flatMap((bbConfig, index) => [
-        {
-          key: `bb_upper_${index}`,
-          title: `BB Upper ${bbConfig.period}: `,
-          type: 'line',
-          styles: () => ({
-            color: bbConfig.color,
-            size: bbConfig.lineSize,
-          })
-        },
-        {
-          key: `bb_middle_${index}`,
-          title: `BB Middle ${bbConfig.period}: `,
-          type: 'line',
-          styles: () => ({
-            color: bbConfig.color,
-            size: bbConfig.lineSize,
-            style: 'dashed',
-          })
-        },
-        {
-          key: `bb_lower_${index}`,
-          title: `BB Lower ${bbConfig.period}: `,
-          type: 'line',
-          styles: () => ({
-            color: bbConfig.color,
-            size: bbConfig.lineSize,
-          })
-        }
-      ]),
-      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
-        const result: any[] = [];
-        
-        // Group params by config (each config has period and stdDev)
-        const configs: { period: number, stdDev: number }[] = [];
-        for (let i = 0; i < calcParams.length; i += 2) {
-          configs.push({
-            period: calcParams[i],
-            stdDev: calcParams[i + 1]
-          });
-        }
-        
-        for (let i = 0; i < dataList.length; i++) {
-          const item: any = {};
-          
-          configs.forEach((config, configIndex) => {
-            const { period, stdDev } = config;
-            
-            if (i >= period - 1) {
-              // Calculate SMA (middle band)
-              let sum = 0;
-              for (let j = 0; j < period; j++) {
-                sum += dataList[i - j].close;
-              }
-              const sma = sum / period;
-              
-              // Calculate standard deviation
-              let variance = 0;
-              for (let j = 0; j < period; j++) {
-                variance += Math.pow(dataList[i - j].close - sma, 2);
-              }
-              const deviation = Math.sqrt(variance / period);
-              
-              // Set Bollinger Bands values
-              item[`bb_upper_${configIndex}`] = sma + (deviation * stdDev);
-              item[`bb_middle_${configIndex}`] = sma;
-              item[`bb_lower_${configIndex}`] = sma - (deviation * stdDev);
-            } else {
-              // Not enough data
-              item[`bb_upper_${configIndex}`] = 0;
-              item[`bb_middle_${configIndex}`] = 0;
-              item[`bb_lower_${configIndex}`] = 0;
-            }
-          });
-          
-          result.push(item);
-        }
-        
-        return result;
-      },
-    });
-
-    registeredIndicators.add(uniqueName);
-    return uniqueName;
-  } catch (error) {
-    console.error('Error registering custom BB indicator:', error);
-    return indicatorName;
-  }
-};
-
 // Helper function to get active tool from localStorage
 const getStoredActiveTool = (): string => {
   if (typeof window === 'undefined') return '';
@@ -553,6 +687,7 @@ export default function MainChart() {
     toggleEMA,
     toggleWMA,
     toggleBB,
+    toggleVWAP
   } = useGlobalContext();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -560,17 +695,69 @@ export default function MainChart() {
   const [activeDrawingTool, setActiveDrawingTool] = useState<string>(() => getStoredActiveTool());
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
-  const [chartKey, setChartKey] = useState(0); // Add key to force re-render
+  const [chartKey, setChartKey] = useState(0);
 
-  // Force chart refresh when MA configurations change
+  // Reset registered indicators when config changes
+  useEffect(() => {
+    registeredIndicators = new Set();
+  }, [
+    config.indicators.ma,
+    config.indicators.ema, 
+    config.indicators.wma,
+    config.indicators.bb,
+    config.indicators.vwap
+  ]);
+
+  // Force chart refresh when configurations change
   const forceChartRefresh = useCallback(() => {
-    if (chartRef.current && chartContainerRef.current) {
-      console.log('Force refreshing chart due to MA configuration change');
-      setChartKey(prev => prev + 1);
+    console.log('Force refreshing chart due to configuration change');
+    setChartKey(prev => prev + 1);
+  }, []);
+
+  // Clear all overlay indicators from chart - FIXED VERSION
+  const clearOverlayIndicators = useCallback((chart: any) => {
+    if (!chart) return;
+    
+    try {
+      console.log('🔄 Clearing overlay indicators...');
+      
+      // Remove all possible overlay indicators by their base names and patterns
+      // We'll try to remove known indicator names without relying on getIndicatorList
+      const overlayPatterns = [
+        'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA', 'CUSTOM_BB', 'CUSTOM_VWAP',
+        'MA', 'EMA', 'WMA', 'BB', 'VWAP', 'BOLL'
+      ];
+      
+      // Try to remove indicators by common names
+      overlayPatterns.forEach(pattern => {
+        try {
+          chart.removeIndicator(pattern);
+        } catch (e) {
+          // Ignore errors if indicator doesn't exist
+        }
+      });
+      
+      // Also try to remove indicators that might have been created with dynamic names
+      // We'll use a more defensive approach since getIndicatorList doesn't exist
+      const knownIndicators = [
+        'candle_pane', 'main_pane', 'overlay_1', 'overlay_2', 'overlay_3'
+      ];
+      
+      knownIndicators.forEach(indicatorId => {
+        try {
+          chart.removeIndicator(indicatorId);
+        } catch (e) {
+          // Ignore removal errors
+        }
+      });
+      
+      console.log('✅ Overlay indicators cleared');
+    } catch (error) {
+      console.error('Error clearing overlay indicators:', error);
     }
   }, []);
 
-  // Register all custom indicators
+  // Register all custom indicators - ALWAYS re-register when config changes
   useEffect(() => {
     let mounted = true;
     
@@ -578,17 +765,14 @@ export default function MainChart() {
       if (!mounted) return;
       
       try {
-        // Register custom MA indicator with multiple periods
+        console.log('🔄 Registering all custom indicators...');
+        
+        // Always register indicators - don't check cache
         registerCustomMAIndicator(config.indicators.ma);
-        
-        // Register custom EMA indicator with multiple periods
         registerCustomEMAIndicator(config.indicators.ema);
-        
-        // Register custom WMA indicator with multiple periods
         registerCustomWMAIndicator(config.indicators.wma);
-
-        // Register custom Bollinger Bands indicator
         registerCustomBBIndicator(config.indicators.bb);
+        registerCustomVWAPIndicator(config.indicators.vwap);
         
         // Register RSI indicators
         if ((window as any).__registeredRSIIndicators) {
@@ -605,13 +789,6 @@ export default function MainChart() {
 
         // Register volume indicators
         if ((window as any).__registeredVolumeIndicators) {
-          (window as any).__registeredVolumeIndicators.forEach((indicatorName: string) => {
-            try {
-              // Clean up previous volume indicators
-            } catch (error) {
-              // Ignore errors
-            }
-          });
           (window as any).__registeredVolumeIndicators = [];
         }
         
@@ -622,8 +799,10 @@ export default function MainChart() {
           }
           (window as any).__registeredVolumeIndicators.push(indicatorName);
         });
+
+        console.log('✅ All indicators registered successfully');
       } catch (error) {
-        console.error('Error registering indicators:', error);
+        console.error('❌ Error registering indicators:', error);
       }
     };
 
@@ -637,10 +816,12 @@ export default function MainChart() {
     config.indicators.volume, 
     config.indicators.ma, 
     config.indicators.ema, 
-    config.indicators.wma,
-    config.indicators.bb
+    config.indicators.wma, 
+    config.indicators.bb,
+    config.indicators.vwap
   ]);
 
+  // [Rest of the component remains the same...]
   // Save active tool to localStorage whenever it changes
   useEffect(() => {
     saveActiveTool(activeDrawingTool);
@@ -692,6 +873,12 @@ export default function MainChart() {
       toggleBB(bbId);
       return;
     }
+
+    if (tool.startsWith('vwap-toggle-')) {
+      const vwapId = tool.replace('vwap-toggle-', '');
+      toggleVWAP(vwapId);
+      return;
+    }
     
     if (chartRef.current) {
       try {
@@ -722,7 +909,7 @@ export default function MainChart() {
         console.warn('Error creating overlay:', error);
       }
     }
-  }, [toggleRSI, toggleVolume, toggleMA, toggleEMA, toggleWMA, toggleBB]);
+  }, [toggleRSI, toggleVolume, toggleMA, toggleEMA, toggleWMA, toggleBB, toggleVWAP]);
 
   // Setup RSI indicators on chart
   const setupRSIIndicators = useCallback((chart: any) => {
@@ -853,7 +1040,7 @@ export default function MainChart() {
     }
   }, [config.indicators.volume]);
 
-  // Setup MA, EMA, WMA as technical indicator overlays in the candle pane
+  // Setup MA, EMA, WMA, BB, VWAP as technical indicator overlays in the candle pane
   const setupMovingAverageOverlays = useCallback((chart: any) => {
     if (!chart) {
       console.warn('Chart instance not available for moving average setup');
@@ -861,96 +1048,89 @@ export default function MainChart() {
     }
 
     try {
-      // Get current indicator names based on enabled periods
-      const indicatorNames = getCurrentIndicatorNames(
-        config.indicators.ma,
-        config.indicators.ema,
-        config.indicators.wma,
-        config.indicators.bb
-      );
+      console.log('🔄 Setting up moving average overlays...');
+      
+      // Clear existing overlay indicators first
+      clearOverlayIndicators(chart);
 
-      // Remove all existing moving average overlays first
-      const allOverlayNames = [
-        ...(indicatorNames.ma ? [indicatorNames.ma] : []),
-        ...(indicatorNames.ema ? [indicatorNames.ema] : []),
-        ...(indicatorNames.wma ? [indicatorNames.wma] : []),
-        ...(indicatorNames.bb ? [indicatorNames.bb] : []),
-        'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA' // Remove old names too
-      ];
-      
-      console.log('Setting up moving average overlays, removing:', allOverlayNames);
-      
-      // Clean up existing overlays
-      allOverlayNames.forEach(indicatorName => {
-        try {
-          chart.removeIndicator(indicatorName);
-          console.log(`Removed overlay: ${indicatorName}`);
-        } catch (e) {
-          // Ignore removal errors
-        }
-      });
+      // Register indicators first and get their unique names
+      const maUniqueName = registerCustomMAIndicator(config.indicators.ma);
+      const emaUniqueName = registerCustomEMAIndicator(config.indicators.ema);
+      const wmaUniqueName = registerCustomWMAIndicator(config.indicators.wma);
+      const bbUniqueName = registerCustomBBIndicator(config.indicators.bb);
+      const vwapUniqueName = registerCustomVWAPIndicator(config.indicators.vwap);
 
       // Get enabled configurations for each type
       const enabledMA = config.indicators.ma.filter(ma => ma.show);
       const enabledEMA = config.indicators.ema.filter(ema => ema.show);
       const enabledWMA = config.indicators.wma.filter(wma => wma.show);
       const enabledBB = config.indicators.bb.filter(bb => bb.show);
+      const enabledVWAP = config.indicators.vwap.filter(vwap => vwap.show);
 
-      // Create MA overlay if any MA is enabled
-      if (enabledMA.length > 0 && indicatorNames.ma) {
+      // Create overlays for enabled indicators
+      if (enabledMA.length > 0 && maUniqueName) {
         try {
-          chart.createIndicator(indicatorNames.ma, true, { 
+          chart.createIndicator(maUniqueName, true, { 
             id: "candle_pane"
           });
-          console.log(`Created MA overlay with periods:`, enabledMA.map(ma => ma.period));
+          console.log(`✅ Created MA overlay with periods:`, enabledMA.map(ma => ma.period));
         } catch (createError) {
-          console.error('Failed to create MA overlay:', createError);
+          console.error('❌ Failed to create MA overlay:', createError);
         }
       }
 
-      // Create EMA overlay if any EMA is enabled
-      if (enabledEMA.length > 0 && indicatorNames.ema) {
+      if (enabledEMA.length > 0 && emaUniqueName) {
         try {
-          chart.createIndicator(indicatorNames.ema, true, { 
+          chart.createIndicator(emaUniqueName, true, { 
             id: "candle_pane"
           });
-          console.log(`Created EMA overlay with periods:`, enabledEMA.map(ema => ema.period));
+          console.log(`✅ Created EMA overlay with periods:`, enabledEMA.map(ema => ema.period));
         } catch (createError) {
-          console.error('Failed to create EMA overlay:', createError);
+          console.error('❌ Failed to create EMA overlay:', createError);
         }
       }
 
-      // Create WMA overlay if any WMA is enabled
-      if (enabledWMA.length > 0 && indicatorNames.wma) {
+      if (enabledWMA.length > 0 && wmaUniqueName) {
         try {
-          chart.createIndicator(indicatorNames.wma, true, { 
+          chart.createIndicator(wmaUniqueName, true, { 
             id: "candle_pane"
           });
-          console.log(`Created WMA overlay with periods:`, enabledWMA.map(wma => wma.period));
+          console.log(`✅ Created WMA overlay with periods:`, enabledWMA.map(wma => wma.period));
         } catch (createError) {
-          console.error('Failed to create WMA overlay:', createError);
+          console.error('❌ Failed to create WMA overlay:', createError);
         }
       }
 
-      if (enabledBB.length > 0 && indicatorNames.bb) {
-      try {
-        chart.createIndicator(indicatorNames.bb, true, { 
-          id: "candle_pane"
-        });
-        console.log(`Created BB overlay with periods:`, enabledBB.map(bb => bb.period));
-      } catch (createError) {
-        console.error('Failed to create BB overlay:', createError);
+      if (enabledBB.length > 0 && bbUniqueName) {
+        try {
+          chart.createIndicator(bbUniqueName, true, { 
+            id: "candle_pane"
+          });
+          console.log(`✅ Created BB overlay with periods:`, enabledBB.map(bb => bb.period));
+        } catch (createError) {
+          console.error('❌ Failed to create BB overlay:', createError);
+        }
       }
-    }
 
-      const totalOverlays = [enabledMA, enabledEMA, enabledWMA, enabledBB]
+      if (enabledVWAP.length > 0 && vwapUniqueName) {
+        try {
+          chart.createIndicator(vwapUniqueName, true, { 
+            id: "candle_pane"
+          });
+          console.log(`✅ Created VWAP overlay with lengths:`, enabledVWAP.map(vwap => vwap.length));
+        } catch (createError) {
+          console.error('❌ Failed to create VWAP overlay:', createError);
+        }
+      }
+
+      const totalOverlays = [enabledMA, enabledEMA, enabledWMA, enabledBB, enabledVWAP]
         .filter(arr => arr.length > 0).length;
-      console.log(`Created ${totalOverlays} moving average overlays in candle pane`);
+      console.log(`🎯 Created ${totalOverlays} moving average overlays in candle pane`);
 
     } catch (error) {
-      console.error('Critical error in moving average overlay setup:', error);
+      console.error('💥 Critical error in moving average overlay setup:', error);
     }
-  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, config.indicators.bb]);
+  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, config.indicators.bb, config.indicators.vwap, clearOverlayIndicators]);
 
   // Apply chart styles from global config
   const applyChartStyles = useCallback((chart: any) => {
@@ -1207,22 +1387,42 @@ export default function MainChart() {
     setupVolumeIndicators, 
     setupWebSocket, 
     cleanup,
-    chartKey // Add chartKey as dependency to reinitialize when it changes
+    chartKey
   ]);
 
-  // Effect for MA, EMA, WMA, BB overlay changes
+  // Effect for overlay indicator changes (MA, EMA, WMA, BB, VWAP)
   useEffect(() => {
     if (!chartRef.current || !currentDataRef.current.length) return;
     
-    console.log('configuration changed, forcing complete refresh');
+    console.log('🔄 Overlay configuration changed, updating indicators...');
     
-    // Force a complete chart refresh when MA configurations change
-    const timer = setTimeout(() => {
-      forceChartRefresh();
-    }, 100);
+    const updateOverlayIndicators = () => {
+      try {
+        setupMovingAverageOverlays(chartRef.current);
+        
+        // Force a complete chart refresh to ensure indicators are recalculated
+        setTimeout(() => {
+          if (chartRef.current && currentDataRef.current.length > 0) {
+            const klineData = convertToKLineData(currentDataRef.current);
+            chartRef.current.applyNewData(klineData);
+            chartRef.current.resize();
+          }
+        }, 150);
+      } catch (error) {
+        console.error('💥 Error updating overlay indicators:', error);
+      }
+    };
 
+    const timer = setTimeout(updateOverlayIndicators, 50);
     return () => clearTimeout(timer);
-  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, config.indicators.bb, forceChartRefresh]);
+  }, [
+    config.indicators.ma, 
+    config.indicators.ema, 
+    config.indicators.wma, 
+    config.indicators.bb, 
+    config.indicators.vwap, 
+    setupMovingAverageOverlays
+  ]);
 
   // Effect for RSI indicator changes
   useEffect(() => {
@@ -1230,22 +1430,11 @@ export default function MainChart() {
     
     const updateRSIIndicators = async () => {
       try {
-        // Re-register all RSI indicators first
-        config.indicators.rsi.forEach(rsiConfig => {
-          registerRSIIndicator(rsiConfig);
-        });
-        
-        // Then setup the indicators on chart
         setupRSIIndicators(chartRef.current);
         
         // Force complete refresh
         setTimeout(() => {
           chartRef.current?.resize();
-          // Re-apply data to force indicator recalculation
-          if (currentDataRef.current.length > 0) {
-            const klineData = convertToKLineData(currentDataRef.current);
-            chartRef.current?.applyNewData(klineData);
-          }
         }, 50);
       } catch (error) {
         console.error('Error updating RSI indicators:', error);
@@ -1284,61 +1473,6 @@ export default function MainChart() {
     return () => clearTimeout(timer);
   }, [config.indicators.volume, setupVolumeIndicators]);
 
-  // handle migration from old config structure
-  useEffect(() => {
-    const checkAndMigrateVolumeConfig = () => {
-      const volumeConfigs = config.indicators.volume;
-      
-      // Check if any volume config needs migration
-      const needsMigration = volumeConfigs.some(vol => {
-        // If maLines doesn't exist or isn't an array, needs migration
-        return !vol.maLines || !Array.isArray(vol.maLines);
-      });
-      
-      if (needsMigration) {
-        // Force a complete refresh of the chart
-        setTimeout(() => {
-          if (chartRef.current) {
-            setupVolumeIndicators(chartRef.current);
-          }
-        }, 500);
-      }
-    };
-
-    checkAndMigrateVolumeConfig();
-  }, [config.indicators.volume, setupVolumeIndicators]);
-
-  // Force refresh function for immediate updates
-  const forceChartReset = useCallback(() => {
-    if (chartRef.current && chartContainerRef.current) {
-      try {
-        // Completely dispose and reinitialize the chart
-        dispose(chartContainerRef.current);
-        
-        setTimeout(() => {
-          const newChart = initializeChart();
-          if (newChart && currentDataRef.current.length > 0) {
-            chartRef.current = newChart;
-            const klineData = convertToKLineData(currentDataRef.current);
-            newChart.applyNewData(klineData);
-            applyChartStyles(newChart);
-            setupRSIIndicators(newChart);
-            setupMovingAverageOverlays(newChart);
-            setupVolumeIndicators(newChart);
-          }
-        }, 100);
-      } catch (error) {
-        console.error('❌ Error resetting chart:', error);
-      }
-    }
-  }, [
-    initializeChart, 
-    applyChartStyles, 
-    setupRSIIndicators, 
-    setupMovingAverageOverlays,
-    setupVolumeIndicators
-  ]);
-
   // Effect for chart style changes
   useEffect(() => {
     if (!chartRef.current) return;
@@ -1350,17 +1484,6 @@ export default function MainChart() {
     return () => clearTimeout(timer);
   }, [config.chart, applyChartStyles]);
 
-  // Effect for chart type changes
-  useEffect(() => {
-    if (!chartRef.current) return;
-    
-    const timer = setTimeout(() => {
-      applyChartStyles(chartRef.current);
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [config.chartType, applyChartStyles]);
-
   // Cleanup on component unmount
   useEffect(() => {
     return () => {
@@ -1370,12 +1493,6 @@ export default function MainChart() {
 
   return (
     <div className="w-full h-full flex flex-col relative">
-        {/* Drawing Tools */}
-        {/* <DrawingTools 
-          onToolSelect={handleDrawingToolSelect}
-          activeTool={activeDrawingTool}
-        /> */}
-        
         {/* Loading and Error States */}
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-900 bg-opacity-80 z-10">
@@ -1391,7 +1508,7 @@ export default function MainChart() {
         
         {/* Main Chart container */}
         <div 
-            key={chartKey} // Add key to force re-render
+            key={chartKey}
             ref={chartContainerRef} 
             className="w-full h-full bg-gray-900 rounded-lg"
         />
