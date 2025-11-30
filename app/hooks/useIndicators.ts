@@ -27,7 +27,7 @@ export const useIndicators = () => {
   ]);
 
   const registerAllIndicators = useCallback(() => {
-    console.log('🔄 Registering all custom indicators...');
+    console.log('Registering all custom indicators...');
     
     registerCustomMAIndicator(config.indicators.ma);
     registerCustomEMAIndicator(config.indicators.ema);
@@ -61,7 +61,7 @@ export const useIndicators = () => {
       (window as any).__registeredVolumeIndicators.push(indicatorName);
     });
 
-    console.log('✅ All indicators registered successfully');
+    console.log('All indicators registered successfully');
   }, [config.indicators]);
 
   return {

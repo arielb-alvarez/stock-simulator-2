@@ -36,7 +36,7 @@ export const clearOverlayIndicators = (chart: any) => {
   if (!chart) return;
   
   try {
-    console.log('🔄 Clearing overlay indicators...');
+    console.log('Clearing overlay indicators...');
     
     // Remove all possible overlay indicators by their base names and patterns
     const overlayPatterns = [
@@ -66,7 +66,7 @@ export const clearOverlayIndicators = (chart: any) => {
       }
     });
     
-    console.log('✅ Overlay indicators cleared');
+    console.log('Overlay indicators cleared');
   } catch (error) {
     console.error('Error clearing overlay indicators:', error);
   }
@@ -511,10 +511,10 @@ export const registerCustomVWAPIndicator = (vwapConfigs: VWAPConfig[]) => {
     });
 
     registeredIndicators.add(uniqueName);
-    console.log(`✅ Registered VWAP indicator: ${uniqueName}`);
+    console.log(`Registered VWAP indicator: ${uniqueName}`);
     return uniqueName;
   } catch (error) {
-    console.error('❌ Error registering custom VWAP indicator:', error);
+    console.error('Error registering custom VWAP indicator:', error);
     return null;
   }
 };
@@ -669,7 +669,7 @@ export const registerCustomVolumeIndicator = (volumeConfig: VolumeConfig) => {
     });
     return indicatorName;
   } catch (error) {
-    console.error('❌ Error registering custom Volume indicator:', error);
+    console.error('Error registering custom Volume indicator:', error);
     return indicatorName;
   }
 };
