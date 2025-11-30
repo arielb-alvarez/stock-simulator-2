@@ -149,7 +149,7 @@ export const useIndicatorSetup = () => {
     }
 
     try {
-      console.log('🔄 Setting up moving average overlays...');
+      console.log('Setting up moving average overlays...');
       
       // Clear existing overlay indicators first
       clearOverlayIndicators(chart);
@@ -174,9 +174,9 @@ export const useIndicatorSetup = () => {
           chart.createIndicator(maUniqueName, true, { 
             id: "candle_pane"
           });
-          console.log(`✅ Created MA overlay with periods:`, enabledMA.map(ma => ma.period));
+          console.log(`Created MA overlay with periods:`, enabledMA.map(ma => ma.period));
         } catch (createError) {
-          console.error('❌ Failed to create MA overlay:', createError);
+          console.error('Failed to create MA overlay:', createError);
         }
       }
 
@@ -185,9 +185,9 @@ export const useIndicatorSetup = () => {
           chart.createIndicator(emaUniqueName, true, { 
             id: "candle_pane"
           });
-          console.log(`✅ Created EMA overlay with periods:`, enabledEMA.map(ema => ema.period));
+          console.log(`Created EMA overlay with periods:`, enabledEMA.map(ema => ema.period));
         } catch (createError) {
-          console.error('❌ Failed to create EMA overlay:', createError);
+          console.error('Failed to create EMA overlay:', createError);
         }
       }
 
@@ -196,9 +196,9 @@ export const useIndicatorSetup = () => {
           chart.createIndicator(wmaUniqueName, true, { 
             id: "candle_pane"
           });
-          console.log(`✅ Created WMA overlay with periods:`, enabledWMA.map(wma => wma.period));
+          console.log(`Created WMA overlay with periods:`, enabledWMA.map(wma => wma.period));
         } catch (createError) {
-          console.error('❌ Failed to create WMA overlay:', createError);
+          console.error('Failed to create WMA overlay:', createError);
         }
       }
 
@@ -207,9 +207,9 @@ export const useIndicatorSetup = () => {
           chart.createIndicator(bbUniqueName, true, { 
             id: "candle_pane"
           });
-          console.log(`✅ Created BB overlay with periods:`, enabledBB.map(bb => bb.period));
+          console.log(`Created BB overlay with periods:`, enabledBB.map(bb => bb.period));
         } catch (createError) {
-          console.error('❌ Failed to create BB overlay:', createError);
+          console.error('Failed to create BB overlay:', createError);
         }
       }
 
@@ -218,18 +218,18 @@ export const useIndicatorSetup = () => {
           chart.createIndicator(vwapUniqueName, true, { 
             id: "candle_pane"
           });
-          console.log(`✅ Created VWAP overlay with length:`, enabledVWAP[0].length);
+          console.log(`Created VWAP overlay with length:`, enabledVWAP[0].length);
         } catch (createError) {
-          console.error('❌ Failed to create VWAP overlay:', createError);
+          console.error('Failed to create VWAP overlay:', createError);
         }
       }
 
       const totalOverlays = [enabledMA, enabledEMA, enabledWMA, enabledBB, enabledVWAP]
         .filter(arr => arr.length > 0).length;
-      console.log(`🎯 Created ${totalOverlays} moving average overlays in candle pane`);
+      console.log(`Created ${totalOverlays} moving average overlays in candle pane`);
 
     } catch (error) {
-      console.error('💥 Critical error in moving average overlay setup:', error);
+      console.error('Critical error in moving average overlay setup:', error);
     }
   }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, config.indicators.bb, config.indicators.vwap]);
 

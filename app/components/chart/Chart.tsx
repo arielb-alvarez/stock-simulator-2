@@ -119,7 +119,7 @@ export default function MainChart() {
       } catch (err) {
         if (!mounted) return;
         
-        console.error('❌ Error in chart initialization:', err);
+        console.error('Error in chart initialization:', err);
         setError(`Failed to initialize chart: ${err instanceof Error ? err.message : 'Unknown error'}`);
       } finally {
         if (mounted) {
@@ -151,7 +151,7 @@ export default function MainChart() {
   useEffect(() => {
     if (!chartRef.current || !currentDataRef.current.length) return;
     
-    console.log('🔄 Overlay configuration changed, updating indicators...');
+    console.log('Overlay configuration changed, updating indicators...');
     
     const updateOverlayIndicators = () => {
       try {
@@ -165,7 +165,7 @@ export default function MainChart() {
           }
         }, 150);
       } catch (error) {
-        console.error('💥 Error updating overlay indicators:', error);
+        console.error('Error updating overlay indicators:', error);
       }
     };
 
@@ -220,7 +220,7 @@ export default function MainChart() {
           }
         }, 100);
       } catch (error) {
-        console.error('💥 Error updating volume indicators:', error);
+        console.error('Error updating volume indicators:', error);
       }
     };
 
