@@ -1,0 +1,1243 @@
+// components/chart/ChartControls.tsx
+'use client';
+import { useGlobalContext, ChartType, RSIConfig, VolumeConfig, VolumeMAConfig, MAConfig, BBConfig, VWAPConfig } from '@/context/GlobalContext';
+import { useState, useRef, useEffect } from 'react';
+import { CandleIcon, LineIcon, AreaIcon, BarIcon, ChevronDown, EditIcon, IndicatorsIcon } from './ChartIcons';
+
+const ALL_TIME_FRAMES = [
+  { label: '1m', value: '1m' },
+  { label: '5m', value: '5m' },
+  { label: '15m', value: '15m' },
+  { label: '30m', value: '30m' },
+  { label: '1h', value: '1h' },
+  { label: '4h', value: '4h' },
+  { label: '1d', value: '1d' },
+  { label: '1w', value: '1w' },
+  { label: '1M', value: '1M' },
+];
+
+const CHART_TYPES: { value: ChartType; label: string; icon: React.ReactNode }[] = [
+  { value: 'candle', label: 'Candlestick', icon: <CandleIcon /> },
+  { value: 'line', label: 'Line', icon: <LineIcon /> },
+  { value: 'area', label: 'Area', icon: <AreaIcon /> },
+  { value: 'bar', label: 'Bar', icon: <BarIcon /> },
+];
+
+// Compact configuration components moved outside
+interface CompactMAConfigProps {
+  configs: MAConfig[];
+  title: string;
+  onToggle: (id: string) => void;
+  onPeriodChange: (id: string, period: number) => void;
+  onLineSizeChange: (id: string, lineSize: number) => void;
+  onColorChange: (id: string, color: string) => void;
+}
+
+const CompactMAConfig: React.FC<CompactMAConfigProps> = ({ 
+  configs, 
+  title, 
+  onToggle, 
+  onPeriodChange, 
+  onLineSizeChange, 
+  onColorChange 
+}) => (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <h3 className="text-base font-medium text-gray-200">{title}</h3>
+      <div className="text-sm text-gray-400">
+        {configs.filter(c => c.show).length} active
+      </div>
+    </div>
+
+    <div className="space-y-3">
+      {configs.map((config) => (
+        <div key={config.id} className="flex items-center gap-4 p-3 bg-gray-750 rounded-lg border border-gray-600">
+          <input
+            type="checkbox"
+            checked={config.show}
+            onChange={() => onToggle(config.id)}
+            className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-yellow-500 focus:ring-2 focus:ring-yellow-500"
+          />
+          
+          <span className="text-sm text-white font-medium min-w-[80px]">{config.name}</span>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">Period:</span>
+            <input
+              type="number"
+              min="1"
+              max="200"
+              value={config.period}
+              onChange={(e) => onPeriodChange(config.id, parseInt(e.target.value) || 20)}
+              className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">Width:</span>
+            <input
+              type="number"
+              min="0.5"
+              max="5"
+              step="0.5"
+              value={config.lineSize}
+              onChange={(e) => onLineSizeChange(config.id, parseFloat(e.target.value) || 1.5)}
+              className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={config.color}
+              onChange={(e) => onColorChange(config.id, e.target.value)}
+              className="w-8 h-8 rounded border border-gray-500 cursor-pointer bg-transparent"
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+interface CompactRSIConfigProps {
+  rsiConfigs: RSIConfig[];
+  onToggle: (id: string) => void;
+  onPeriodChange: (id: string, period: number) => void;
+  onLineSizeChange: (id: string, lineSize: number) => void;
+  onColorChange: (id: string, color: string) => void;
+}
+
+const CompactRSIConfig: React.FC<CompactRSIConfigProps> = ({
+  rsiConfigs,
+  onToggle,
+  onPeriodChange,
+  onLineSizeChange,
+  onColorChange
+}) => (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <h3 className="text-base font-medium text-gray-200">RSI</h3>
+      <div className="text-sm text-gray-400">
+        {rsiConfigs.filter(rsi => rsi.show).length} active
+      </div>
+    </div>
+
+    <div className="space-y-3">
+      {rsiConfigs.map((rsiConfig) => (
+        <div key={rsiConfig.id} className="flex items-center gap-4 p-3 bg-gray-750 rounded-lg border border-gray-600">
+          <input
+            type="checkbox"
+            checked={rsiConfig.show}
+            onChange={() => onToggle(rsiConfig.id)}
+            className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-yellow-500 focus:ring-2 focus:ring-yellow-500"
+          />
+          
+          <span className="text-sm text-white font-medium min-w-[60px]">RSI</span>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">Period:</span>
+            <input
+              type="number"
+              min="1"
+              max="100"
+              value={rsiConfig.period}
+              onChange={(e) => onPeriodChange(rsiConfig.id, parseInt(e.target.value) || 14)}
+              className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">Width:</span>
+            <input
+              type="number"
+              min="0.5"
+              max="5"
+              step="0.5"
+              value={rsiConfig.lineSize}
+              onChange={(e) => onLineSizeChange(rsiConfig.id, parseFloat(e.target.value) || 1.5)}
+              className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={rsiConfig.lineColor}
+              onChange={(e) => onColorChange(rsiConfig.id, e.target.value)}
+              className="w-8 h-8 rounded border border-gray-500 cursor-pointer bg-transparent"
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+interface CompactVolumeConfigProps {
+  volumeConfigs: VolumeConfig[];
+  onToggle: (id: string) => void;
+  onNameChange: (id: string, name: string) => void;
+  onUpColorChange: (id: string, color: string) => void;
+  onDownColorChange: (id: string, color: string) => void;
+  onOpacityChange: (id: string, opacity: number) => void;
+  onUpdateVolumeMA: (volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => void;
+  onToggleVolumeMA: (volumeId: string, maId: string) => void;
+}
+
+const CompactVolumeConfig: React.FC<CompactVolumeConfigProps> = ({
+  volumeConfigs,
+  onToggle,
+  onNameChange,
+  onUpColorChange,
+  onDownColorChange,
+  onOpacityChange,
+  onUpdateVolumeMA,
+  onToggleVolumeMA
+}) => (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <h3 className="text-base font-medium text-gray-200">Volume</h3>
+      <div className="text-sm text-gray-400">
+        {volumeConfigs.filter(volume => volume.show).length} active
+      </div>
+    </div>
+
+    <div className="space-y-4">
+      {volumeConfigs.map((volumeConfig) => (
+        <div key={volumeConfig.id} className="p-4 bg-gray-750 rounded-lg border border-gray-600">
+          <div className="flex items-center gap-4 mb-4">
+            <input
+              type="checkbox"
+              checked={volumeConfig.show}
+              onChange={() => onToggle(volumeConfig.id)}
+              className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-yellow-500 focus:ring-2 focus:ring-yellow-500"
+            />
+            <input
+              type="text"
+              value={volumeConfig.name}
+              onChange={(e) => onNameChange(volumeConfig.id, e.target.value)}
+              className="flex-1 bg-gray-700 border border-gray-500 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-400">Up:</span>
+              <input
+                type="color"
+                value={volumeConfig.upColor}
+                onChange={(e) => onUpColorChange(volumeConfig.id, e.target.value)}
+                className="w-8 h-8 rounded border border-gray-500 cursor-pointer bg-transparent"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-400">Down:</span>
+              <input
+                type="color"
+                value={volumeConfig.downColor}
+                onChange={(e) => onDownColorChange(volumeConfig.id, e.target.value)}
+                className="w-8 h-8 rounded border border-gray-500 cursor-pointer bg-transparent"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-400">Opacity:</span>
+              <input
+                type="number"
+                min="0.1"
+                max="1"
+                step="0.1"
+                value={volumeConfig.opacity}
+                onChange={(e) => onOpacityChange(volumeConfig.id, parseFloat(e.target.value) || 0.6)}
+                className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+              />
+            </div>
+          </div>
+
+          {/* Volume MA Lines */}
+          <div className="space-y-2">
+            <div className="text-sm text-gray-400 font-medium">MA Lines:</div>
+            {volumeConfig.maLines.map((maConfig) => (
+              <div key={maConfig.id} className="flex items-center gap-3 p-2 bg-gray-800 rounded">
+                <input
+                  type="checkbox"
+                  checked={maConfig.show}
+                  onChange={() => onToggleVolumeMA(volumeConfig.id, maConfig.id)}
+                  className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-yellow-500 focus:ring-2 focus:ring-yellow-500"
+                />
+                <span className="text-sm text-gray-300">MA {maConfig.period}</span>
+                <input
+                  type="color"
+                  value={maConfig.color}
+                  onChange={(e) => onUpdateVolumeMA(volumeConfig.id, maConfig.id, { color: e.target.value })}
+                  className="w-6 h-6 rounded border border-gray-500 cursor-pointer bg-transparent"
+                />
+                <input
+                  type="number"
+                  min="0.5"
+                  max="5"
+                  step="0.5"
+                  value={maConfig.lineSize}
+                  onChange={(e) => onUpdateVolumeMA(volumeConfig.id, maConfig.id, { lineSize: parseFloat(e.target.value) || 1.5 })}
+                  className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+interface CompactBBConfigProps {
+  bbConfigs: BBConfig[];
+  onToggle: (id: string) => void;
+  onPeriodChange: (id: string, period: number) => void;
+  onStdDevChange: (id: string, stdDev: number) => void;
+  onUpdateBB: (id: string, updates: Partial<BBConfig>) => void;
+}
+
+const CompactBBConfig: React.FC<CompactBBConfigProps> = ({
+  bbConfigs,
+  onToggle,
+  onPeriodChange,
+  onStdDevChange,
+  onUpdateBB
+}) => (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <h3 className="text-base font-medium text-gray-200">Bollinger Bands</h3>
+      <div className="text-sm text-gray-400">
+        {bbConfigs.filter(bb => bb.show).length} active
+      </div>
+    </div>
+
+    <div className="space-y-4">
+      {bbConfigs.map((bbConfig) => (
+        <div key={bbConfig.id} className="p-4 bg-gray-750 rounded-lg border border-gray-600">
+          <div className="flex items-center gap-4 mb-4">
+            <input
+              type="checkbox"
+              checked={bbConfig.show}
+              onChange={() => onToggle(bbConfig.id)}
+              className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-yellow-500 focus:ring-2 focus:ring-yellow-500"
+            />
+            <span className="text-sm text-white font-medium">{bbConfig.name}</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-400">Period:</span>
+              <input
+                type="number"
+                min="1"
+                max="200"
+                value={bbConfig.period}
+                onChange={(e) => onPeriodChange(bbConfig.id, parseInt(e.target.value) || 20)}
+                className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-400">Multiplier:</span>
+              <input
+                type="number"
+                min="0.1"
+                max="5"
+                step="0.1"
+                value={bbConfig.stdDev}
+                onChange={(e) => onStdDevChange(bbConfig.id, parseFloat(e.target.value) || 2)}
+                className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {[
+              { key: 'upLine', label: 'UP Line', config: bbConfig.upLine },
+              { key: 'middleLine', label: 'MB Line', config: bbConfig.middleLine },
+              { key: 'downLine', label: 'DN Line', config: bbConfig.downLine }
+            ].map((line) => (
+              <div key={line.key} className="flex items-center gap-4 p-3 bg-gray-800 rounded border border-gray-700">
+                <span className="text-sm text-gray-400 w-16">{line.label}</span>
+                <input
+                  type="color"
+                  value={line.config.color}
+                  onChange={(e) => {
+                    onUpdateBB(bbConfig.id, { 
+                      [line.key]: { ...line.config, color: e.target.value }
+                    });
+                  }}
+                  className="w-8 h-8 rounded border border-gray-500 cursor-pointer bg-transparent"
+                />
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-400">Width:</span>
+                  <input
+                    type="number"
+                    min="0.5"
+                    max="5"
+                    step="0.5"
+                    value={line.config.lineWidth}
+                    onChange={(e) => {
+                      onUpdateBB(bbConfig.id, { 
+                        [line.key]: { ...line.config, lineWidth: parseFloat(e.target.value) || 1.5 }
+                      });
+                    }}
+                    className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+interface CompactVWAPConfigProps {
+  vwapConfigs: VWAPConfig[];
+  onToggle: (id: string) => void;
+  onLengthChange: (id: string, length: number) => void;
+  onLineSizeChange: (id: string, lineSize: number) => void;
+  onColorChange: (id: string, color: string) => void;
+}
+
+const CompactVWAPConfig: React.FC<CompactVWAPConfigProps> = ({
+  vwapConfigs,
+  onToggle,
+  onLengthChange,
+  onLineSizeChange,
+  onColorChange
+}) => (
+  <div className="space-y-4">
+    <div className="flex items-center justify-between">
+      <h3 className="text-base font-medium text-gray-200">VWAP</h3>
+      <div className="text-sm text-gray-400">
+        {vwapConfigs.filter(vwap => vwap.show).length} active
+      </div>
+    </div>
+
+    <div className="space-y-3">
+      {vwapConfigs.map((vwapConfig) => (
+        <div key={vwapConfig.id} className="flex items-center gap-4 p-3 bg-gray-750 rounded-lg border border-gray-600">
+          <input
+            type="checkbox"
+            checked={vwapConfig.show}
+            onChange={() => onToggle(vwapConfig.id)}
+            className="w-4 h-4 rounded border-gray-500 bg-gray-700 text-yellow-500 focus:ring-2 focus:ring-yellow-500"
+          />
+          
+          <span className="text-sm text-white font-medium min-w-[80px]">VWAP</span>
+          
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">Length:</span>
+            <input
+              type="number"
+              min="0"
+              max="1000"
+              value={vwapConfig.length}
+              onChange={(e) => onLengthChange(vwapConfig.id, parseInt(e.target.value) || 20)}
+              className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">Width:</span>
+            <input
+              type="number"
+              min="0.5"
+              max="5"
+              step="0.5"
+              value={vwapConfig.lineSize}
+              onChange={(e) => onLineSizeChange(vwapConfig.id, parseFloat(e.target.value) || 1.5)}
+              className="w-16 bg-gray-700 border border-gray-500 rounded px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={vwapConfig.color}
+              onChange={(e) => onColorChange(vwapConfig.id, e.target.value)}
+              className="w-8 h-8 rounded border border-gray-500 cursor-pointer bg-transparent"
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// Indicators Dialog Component
+interface IndicatorsDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  rsiConfigs: RSIConfig[];
+  volumeConfigs: VolumeConfig[];
+  maConfigs: MAConfig[];
+  emaConfigs: MAConfig[];
+  wmaConfigs: MAConfig[];
+  bbConfigs: BBConfig[];
+  vwapConfigs: VWAPConfig[];
+  onUpdateRSI: (id: string, updates: Partial<RSIConfig>) => void;
+  onToggleRSI: (id: string) => void;
+  onUpdateVolume: (id: string, updates: Partial<VolumeConfig>) => void;
+  onToggleVolume: (id: string) => void;
+  onUpdateVolumeMA: (volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => void;
+  onToggleVolumeMA: (volumeId: string, maId: string) => void;
+  onUpdateMA: (id: string, updates: Partial<MAConfig>) => void;
+  onToggleMA: (id: string) => void;
+  onUpdateEMA: (id: string, updates: Partial<MAConfig>) => void;
+  onToggleEMA: (id: string) => void;
+  onUpdateWMA: (id: string, updates: Partial<MAConfig>) => void;
+  onToggleWMA: (id: string) => void;
+  onUpdateBB: (id: string, updates: Partial<BBConfig>) => void;
+  onToggleBB: (id: string) => void;
+  onUpdateVWAP: (id: string, updates: Partial<VWAPConfig>) => void;
+  onToggleVWAP: (id: string) => void;
+}
+
+const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
+  isOpen,
+  onClose,
+  rsiConfigs,
+  volumeConfigs,
+  maConfigs,
+  emaConfigs,
+  wmaConfigs,
+  bbConfigs,
+  vwapConfigs,
+  onUpdateRSI,
+  onToggleRSI,
+  onUpdateVolume,
+  onToggleVolume,
+  onUpdateVolumeMA,
+  onToggleVolumeMA,
+  onUpdateMA,
+  onToggleMA,
+  onUpdateEMA,
+  onToggleEMA,
+  onUpdateWMA,
+  onToggleWMA,
+  onUpdateBB,
+  onToggleBB,
+  onUpdateVWAP,
+  onToggleVWAP,
+}) => {
+  const [activeTab, setActiveTab] = useState<'main' | 'sub'>('main');
+  const [activeSubMenu, setActiveSubMenu] = useState<string>('ma');
+
+  if (!isOpen) return null;
+
+  // RSI Handlers
+  const handleToggleRSI = (rsiId: string) => {
+    onToggleRSI(rsiId);
+  };
+
+  const handlePeriodChangeRSI = (rsiId: string, period: number) => {
+    onUpdateRSI(rsiId, { period: Math.max(1, period) });
+  };
+
+  const handleLineSizeChangeRSI = (rsiId: string, lineSize: number) => {
+    onUpdateRSI(rsiId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleColorChangeRSI = (rsiId: string, lineColor: string) => {
+    onUpdateRSI(rsiId, { lineColor });
+  };
+
+  // Volume Handlers
+  const handleToggleVolume = (volumeId: string) => {
+    onToggleVolume(volumeId);
+  };
+
+  const handleNameChangeVolume = (volumeId: string, name: string) => {
+    onUpdateVolume(volumeId, { name });
+  };
+
+  const handleUpColorChange = (volumeId: string, upColor: string) => {
+    onUpdateVolume(volumeId, { upColor });
+  };
+
+  const handleDownColorChange = (volumeId: string, downColor: string) => {
+    onUpdateVolume(volumeId, { downColor });
+  };
+
+  const handleOpacityChange = (volumeId: string, opacity: number) => {
+    onUpdateVolume(volumeId, { opacity: Math.max(0.1, Math.min(1, opacity)) });
+  };
+
+  const handleUpdateVolumeMA = (volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => {
+    onUpdateVolumeMA(volumeId, maId, updates);
+  };
+
+  const handleToggleVolumeMA = (volumeId: string, maId: string) => {
+    onToggleVolumeMA(volumeId, maId);
+  };
+
+  // MA configuration handlers
+  const handleToggleMA = (maId: string) => {
+    onToggleMA(maId);
+  };
+
+  const handlePeriodChangeMA = (maId: string, period: number) => {
+    onUpdateMA(maId, { period: Math.max(1, period) });
+  };
+
+  const handleLineSizeChangeMA = (maId: string, lineSize: number) => {
+    onUpdateMA(maId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleColorChangeMA = (maId: string, color: string) => {
+    onUpdateMA(maId, { color });
+  };
+
+  // EMA configuration handlers
+  const handleToggleEMA = (emaId: string) => {
+    onToggleEMA(emaId);
+  };
+
+  const handlePeriodChangeEMA = (emaId: string, period: number) => {
+    onUpdateEMA(emaId, { period: Math.max(1, period) });
+  };
+
+  const handleLineSizeChangeEMA = (emaId: string, lineSize: number) => {
+    onUpdateEMA(emaId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleColorChangeEMA = (emaId: string, color: string) => {
+    onUpdateEMA(emaId, { color });
+  };
+
+  // WMA configuration handlers
+  const handleToggleWMA = (wmaId: string) => {
+    onToggleWMA(wmaId);
+  };
+
+  const handlePeriodChangeWMA = (wmaId: string, period: number) => {
+    onUpdateWMA(wmaId, { period: Math.max(1, period) });
+  };
+
+  const handleLineSizeChangeWMA = (wmaId: string, lineSize: number) => {
+    onUpdateWMA(wmaId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleColorChangeWMA = (wmaId: string, color: string) => {
+    onUpdateWMA(wmaId, { color });
+  };
+
+  // BB configuration handlers
+  const handleToggleBB = (bbId: string) => {
+    onToggleBB(bbId);
+  };
+
+  const handlePeriodChangeBB = (bbId: string, period: number) => {
+    onUpdateBB(bbId, { period: Math.max(1, period) });
+  };
+
+  const handleStdDevChangeBB = (bbId: string, stdDev: number) => {
+    onUpdateBB(bbId, { stdDev: Math.max(0.1, Math.min(5, stdDev)) });
+  };
+
+  // VWAP configuration handlers
+  const handleToggleVWAP = (vwapId: string) => {
+    onToggleVWAP(vwapId);
+  };
+
+  const handleLengthChangeVWAP = (vwapId: string, length: number) => {
+    onUpdateVWAP(vwapId, { length: Math.max(0, length) });
+  };
+
+  const handleLineSizeChangeVWAP = (vwapId: string, lineSize: number) => {
+    onUpdateVWAP(vwapId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleColorChangeVWAP = (vwapId: string, color: string) => {
+    onUpdateVWAP(vwapId, { color });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
+      <div className="bg-gray-800 rounded-xl w-[680px] max-h-[85vh] flex flex-col border border-gray-600 shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-700">
+          <h2 className="text-lg font-semibold text-white">Indicators</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors text-lg p-1 rounded hover:bg-gray-700"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-gray-700">
+          <button
+            onClick={() => setActiveTab('main')}
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'main'
+                ? 'text-yellow-400 border-b-2 border-yellow-400'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            Main Chart
+          </button>
+          <button
+            onClick={() => setActiveTab('sub')}
+            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'sub'
+                ? 'text-yellow-400 border-b-2 border-yellow-400'
+                : 'text-gray-400 hover:text-gray-200'
+            }`}
+          >
+            Sub Chart
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 flex min-h-[500px]">
+          {activeTab === 'main' ? (
+            /* Main Indicator Content */
+            <>
+              {/* Vertical Menu - Increased width to fit text */}
+              <div className="w-44 border-r border-gray-700 bg-gray-750/50">
+                <div className="p-3">
+                  <h3 className="text-xs text-gray-400 mb-3 font-medium">MAIN INDICATORS</h3>
+                  <nav className="space-y-1">
+                    {[
+                      { id: 'ma', label: 'Moving Average' },
+                      { id: 'ema', label: 'Exponential MA' },
+                      { id: 'wma', label: 'Weighted MA' },
+                      { id: 'bb', label: 'Bollinger Bands' },
+                      { id: 'vwap', label: 'VWAP' }
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveSubMenu(item.id)}
+                        className={`w-full text-left px-3 py-2.5 rounded text-sm font-medium transition-colors whitespace-nowrap ${
+                          activeSubMenu === item.id
+                            ? 'bg-yellow-500/20 text-yellow-400'
+                            : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+              </div>
+
+              {/* Content Area */}
+              <div className="flex-1 p-4 overflow-y-auto">
+                {activeSubMenu === 'ma' && (
+                  <CompactMAConfig
+                    configs={maConfigs}
+                    title="Moving Average"
+                    onToggle={handleToggleMA}
+                    onPeriodChange={handlePeriodChangeMA}
+                    onLineSizeChange={handleLineSizeChangeMA}
+                    onColorChange={handleColorChangeMA}
+                  />
+                )}
+
+                {activeSubMenu === 'ema' && (
+                  <CompactMAConfig
+                    configs={emaConfigs}
+                    title="Exponential MA"
+                    onToggle={handleToggleEMA}
+                    onPeriodChange={handlePeriodChangeEMA}
+                    onLineSizeChange={handleLineSizeChangeEMA}
+                    onColorChange={handleColorChangeEMA}
+                  />
+                )}
+
+                {activeSubMenu === 'wma' && (
+                  <CompactMAConfig
+                    configs={wmaConfigs}
+                    title="Weighted MA"
+                    onToggle={handleToggleWMA}
+                    onPeriodChange={handlePeriodChangeWMA}
+                    onLineSizeChange={handleLineSizeChangeWMA}
+                    onColorChange={handleColorChangeWMA}
+                  />
+                )}
+
+                {activeSubMenu === 'bb' && (
+                  <CompactBBConfig
+                    bbConfigs={bbConfigs}
+                    onToggle={handleToggleBB}
+                    onPeriodChange={handlePeriodChangeBB}
+                    onStdDevChange={handleStdDevChangeBB}
+                    onUpdateBB={onUpdateBB}
+                  />
+                )}
+
+                {activeSubMenu === 'vwap' && (
+                  <CompactVWAPConfig
+                    vwapConfigs={vwapConfigs}
+                    onToggle={handleToggleVWAP}
+                    onLengthChange={handleLengthChangeVWAP}
+                    onLineSizeChange={handleLineSizeChangeVWAP}
+                    onColorChange={handleColorChangeVWAP}
+                  />
+                )}
+              </div>
+            </>
+          ) : (
+            /* Sub Indicator Content */
+            <>
+              {/* Vertical Menu - Increased width to fit text */}
+              <div className="w-44 border-r border-gray-700 bg-gray-750/50">
+                <div className="p-3">
+                  <h3 className="text-xs text-gray-400 mb-3 font-medium">SUB INDICATORS</h3>
+                  <nav className="space-y-1">
+                    {[
+                      { id: 'rsi', label: 'RSI' },
+                      { id: 'volume', label: 'Volume' }
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveSubMenu(item.id)}
+                        className={`w-full text-left px-3 py-2.5 rounded text-sm font-medium transition-colors whitespace-nowrap ${
+                          activeSubMenu === item.id
+                            ? 'bg-yellow-500/20 text-yellow-400'
+                            : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+              </div>
+
+              {/* Content Area */}
+              <div className="flex-1 p-4 overflow-y-auto">
+                {activeSubMenu === 'rsi' && (
+                  <CompactRSIConfig
+                    rsiConfigs={rsiConfigs}
+                    onToggle={handleToggleRSI}
+                    onPeriodChange={handlePeriodChangeRSI}
+                    onLineSizeChange={handleLineSizeChangeRSI}
+                    onColorChange={handleColorChangeRSI}
+                  />
+                )}
+                {activeSubMenu === 'volume' && (
+                  <CompactVolumeConfig
+                    volumeConfigs={volumeConfigs}
+                    onToggle={handleToggleVolume}
+                    onNameChange={handleNameChangeVolume}
+                    onUpColorChange={handleUpColorChange}
+                    onDownColorChange={handleDownColorChange}
+                    onOpacityChange={handleOpacityChange}
+                    onUpdateVolumeMA={handleUpdateVolumeMA}
+                    onToggleVolumeMA={handleToggleVolumeMA}
+                  />
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Rest of the ChartControls component remains exactly the same...
+export default function ChartControls() {
+  const { 
+    config, 
+    updateConfig, 
+    updateRSI, 
+    toggleRSI, 
+    updateVolume, 
+    toggleVolume, 
+    updateVolumeMA, 
+    toggleVolumeMA,
+    updateMA,
+    toggleMA,
+    updateEMA,
+    toggleEMA,
+    updateWMA,
+    toggleWMA,
+    updateBB,
+    toggleBB,
+    updateVWAP,
+    toggleVWAP,
+  } = useGlobalContext();
+  const [isChartTypeOpen, setIsChartTypeOpen] = useState(false);
+  const [isTimeFrameOpen, setIsTimeFrameOpen] = useState(false);
+  const [isEditingPinned, setIsEditingPinned] = useState(false);
+  const [isIndicatorsOpen, setIsIndicatorsOpen] = useState(false);
+  const [pinnedTimeFrames, setPinnedTimeFrames] = useState<string[]>(['15m', '1h', '4h', '1d', '1w']);
+  
+  const chartTypeRef = useRef<HTMLDivElement>(null);
+  const timeFrameRef = useRef<HTMLDivElement>(null);
+
+  // Load pinned timeframes from localStorage on mount
+  useEffect(() => {
+    const loadPinnedTimeFrames = () => {
+      try {
+        const stored = localStorage.getItem('pinned-timeframes');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setPinnedTimeFrames(parsed);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading pinned timeframes:', error);
+      }
+    };
+
+    loadPinnedTimeFrames();
+  }, []);
+
+  // Save pinned timeframes to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem('pinned-timeframes', JSON.stringify(pinnedTimeFrames));
+  }, [pinnedTimeFrames]);
+
+  // Track if current timeframe is pinned
+  const isCurrentTimeFramePinned = pinnedTimeFrames.includes(config.interval);
+
+  // Get displayed timeframes - only pinned timeframes are always displayed
+  const getDisplayTimeFrames = () => {
+    return ALL_TIME_FRAMES.filter(tf => pinnedTimeFrames.includes(tf.value));
+  };
+
+  const getAvailableTimeFrames = () => {
+    return ALL_TIME_FRAMES.filter(tf => !pinnedTimeFrames.includes(tf.value));
+  };
+
+  const handleTimeFrameChange = (timeFrame: string) => {
+    updateConfig({ interval: timeFrame });
+    setIsTimeFrameOpen(false);
+    setIsEditingPinned(false);
+  };
+
+  const handleChartTypeChange = (chartType: ChartType) => {
+    updateConfig({ chartType });
+    setIsChartTypeOpen(false);
+  };
+
+  const togglePinnedTimeFrame = (timeFrame: string) => {
+    if (pinnedTimeFrames.includes(timeFrame)) {
+      setPinnedTimeFrames(prev => prev.filter(tf => tf !== timeFrame));
+    } else {
+      setPinnedTimeFrames(prev => [...prev, timeFrame]);
+    }
+  };
+
+  const handleUpdateRSI = (id: string, updates: Partial<RSIConfig>) => {
+    updateRSI(id, updates);
+  };
+
+  const handleToggleRSI = (id: string) => {
+    toggleRSI(id);
+  };
+
+  const handleUpdateVolume = (id: string, updates: Partial<VolumeConfig>) => {
+    updateVolume(id, updates);
+  };
+
+  const handleToggleVolume = (id: string) => {
+    toggleVolume(id);
+  };
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (chartTypeRef.current && !chartTypeRef.current.contains(event.target as Node)) {
+        setIsChartTypeOpen(false);
+      }
+      if (timeFrameRef.current && !timeFrameRef.current.contains(event.target as Node)) {
+        setIsTimeFrameOpen(false);
+        setIsEditingPinned(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const currentChartType = CHART_TYPES.find(type => type.value === config.chartType);
+
+  const handleUpdateVolumeMA = (volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => {
+    updateVolumeMA(volumeId, maId, updates);
+  };
+
+  const handleToggleVolumeMA = (volumeId: string, maId: string) => {
+    toggleVolumeMA(volumeId, maId);
+  };
+
+  const handleUpdateMA = (id: string, updates: Partial<MAConfig>) => {
+    updateMA(id, updates);
+  };
+
+  const handleToggleMA = (id: string) => {
+    toggleMA(id);
+  };
+
+  const handleUpdateEMA = (id: string, updates: Partial<MAConfig>) => {
+    updateEMA(id, updates);
+  };
+
+  const handleToggleEMA = (id: string) => {
+    toggleEMA(id);
+  };
+
+  const handleUpdateWMA = (id: string, updates: Partial<MAConfig>) => {
+    updateWMA(id, updates);
+  };
+
+  const handleToggleWMA = (id: string) => {
+    toggleWMA(id);
+  };
+
+  const handleUpdateBB = (id: string, updates: Partial<BBConfig>) => {
+    updateBB(id, updates);
+  };
+
+  const handleToggleBB = (id: string) => {
+    toggleBB(id);
+  };
+
+  // VWAP handlers
+  const handleUpdateVWAP = (id: string, updates: Partial<VWAPConfig>) => {
+    updateVWAP(id, updates);
+  };
+
+  const handleToggleVWAP = (id: string) => {
+    toggleVWAP(id);
+  };
+
+  return (
+    <>
+      <div className="chart-controls p-1 border-b border-gray-700">
+        <div className="flex items-center gap-4">
+          {/* Time Frame Selector */}
+          <div className="relative" ref={timeFrameRef}>
+            <div className="flex items-center bg-gray-700/30 rounded-md p-1">
+              {/* Display only pinned timeframes */}
+              {getDisplayTimeFrames().map((timeFrame) => (
+                <button
+                  key={timeFrame.value}
+                  onClick={() => handleTimeFrameChange(timeFrame.value)}
+                  className={`
+                    px-2 py-1 text-xs font-medium transition-all min-w-[36px] rounded
+                    ${config.interval === timeFrame.value
+                      ? 'bg-yellow-500/20 text-yellow-400'
+                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-600/30'
+                    }
+                  `}
+                >
+                  {timeFrame.label}
+                </button>
+              ))}
+              
+              {/* Current unpinned timeframe (if any) displayed before dropdown */}
+              {!isCurrentTimeFramePinned && config.interval && (
+                <button
+                  onClick={() => handleTimeFrameChange(config.interval)}
+                  className="px-2 py-1 text-xs font-medium min-w-[36px] rounded bg-yellow-500/20 text-yellow-400"
+                >
+                  {ALL_TIME_FRAMES.find(tf => tf.value === config.interval)?.label || config.interval}
+                </button>
+              )}
+              
+              {/* Dropdown Trigger */}
+              <button
+                onClick={() => setIsTimeFrameOpen(!isTimeFrameOpen)}
+                className={`
+                  flex items-center justify-center px-2 py-1 transition-all
+                  text-gray-400 hover:text-gray-200 rounded hover:bg-gray-600/30
+                  ${isTimeFrameOpen ? 'bg-gray-600/30' : ''}
+                `}
+              >
+                <ChevronDown className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Timeframe Dropdown Menu */}
+            {isTimeFrameOpen && (
+              <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-50 min-w-[200px]">
+                {/* Header with Edit Button */}
+                <div className="flex items-center justify-between p-3 border-b border-gray-700">
+                  <span className="text-sm font-medium text-gray-300">Timeframes</span>
+                  <button
+                    onClick={() => setIsEditingPinned(!isEditingPinned)}
+                    className={`
+                      flex items-center gap-1 px-2 py-1 text-xs rounded-md transition-all
+                      ${isEditingPinned 
+                        ? 'bg-yellow-500/20 text-yellow-400' 
+                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                      }
+                    `}
+                  >
+                    <EditIcon className="w-3 h-3" />
+                    {isEditingPinned ? 'Done' : 'Edit'}
+                  </button>
+                </div>
+
+                <div className="p-2">
+                  {/* Pinned Timeframes Section */}
+                  {pinnedTimeFrames.length > 0 && (
+                    <div className="mb-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-gray-500 font-medium">Pinned</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1">
+                        {ALL_TIME_FRAMES.filter(tf => pinnedTimeFrames.includes(tf.value)).map((timeFrame) => (
+                          <button
+                            key={timeFrame.value}
+                            onClick={() => isEditingPinned 
+                              ? togglePinnedTimeFrame(timeFrame.value)
+                              : handleTimeFrameChange(timeFrame.value)
+                            }
+                            className={`
+                              flex items-center justify-center p-2 rounded-md text-sm font-medium transition-all
+                              ${isEditingPinned
+                                ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                                : config.interval === timeFrame.value
+                                  ? 'bg-yellow-500/20 text-yellow-400'
+                                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                              }
+                            `}
+                          >
+                            {isEditingPinned ? (
+                              <span className="text-sm">− {timeFrame.label}</span>
+                            ) : (
+                              timeFrame.label
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Available Timeframes Section */}
+                  {getAvailableTimeFrames().length > 0 && (
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs text-gray-500 font-medium">
+                          {isEditingPinned ? 'Click + to pin' : 'Available'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1">
+                        {getAvailableTimeFrames().map((timeFrame) => (
+                          <button
+                            key={timeFrame.value}
+                            onClick={() => isEditingPinned 
+                              ? togglePinnedTimeFrame(timeFrame.value)
+                              : handleTimeFrameChange(timeFrame.value)
+                            }
+                            className={`
+                              flex items-center justify-center p-2 rounded-md text-sm font-medium transition-all
+                              ${isEditingPinned
+                                ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                                : config.interval === timeFrame.value
+                                  ? 'bg-yellow-500/20 text-yellow-400'
+                                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                              }
+                            `}
+                          >
+                            {isEditingPinned ? `+ ${timeFrame.label}` : timeFrame.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Chart Type Selector */}
+          <div className="relative" ref={chartTypeRef}>
+            <button
+              onClick={() => setIsChartTypeOpen(!isChartTypeOpen)}
+              className={`
+                flex items-center gap-2 px-3 py-2
+                text-sm font-medium transition-all hover:bg-gray-700/30 rounded-md
+                ${isChartTypeOpen ? 'bg-gray-700/30' : ''}
+              `}
+              title={currentChartType?.label}
+            >
+              <span className="text-gray-300">
+                {currentChartType?.icon}
+              </span>
+              <ChevronDown className="w-3 h-3 text-gray-400" />
+            </button>
+
+            {isChartTypeOpen && (
+              <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-700 rounded-md shadow-lg z-50 p-2 min-w-[140px]">
+                <div className="flex flex-col gap-1">
+                  {CHART_TYPES.map((type) => (
+                    <button
+                      key={type.value}
+                      onClick={() => handleChartTypeChange(type.value)}
+                      className={`
+                        flex items-center gap-3 p-2 rounded-md transition-all text-sm
+                        hover:bg-gray-700/50 w-full text-left
+                        ${config.chartType === type.value
+                          ? 'bg-yellow-500/20 text-yellow-400'
+                          : 'text-gray-300 hover:text-gray-200'
+                        }
+                      `}
+                    >
+                      <span className="text-gray-300 flex-shrink-0">
+                        {type.icon}
+                      </span>
+                      <span>{type.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Indicators Button */}
+          <button
+            onClick={() => setIsIndicatorsOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-700/30 rounded-md transition-all"
+          >
+            <IndicatorsIcon className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* Indicators Dialog */}
+      <IndicatorsDialog
+        isOpen={isIndicatorsOpen}
+        onClose={() => setIsIndicatorsOpen(false)}
+        rsiConfigs={config.indicators.rsi}
+        volumeConfigs={config.indicators.volume}
+        maConfigs={config.indicators.ma}
+        emaConfigs={config.indicators.ema}
+        wmaConfigs={config.indicators.wma}
+        bbConfigs={config.indicators.bb}
+        vwapConfigs={config.indicators.vwap}
+        onUpdateRSI={handleUpdateRSI}
+        onToggleRSI={handleToggleRSI}
+        onUpdateVolume={handleUpdateVolume}
+        onToggleVolume={handleToggleVolume}
+        onUpdateVolumeMA={handleUpdateVolumeMA}
+        onToggleVolumeMA={handleToggleVolumeMA}
+        onUpdateMA={handleUpdateMA}
+        onToggleMA={handleToggleMA}
+        onUpdateEMA={handleUpdateEMA}
+        onToggleEMA={handleToggleEMA}
+        onUpdateWMA={handleUpdateWMA}
+        onToggleWMA={handleToggleWMA}
+        onUpdateBB={handleUpdateBB}
+        onToggleBB={handleToggleBB}
+        onUpdateVWAP={handleUpdateVWAP}
+        onToggleVWAP={handleToggleVWAP}
+      />
+    </>
+  );
+}
