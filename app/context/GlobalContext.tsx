@@ -39,6 +39,7 @@ export interface VolumeConfig {
   maLines: VolumeMAConfig[]; // Change from single MA to array of MAs
 }
 
+// MA Configuration
 export interface MAConfig {
   id: string;
   show: boolean;
@@ -49,7 +50,7 @@ export interface MAConfig {
   name: string;
 }
 
-// Update the BBConfig interface
+// BBConfig Configuration
 export interface BBConfig {
   id: string;
   show: boolean;
@@ -78,12 +79,24 @@ export interface BBConfig {
   name: string;
 }
 
+// VWAP Configuration
 export interface VWAPConfig {
   id: string;
   show: boolean;
   color: string;
   lineSize: number;
   length: number;
+}
+
+// AVL Configuration
+export interface AVLConfig {
+  id: string;
+  show: boolean;
+  period: number;
+  color: string;
+  lineSize: number;
+  type: 'avl';
+  name: string;
 }
 
 // Chart Style Configuration
@@ -153,6 +166,7 @@ interface GlobalConfig {
     wma: MAConfig[];
     bb: BBConfig[];
     vwap: VWAPConfig[];
+    avl: AVLConfig[];
   };
 }
 
@@ -175,6 +189,8 @@ interface GlobalContextType {
   toggleBB: (id: string) => void;
   updateVWAP: (id: string, updates: Partial<VWAPConfig>) => void;
   toggleVWAP: (id: string) => void;
+  updateAVL: (id: string, updates: Partial<AVLConfig>) => void;
+  toggleAVL: (id: string) => void;
   updateChartStyle: (updates: Partial<ChartStyleConfig>) => void;
   updateChartType: (chartType: ChartType) => void;
   resetToDefaults: () => void;
@@ -403,6 +419,42 @@ const createDefaultVWAPs = (): VWAPConfig[] => [
   }
 ];
 
+// helper function to generate AVL name
+const generateAVLName = (period: number): string => {
+  return `AVL ${period}`;
+};
+
+// Create default AVL configurations
+const createDefaultAVLs = (): AVLConfig[] => [
+  {
+    id: 'avl-1',
+    show: false,
+    period: 20,
+    color: '#9C27B0', // Purple color for AVL
+    lineSize: 1.5,
+    type: 'avl',
+    name: generateAVLName(20),
+  },
+  {
+    id: 'avl-2',
+    show: false,
+    period: 50,
+    color: '#E91E63', // Pink color
+    lineSize: 1.5,
+    type: 'avl',
+    name: generateAVLName(50),
+  },
+  {
+    id: 'avl-3',
+    show: false,
+    period: 100,
+    color: '#FF9800', // Orange color
+    lineSize: 1.5,
+    type: 'avl',
+    name: generateAVLName(100),
+  }
+];
+
 
 const defaultConfig: GlobalConfig = {
   chartType: 'candle',
@@ -419,6 +471,7 @@ const defaultConfig: GlobalConfig = {
     wma: createDefaultMAs('wma'),
     bb: createDefaultBBs(),
     vwap: createDefaultVWAPs(),
+    avl: createDefaultAVLs(),
   },
 };
 
@@ -775,6 +828,45 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const updateAVL = useCallback((id: string, updates: Partial<AVLConfig>) => {
+    setConfig(prev => {
+      const currentAVL = prev.indicators.avl.find(avl => avl.id === id);
+      
+      // Auto-update name if period changes and name follows default pattern
+      if (updates.period && currentAVL) {
+        const oldPeriod = currentAVL.period;
+        const newPeriod = updates.period;
+        const defaultNamePattern = generateAVLName(oldPeriod);
+        
+        if (currentAVL.name === defaultNamePattern) {
+          updates.name = generateAVLName(newPeriod);
+        }
+      }
+      
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          avl: prev.indicators.avl.map(avl => 
+            avl.id === id ? { ...avl, ...updates } : avl
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const toggleAVL = useCallback((id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        avl: prev.indicators.avl.map(avl => 
+          avl.id === id ? { ...avl, show: !avl.show } : avl
+        ),
+      },
+    }));
+  }, []);
+
   const updateChartStyle = useCallback((updates: Partial<ChartStyleConfig>) => {
     setConfig(prev => ({
       ...prev,
@@ -906,6 +998,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       toggleBB,
       updateVWAP,
       toggleVWAP,
+      updateAVL,
+      toggleAVL,
       updateChartStyle,
       updateChartType,
       resetToDefaults,
