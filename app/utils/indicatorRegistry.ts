@@ -1,5 +1,6 @@
+// utils/indicatorRegistry.ts
 import { registerIndicator, KLineData } from 'klinecharts';
-import { RSIConfig, VolumeConfig, MAConfig, BBConfig, VWAPConfig } from '@/context/GlobalContext';
+import { RSIConfig, VolumeConfig, MAConfig, BBConfig, VWAPConfig, AVLConfig } from '@/context/GlobalContext';
 
 // Track registered indicators - reset on each config change
 const registeredIndicators = new Set();
@@ -9,6 +10,15 @@ export const generateMAKey = (maConfigs: MAConfig[]): string => {
   return maConfigs
     .filter(ma => ma.show)
     .map(ma => `${ma.period}_${ma.color}_${ma.lineSize}`)
+    .sort()
+    .join('_');
+};
+
+// Generate a unique key for AVL configurations
+export const generateAVLKey = (avlConfigs: AVLConfig[]): string => {
+  return avlConfigs
+    .filter(avl => avl.show)
+    .map(avl => `${avl.period}_${avl.color}_${avl.lineSize}`)
     .sort()
     .join('_');
 };
@@ -40,8 +50,8 @@ export const clearOverlayIndicators = (chart: any) => {
     
     // Remove all possible overlay indicators by their base names and patterns
     const overlayPatterns = [
-      'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA', 'CUSTOM_BB', 'CUSTOM_VWAP',
-      'MA', 'EMA', 'WMA', 'BB', 'VWAP', 'BOLL'
+      'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA', 'CUSTOM_AVL', 'CUSTOM_BB', 'CUSTOM_VWAP',
+      'MA', 'EMA', 'WMA', 'AVL', 'BB', 'VWAP', 'BOLL'
     ];
     
     // Try to remove indicators by common names
@@ -278,6 +288,72 @@ export const registerCustomWMAIndicator = (wmaConfigs: MAConfig[]) => {
     return uniqueName;
   } catch (error) {
     console.error('Error registering custom WMA indicator:', error);
+    return uniqueName;
+  }
+};
+
+// Register Custom AVL (Average Value Line) Indicator that supports multiple periods
+export const registerCustomAVLIndicator = (avlConfigs: AVLConfig[]) => {
+  const enabledPeriods = avlConfigs
+    .filter(avl => avl.show)
+    .map(avl => avl.period)
+    .sort((a, b) => a - b);
+
+  if (enabledPeriods.length === 0) return null;
+
+  const configKey = generateAVLKey(avlConfigs);
+  const uniqueName = `CUSTOM_AVL_${configKey}`;
+  
+  try {    
+    registerIndicator({
+      name: uniqueName,
+      shortName: 'AVL',
+      calcParams: enabledPeriods,
+      figures: enabledPeriods.map((period, index) => ({
+        key: `avl${index + 1}`,
+        title: `AVL${period}: `,
+        type: 'line',
+        styles: () => {
+          const config = avlConfigs.find(a => a.period === period && a.show);
+          return {
+            color: config?.color || '#9C27B0',
+            size: config?.lineSize || 1.5
+          };
+        }
+      })),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        
+        for (let i = 0; i < dataList.length; i++) {
+          const item: any = {};
+          
+          // Calculate AVL for each period
+          calcParams.forEach((period, index) => {
+            const key = `avl${index + 1}`;
+            if (i >= period - 1) {
+              let sum = 0;
+              for (let j = 0; j < period; j++) {
+                // AVL uses typical price: (high + low + close) / 3
+                const typicalPrice = (dataList[i - j].high + dataList[i - j].low + dataList[i - j].close) / 3;
+                sum += typicalPrice;
+              }
+              item[key] = sum / period;
+            } else {
+              item[key] = 0;
+            }
+          });
+          
+          result.push(item);
+        }
+        
+        return result;
+      },
+    });
+
+    registeredIndicators.add(uniqueName);
+    return uniqueName;
+  } catch (error) {
+    console.error('Error registering custom AVL indicator:', error);
     return uniqueName;
   }
 };

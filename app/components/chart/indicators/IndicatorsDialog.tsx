@@ -6,6 +6,7 @@ import { CompactRSIConfig } from './CompactRSIConfig';
 import { CompactVolumeConfig } from './CompactVolumeConfig';
 import { CompactBBConfig } from './CompactBBConfig';
 import { CompactVWAPConfig } from './CompactVWAPConfig';
+import { CompactAVLConfig } from './CompactAVLConfig';
 
 interface IndicatorsDialogProps {
   isOpen: boolean;
@@ -37,6 +38,8 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     toggleBB,
     updateVWAP,
     toggleVWAP,
+    updateAVL,
+    toggleAVL,
   } = useGlobalContext();
 
   if (!isOpen) return null;
@@ -168,6 +171,23 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     updateVWAP(vwapId, { color });
   };
 
+  // Add AVL handlers
+  const handleToggleAVL = (avlId: string) => {
+    toggleAVL(avlId);
+  };
+
+  const handlePeriodChangeAVL = (avlId: string, period: number) => {
+    updateAVL(avlId, { period: Math.max(1, period) });
+  };
+
+  const handleLineSizeChangeAVL = (avlId: string, lineSize: number) => {
+    updateAVL(avlId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleColorChangeAVL = (avlId: string, color: string) => {
+    updateAVL(avlId, { color });
+  };
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
       <div className="bg-gray-800 rounded-xl w-[680px] max-h-[85vh] flex flex-col border border-gray-600 shadow-2xl">
@@ -220,6 +240,7 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                       { id: 'ma', label: 'Moving Average' },
                       { id: 'ema', label: 'Exponential MA' },
                       { id: 'wma', label: 'Weighted MA' },
+                      { id: 'avl', label: 'Average Value Line' },
                       { id: 'bb', label: 'Bollinger Bands' },
                       { id: 'vwap', label: 'VWAP' }
                     ].map((item) => (
@@ -291,6 +312,17 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                     onLengthChange={handleLengthChangeVWAP}
                     onLineSizeChange={handleLineSizeChangeVWAP}
                     onColorChange={handleColorChangeVWAP}
+                  />
+                )}
+
+                {activeSubMenu === 'avl' && (
+                  <CompactAVLConfig
+                    configs={config.indicators.avl}
+                    title="Average Value Line"
+                    onToggle={handleToggleAVL}
+                    onPeriodChange={handlePeriodChangeAVL}
+                    onLineSizeChange={handleLineSizeChangeAVL}
+                    onColorChange={handleColorChangeAVL}
                   />
                 )}
               </div>

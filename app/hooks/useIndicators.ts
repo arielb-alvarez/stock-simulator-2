@@ -6,6 +6,7 @@ import {
   registerCustomWMAIndicator,
   registerCustomBBIndicator,
   registerCustomVWAPIndicator,
+  registerCustomAVLIndicator,
   registerRSIIndicator,
   registerCustomVolumeIndicator,
   clearOverlayIndicators
@@ -22,6 +23,7 @@ export const useIndicators = () => {
     config.indicators.ma,
     config.indicators.ema, 
     config.indicators.wma,
+    config.indicators.avl,
     config.indicators.bb,
     config.indicators.vwap
   ]);
@@ -32,6 +34,7 @@ export const useIndicators = () => {
     registerCustomMAIndicator(config.indicators.ma);
     registerCustomEMAIndicator(config.indicators.ema);
     registerCustomWMAIndicator(config.indicators.wma);
+    registerCustomAVLIndicator(config.indicators.avl);
     registerCustomBBIndicator(config.indicators.bb);
     registerCustomVWAPIndicator(config.indicators.vwap);
     
