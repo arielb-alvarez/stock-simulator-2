@@ -175,6 +175,7 @@ export default function MainChart() {
     config.indicators.ma, 
     config.indicators.ema, 
     config.indicators.wma, 
+    config.indicators.avl,
     config.indicators.bb, 
     config.indicators.vwap, 
     setupMovingAverageOverlays

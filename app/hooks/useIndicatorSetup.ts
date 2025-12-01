@@ -5,6 +5,7 @@ import {
   registerCustomMAIndicator,
   registerCustomEMAIndicator,
   registerCustomWMAIndicator,
+  registerCustomAVLIndicator,
   registerCustomBBIndicator,
   registerCustomVWAPIndicator,
   registerRSIIndicator,
@@ -158,6 +159,7 @@ export const useIndicatorSetup = () => {
       const maUniqueName = registerCustomMAIndicator(config.indicators.ma);
       const emaUniqueName = registerCustomEMAIndicator(config.indicators.ema);
       const wmaUniqueName = registerCustomWMAIndicator(config.indicators.wma);
+      const avlUniqueName = registerCustomAVLIndicator(config.indicators.avl);
       const bbUniqueName = registerCustomBBIndicator(config.indicators.bb);
       const vwapUniqueName = registerCustomVWAPIndicator(config.indicators.vwap);
 
@@ -165,6 +167,7 @@ export const useIndicatorSetup = () => {
       const enabledMA = config.indicators.ma.filter(ma => ma.show);
       const enabledEMA = config.indicators.ema.filter(ema => ema.show);
       const enabledWMA = config.indicators.wma.filter(wma => wma.show);
+      const enabledAVL = config.indicators.avl.filter(avl => avl.show);
       const enabledBB = config.indicators.bb.filter(bb => bb.show);
       const enabledVWAP = config.indicators.vwap.filter(vwap => vwap.show);
 
@@ -213,6 +216,18 @@ export const useIndicatorSetup = () => {
         }
       }
 
+      // AVL overlay creation
+      if (enabledAVL.length > 0 && avlUniqueName) {
+        try {
+          chart.createIndicator(avlUniqueName, true, { 
+            id: "candle_pane"
+          });
+          console.log(`Created AVL overlay with periods:`, enabledAVL.map(avl => avl.period));
+        } catch (createError) {
+          console.error('Failed to create AVL overlay:', createError);
+        }
+      }
+
       if (enabledVWAP.length > 0 && vwapUniqueName) {
         try {
           chart.createIndicator(vwapUniqueName, true, { 
@@ -231,7 +246,7 @@ export const useIndicatorSetup = () => {
     } catch (error) {
       console.error('Critical error in moving average overlay setup:', error);
     }
-  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, config.indicators.bb, config.indicators.vwap]);
+  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, config.indicators.avl, config.indicators.bb, config.indicators.vwap]);
 
   const applyChartStyles = useCallback((chart: any) => {
     if (!chart) return;
