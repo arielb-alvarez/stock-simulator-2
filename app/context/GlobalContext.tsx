@@ -99,6 +99,17 @@ export interface AVLConfig {
   name: string;
 }
 
+// TRIX Configuration
+export interface TRIXConfig {
+  id: string;
+  show: boolean;
+  period: number;
+  color: string;
+  lineSize: number;
+  type: 'trix';
+  name: string;
+}
+
 // Chart Style Configuration
 interface ChartStyleConfig {
   layout: {
@@ -167,6 +178,7 @@ interface GlobalConfig {
     bb: BBConfig[];
     vwap: VWAPConfig[];
     avl: AVLConfig[];
+    trix: TRIXConfig[];
   };
 }
 
@@ -191,6 +203,8 @@ interface GlobalContextType {
   toggleVWAP: (id: string) => void;
   updateAVL: (id: string, updates: Partial<AVLConfig>) => void;
   toggleAVL: (id: string) => void;
+  updateTRIX: (id: string, updates: Partial<TRIXConfig>) => void;
+  toggleTRIX: (id: string) => void;
   updateChartStyle: (updates: Partial<ChartStyleConfig>) => void;
   updateChartType: (chartType: ChartType) => void;
   resetToDefaults: () => void;
@@ -455,6 +469,32 @@ const createDefaultAVLs = (): AVLConfig[] => [
   }
 ];
 
+// Helper function to generate TRIX name
+const generateTRIXName = (period: number): string => {
+  return `TRIX ${period}`;
+};
+
+// Create default TRIX configurations
+const createDefaultTRIXs = (): TRIXConfig[] => [
+  {
+    id: 'trix-1',
+    show: false,
+    period: 14,
+    color: '#2962FF',
+    lineSize: 1.5,
+    type: 'trix',
+    name: generateTRIXName(14),
+  },
+  {
+    id: 'trix-2',
+    show: false,
+    period: 21,
+    color: '#4ECDC4',
+    lineSize: 1.5,
+    type: 'trix',
+    name: generateTRIXName(21),
+  }
+];
 
 const defaultConfig: GlobalConfig = {
   chartType: 'candle',
@@ -472,6 +512,7 @@ const defaultConfig: GlobalConfig = {
     bb: createDefaultBBs(),
     vwap: createDefaultVWAPs(),
     avl: createDefaultAVLs(),
+    trix: createDefaultTRIXs(),
   },
 };
 
@@ -867,6 +908,45 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const updateTRIX = useCallback((id: string, updates: Partial<TRIXConfig>) => {
+    setConfig(prev => {
+      const currentTRIX = prev.indicators.trix.find(trix => trix.id === id);
+      
+      // Auto-update name if period changes and name follows default pattern
+      if (updates.period && currentTRIX) {
+        const oldPeriod = currentTRIX.period;
+        const newPeriod = updates.period;
+        const defaultNamePattern = generateTRIXName(oldPeriod);
+        
+        if (currentTRIX.name === defaultNamePattern) {
+          updates.name = generateTRIXName(newPeriod);
+        }
+      }
+      
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          trix: prev.indicators.trix.map(trix => 
+            trix.id === id ? { ...trix, ...updates } : trix
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const toggleTRIX = useCallback((id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        trix: prev.indicators.trix.map(trix => 
+          trix.id === id ? { ...trix, show: !trix.show } : trix
+        ),
+      },
+    }));
+  }, []);
+
   const updateChartStyle = useCallback((updates: Partial<ChartStyleConfig>) => {
     setConfig(prev => ({
       ...prev,
@@ -1000,6 +1080,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       toggleVWAP,
       updateAVL,
       toggleAVL,
+      updateTRIX,
+      toggleTRIX,
       updateChartStyle,
       updateChartType,
       resetToDefaults,

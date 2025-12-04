@@ -147,7 +147,7 @@ export default function MainChart() {
     chartKey
   ]);
 
-  // Effect for overlay indicator changes (MA, EMA, WMA, BB, VWAP)
+  // Effect for overlay indicator changes (MA, EMA, WMA, BB, VWAP, AVL, TRIX)
   useEffect(() => {
     if (!chartRef.current || !currentDataRef.current.length) return;
     
@@ -172,12 +172,13 @@ export default function MainChart() {
     const timer = setTimeout(updateOverlayIndicators, 50);
     return () => clearTimeout(timer);
   }, [
-    config.indicators.ma, 
-    config.indicators.ema, 
-    config.indicators.wma, 
+    config.indicators.ma,
+    config.indicators.ema,
+    config.indicators.wma,
     config.indicators.avl,
-    config.indicators.bb, 
-    config.indicators.vwap, 
+    config.indicators.bb,
+    config.indicators.vwap,
+    config.indicators.trix,
     setupMovingAverageOverlays
   ]);
 

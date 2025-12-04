@@ -1,6 +1,6 @@
 // utils/indicatorRegistry.ts
 import { registerIndicator, KLineData } from 'klinecharts';
-import { RSIConfig, VolumeConfig, MAConfig, BBConfig, VWAPConfig, AVLConfig } from '@/context/GlobalContext';
+import { RSIConfig, VolumeConfig, MAConfig, BBConfig, VWAPConfig, AVLConfig, TRIXConfig  } from '@/context/GlobalContext';
 
 // Track registered indicators - reset on each config change
 const registeredIndicators = new Set();
@@ -41,6 +41,15 @@ export const generateVWAPKey = (vwapConfigs: VWAPConfig[]): string => {
     .join('_');
 };
 
+// Generate a unique key for TRIX configurations
+export const generateTRIXKey = (trixConfigs: TRIXConfig[]): string => {
+  return trixConfigs
+    .filter(trix => trix.show)
+    .map(trix => `${trix.period}_${trix.color}_${trix.lineSize}`)
+    .sort()
+    .join('_');
+};
+
 // Clear all overlay indicators from chart
 export const clearOverlayIndicators = (chart: any) => {
   if (!chart) return;
@@ -48,31 +57,16 @@ export const clearOverlayIndicators = (chart: any) => {
   try {
     console.log('Clearing overlay indicators...');
     
-    // Remove all possible overlay indicators by their base names and patterns
     const overlayPatterns = [
-      'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA', 'CUSTOM_AVL', 'CUSTOM_BB', 'CUSTOM_VWAP',
-      'MA', 'EMA', 'WMA', 'AVL', 'BB', 'VWAP', 'BOLL'
+      'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA', 'CUSTOM_AVL', 'CUSTOM_BB', 'CUSTOM_VWAP', 'CUSTOM_TRIX',
+      'MA', 'EMA', 'WMA', 'AVL', 'BB', 'VWAP', 'TRIX', 'BOLL'
     ];
     
-    // Try to remove indicators by common names
     overlayPatterns.forEach(pattern => {
       try {
         chart.removeIndicator(pattern);
       } catch (e) {
         // Ignore errors if indicator doesn't exist
-      }
-    });
-    
-    // Also try to remove indicators that might have been created with dynamic names
-    const knownIndicators = [
-      'candle_pane', 'main_pane', 'overlay_1', 'overlay_2', 'overlay_3'
-    ];
-    
-    knownIndicators.forEach(indicatorId => {
-      try {
-        chart.removeIndicator(indicatorId);
-      } catch (e) {
-        // Ignore removal errors
       }
     });
     
@@ -591,6 +585,115 @@ export const registerCustomVWAPIndicator = (vwapConfigs: VWAPConfig[]) => {
     return uniqueName;
   } catch (error) {
     console.error('Error registering custom VWAP indicator:', error);
+    return null;
+  }
+};
+
+// Register Custom TRIX Indicator
+export const registerCustomTRIXIndicator = (trixConfigs: TRIXConfig[]) => {
+  const enabledConfigs = trixConfigs.filter(trix => trix.show);
+
+  if (enabledConfigs.length === 0) return null;
+
+  const configKey = generateTRIXKey(trixConfigs);
+  const uniqueName = `CUSTOM_TRIX_${configKey}`;
+  
+  try {
+    registerIndicator({
+      name: uniqueName,
+      shortName: 'TRIX',
+      calcParams: enabledConfigs.map(config => config.period),
+      figures: enabledConfigs.map((trixConfig, index) => ({
+        key: `trix_${index}`,
+        title: `TRIX${trixConfig.period}: `,
+        type: 'line',
+        styles: () => ({
+          color: trixConfig.color,
+          size: trixConfig.lineSize,
+        })
+      })),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        
+        if (!dataList || dataList.length === 0) {
+          return result;
+        }
+
+        // Extract close prices
+        const closePrices = dataList.map(data => data.close);
+        
+        calcParams.forEach((period, configIndex) => {
+          const multiplier = 2 / (period + 1);
+          
+          // Step 1: Calculate first EMA
+          const ema1: number[] = [];
+          for (let i = 0; i < closePrices.length; i++) {
+            if (i === 0) {
+              ema1[i] = closePrices[i];
+            } else {
+              ema1[i] = (closePrices[i] * multiplier) + (ema1[i-1] * (1 - multiplier));
+            }
+          }
+          
+          // Step 2: Calculate second EMA (EMA of EMA1)
+          const ema2: number[] = [];
+          for (let i = 0; i < ema1.length; i++) {
+            if (i === 0) {
+              ema2[i] = ema1[i];
+            } else {
+              ema2[i] = (ema1[i] * multiplier) + (ema2[i-1] * (1 - multiplier));
+            }
+          }
+          
+          // Step 3: Calculate third EMA (EMA of EMA2)
+          const ema3: number[] = [];
+          for (let i = 0; i < ema2.length; i++) {
+            if (i === 0) {
+              ema3[i] = ema2[i];
+            } else {
+              ema3[i] = (ema2[i] * multiplier) + (ema3[i-1] * (1 - multiplier));
+            }
+          }
+          
+          // Step 4: Calculate TRIX as percentage change of triple EMA
+          for (let i = 0; i < closePrices.length; i++) {
+            if (!result[i]) {
+              result[i] = {};
+            }
+            
+            // Need at least 2 points to calculate percentage change
+            if (i < 1) {
+              result[i][`trix_${configIndex}`] = 0;
+            } else {
+              // TRIX = ((TripleEMA_t - TripleEMA_t-1) / TripleEMA_t-1) * 100
+              const currentEMA3 = ema3[i];
+              const prevEMA3 = ema3[i-1];
+              
+              if (prevEMA3 !== 0) {
+                // Multiply by 10000 to get more visible values (show as basis points)
+                const trixValue = ((currentEMA3 - prevEMA3) / prevEMA3) * 10000;
+                result[i][`trix_${configIndex}`] = trixValue;
+              } else {
+                result[i][`trix_${configIndex}`] = 0;
+              }
+              
+              // Debug logging for first few values
+              if (i < 10 && configIndex === 0) {
+                console.log(`TRIX[${i}]: EMA3=${currentEMA3}, prevEMA3=${prevEMA3}, TRIX=${result[i][`trix_${configIndex}`]}`);
+              }
+            }
+          }
+        });
+        
+        return result;
+      },
+    });
+
+    registeredIndicators.add(uniqueName);
+    console.log(`Registered TRIX indicator: ${uniqueName}`);
+    return uniqueName;
+  } catch (error) {
+    console.error('Error registering custom TRIX indicator:', error);
     return null;
   }
 };

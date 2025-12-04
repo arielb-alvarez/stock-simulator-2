@@ -7,6 +7,7 @@ import { CompactVolumeConfig } from './CompactVolumeConfig';
 import { CompactBBConfig } from './CompactBBConfig';
 import { CompactVWAPConfig } from './CompactVWAPConfig';
 import { CompactAVLConfig } from './CompactAVLConfig';
+import { CompactTRIXConfig } from './CompactTRIXConfig';
 
 interface IndicatorsDialogProps {
   isOpen: boolean;
@@ -40,6 +41,8 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     toggleVWAP,
     updateAVL,
     toggleAVL,
+    updateTRIX,
+    toggleTRIX,
   } = useGlobalContext();
 
   if (!isOpen) return null;
@@ -171,7 +174,7 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     updateVWAP(vwapId, { color });
   };
 
-  // Add AVL handlers
+  // AVL configuration handlers
   const handleToggleAVL = (avlId: string) => {
     toggleAVL(avlId);
   };
@@ -186,6 +189,23 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
 
   const handleColorChangeAVL = (avlId: string, color: string) => {
     updateAVL(avlId, { color });
+  };
+
+  // TRIX configuration handlers
+  const handleToggleTRIX = (trixId: string) => {
+    toggleTRIX(trixId);
+  };
+
+  const handlePeriodChangeTRIX = (trixId: string, period: number) => {
+    updateTRIX(trixId, { period: Math.max(1, period) });
+  };
+
+  const handleLineSizeChangeTRIX = (trixId: string, lineSize: number) => {
+    updateTRIX(trixId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleColorChangeTRIX = (trixId: string, color: string) => {
+    updateTRIX(trixId, { color });
   };
 
   return (
@@ -242,7 +262,8 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                       { id: 'wma', label: 'Weighted MA' },
                       { id: 'avl', label: 'Average Value Line' },
                       { id: 'bb', label: 'Bollinger Bands' },
-                      { id: 'vwap', label: 'VWAP' }
+                      { id: 'vwap', label: 'VWAP' },
+                      { id: 'trix', label: 'TRIX' }
                     ].map((item) => (
                       <button
                         key={item.id}
@@ -323,6 +344,17 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                     onPeriodChange={handlePeriodChangeAVL}
                     onLineSizeChange={handleLineSizeChangeAVL}
                     onColorChange={handleColorChangeAVL}
+                  />
+                )}
+
+                {activeSubMenu === 'trix' && (
+                  <CompactTRIXConfig
+                    configs={config.indicators.trix}
+                    title="TRIX"
+                    onToggle={handleToggleTRIX}
+                    onPeriodChange={handlePeriodChangeTRIX}
+                    onLineSizeChange={handleLineSizeChangeTRIX}
+                    onColorChange={handleColorChangeTRIX}
                   />
                 )}
               </div>
