@@ -1,6 +1,6 @@
 // utils/indicatorRegistry.ts
 import { registerIndicator, KLineData } from 'klinecharts';
-import { RSIConfig, VolumeConfig, MAConfig, BBConfig, VWAPConfig, AVLConfig, SARConfig  } from '@/context/GlobalContext';
+import { RSIConfig, VolumeConfig, MAConfig, BBConfig, VWAPConfig, AVLConfig, SARConfig, TRIXConfig  } from '@/context/GlobalContext';
 
 // Track registered indicators - reset on each config change
 const registeredIndicators = new Set();
@@ -50,6 +50,15 @@ export const generateSARKey = (sarConfigs: SARConfig[]): string => {
     .join('_');
 };
 
+// Generate a unique key for TRIX configurations
+export const generateTRIXKey = (trixConfigs: TRIXConfig[]): string => {
+  return trixConfigs
+    .filter(trix => trix.show)
+    .map(trix => `${trix.period}_${trix.color}_${trix.lineSize}`)
+    .sort()
+    .join('_');
+};
+
 // Clear all overlay indicators from chart
 export const clearOverlayIndicators = (chart: any) => {
   if (!chart) return;
@@ -59,8 +68,8 @@ export const clearOverlayIndicators = (chart: any) => {
     
     // Remove all possible overlay indicators by their base names and patterns
     const overlayPatterns = [
-      'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA', 'CUSTOM_AVL', 'CUSTOM_BB', 'CUSTOM_VWAP',
-      'MA', 'EMA', 'WMA', 'AVL', 'BB', 'VWAP', 'BOLL'
+      'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA', 'CUSTOM_AVL', 'CUSTOM_BB', 'CUSTOM_VWAP', 'CUSTOM_TRIX',
+      'MA', 'EMA', 'WMA', 'AVL', 'BB', 'VWAP', 'TRIX', 'BOLL'
     ];
     
     // Try to remove indicators by common names
@@ -766,6 +775,104 @@ export const registerCustomSARIndicator = (sarConfigs: SARConfig[]) => {
     return uniqueName;
   } catch (error) {
     console.error('Error registering custom SAR indicator:', error);
+    return null;
+  }
+};
+
+// Register Custom TRIX Indicator
+export const registerCustomTRIXIndicator = (trixConfigs: TRIXConfig[]) => {
+  const enabledPeriods = trixConfigs
+    .filter(trix => trix.show)
+    .map(trix => trix.period)
+    .sort((a, b) => a - b);
+
+  if (enabledPeriods.length === 0) return null;
+
+  const configKey = generateTRIXKey(trixConfigs);
+  const uniqueName = `CUSTOM_TRIX_${configKey}`;
+  
+  try {    
+    registerIndicator({
+      name: uniqueName,
+      shortName: 'TRIX',
+      calcParams: enabledPeriods,
+      figures: enabledPeriods.map((period, index) => ({
+        key: `trix${index + 1}`,
+        title: `TRIX ${period}: `,
+        type: 'line',
+        styles: () => {
+          const config = trixConfigs.find(t => t.period === period && t.show);
+          return {
+            color: config?.color || '#4A90E2',
+            size: config?.lineSize || 1.5
+          };
+        }
+      })),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        
+        if (!dataList || dataList.length === 0) {
+          return result;
+        }
+
+        // Initialize arrays for each period
+        calcParams.forEach((period, configIndex) => {
+          const key = `trix${configIndex + 1}`;
+          
+          // Initialize EMA arrays for this period
+          let ema1: number | null = null;
+          let ema2: number | null = null;
+          let ema3: number | null = null;
+          
+          // Smoothing factor
+          const k = 2 / (period + 1);
+          
+          for (let i = 0; i < dataList.length; i++) {
+            if (!result[i]) {
+              result[i] = {};
+            }
+            
+            const closePrice = dataList[i].close;
+            
+            // Calculate first EMA
+            if (i === 0) {
+              ema1 = closePrice;
+            } else {
+              ema1 = (closePrice * k) + (ema1! * (1 - k));
+            }
+            
+            // Calculate second EMA (only after we have at least 'period' data points for stability)
+            if (i < period) {
+              // For initial periods, use the first EMA value
+              ema2 = ema1;
+            } else {
+              ema2 = (ema1! * k) + (ema2! * (1 - k));
+            }
+            
+            // Calculate third EMA (TRIX line)
+            if (i < period * 2) {
+              // For initial periods, use the second EMA value
+              ema3 = ema2;
+            } else {
+              ema3 = (ema2! * k) + (ema3! * (1 - k));
+            }
+            
+            // Store the TRIX value (which is the triple EMA)
+            result[i][key] = ema3;
+          }
+        });
+        
+        return result;
+      },
+      shouldOhlc: true, // TRIX is an overlay on the price chart
+      shouldFormatBigNumber: true,
+    });
+
+    registeredIndicators.add(uniqueName);
+    console.log(`Registered TRIX indicator: ${uniqueName} with periods:`, enabledPeriods);
+    return uniqueName;
+  } catch (error) {
+    console.error('Error registering custom TRIX indicator:', error);
     return null;
   }
 };
