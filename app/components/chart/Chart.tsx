@@ -147,7 +147,7 @@ export default function MainChart() {
     chartKey
   ]);
 
-  // Effect for overlay indicator changes (MA, EMA, WMA, BB, VWAP)
+  // Effect for overlay indicator changes (MA, EMA, WMA, BB, VWAP, SAR)
   useEffect(() => {
     if (!chartRef.current || !currentDataRef.current.length) return;
     
@@ -177,7 +177,8 @@ export default function MainChart() {
     config.indicators.wma, 
     config.indicators.avl,
     config.indicators.bb, 
-    config.indicators.vwap, 
+    config.indicators.vwap,
+    config.indicators.sar,
     setupMovingAverageOverlays
   ]);
 
