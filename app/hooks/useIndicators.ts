@@ -7,6 +7,7 @@ import {
   registerCustomBBIndicator,
   registerCustomVWAPIndicator,
   registerCustomAVLIndicator,
+  registerCustomSARIndicator ,
   registerRSIIndicator,
   registerCustomVolumeIndicator,
   clearOverlayIndicators
@@ -25,7 +26,8 @@ export const useIndicators = () => {
     config.indicators.wma,
     config.indicators.avl,
     config.indicators.bb,
-    config.indicators.vwap
+    config.indicators.vwap,
+    config.indicators.sar
   ]);
 
   const registerAllIndicators = useCallback(() => {
@@ -37,6 +39,7 @@ export const useIndicators = () => {
     registerCustomAVLIndicator(config.indicators.avl);
     registerCustomBBIndicator(config.indicators.bb);
     registerCustomVWAPIndicator(config.indicators.vwap);
+    registerCustomSARIndicator(config.indicators.sar);
     
     // Register RSI indicators
     if ((window as any).__registeredRSIIndicators) {

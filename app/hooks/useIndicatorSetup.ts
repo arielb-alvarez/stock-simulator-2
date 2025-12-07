@@ -8,6 +8,7 @@ import {
   registerCustomAVLIndicator,
   registerCustomBBIndicator,
   registerCustomVWAPIndicator,
+  registerCustomSARIndicator ,
   registerRSIIndicator,
   registerCustomVolumeIndicator,
   clearOverlayIndicators
@@ -162,6 +163,7 @@ export const useIndicatorSetup = () => {
       const avlUniqueName = registerCustomAVLIndicator(config.indicators.avl);
       const bbUniqueName = registerCustomBBIndicator(config.indicators.bb);
       const vwapUniqueName = registerCustomVWAPIndicator(config.indicators.vwap);
+      const sarUniqueName = registerCustomSARIndicator(config.indicators.sar); 
 
       // Get enabled configurations for each type
       const enabledMA = config.indicators.ma.filter(ma => ma.show);
@@ -170,6 +172,7 @@ export const useIndicatorSetup = () => {
       const enabledAVL = config.indicators.avl.filter(avl => avl.show);
       const enabledBB = config.indicators.bb.filter(bb => bb.show);
       const enabledVWAP = config.indicators.vwap.filter(vwap => vwap.show);
+      const enabledSAR = config.indicators.sar.filter(sar => sar.show);
 
       // Create overlays for enabled indicators
       if (enabledMA.length > 0 && maUniqueName) {
@@ -239,14 +242,33 @@ export const useIndicatorSetup = () => {
         }
       }
 
-      const totalOverlays = [enabledMA, enabledEMA, enabledWMA, enabledBB, enabledVWAP]
+      if (enabledSAR.length > 0 && sarUniqueName) {
+        try {
+          chart.createIndicator(sarUniqueName, true, { 
+            id: "candle_pane"
+          });
+          console.log(`Created SAR overlay with configs:`, enabledSAR.map(sar => `(${sar.start}, ${sar.maximum})`));
+        } catch (createError) {
+          console.error('Failed to create SAR overlay:', createError);
+        }
+      }
+
+      const totalOverlays = [enabledMA, enabledEMA, enabledWMA, enabledBB, enabledVWAP, enabledSAR]
         .filter(arr => arr.length > 0).length;
       console.log(`Created ${totalOverlays} moving average overlays in candle pane`);
 
     } catch (error) {
       console.error('Critical error in moving average overlay setup:', error);
     }
-  }, [config.indicators.ma, config.indicators.ema, config.indicators.wma, config.indicators.avl, config.indicators.bb, config.indicators.vwap]);
+  }, [
+    config.indicators.ma, 
+    config.indicators.ema, 
+    config.indicators.wma, 
+    config.indicators.avl,
+    config.indicators.bb, 
+    config.indicators.vwap,
+    config.indicators.sar
+  ]);
 
   const applyChartStyles = useCallback((chart: any) => {
     if (!chart) return;
