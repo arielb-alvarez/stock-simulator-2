@@ -99,6 +99,17 @@ export interface AVLConfig {
   name: string;
 }
 
+// SAR Configuration
+export interface SARConfig {
+  id: string;
+  show: boolean;
+  start: number;
+  maximum: number;
+  color: string;
+  name: string;
+  type: 'sar';
+}
+
 // Chart Style Configuration
 interface ChartStyleConfig {
   layout: {
@@ -167,6 +178,7 @@ interface GlobalConfig {
     bb: BBConfig[];
     vwap: VWAPConfig[];
     avl: AVLConfig[];
+    sar: SARConfig[];
   };
 }
 
@@ -191,6 +203,8 @@ interface GlobalContextType {
   toggleVWAP: (id: string) => void;
   updateAVL: (id: string, updates: Partial<AVLConfig>) => void;
   toggleAVL: (id: string) => void;
+  updateSAR: (id: string, updates: Partial<SARConfig>) => void;
+  toggleSAR: (id: string) => void;
   updateChartStyle: (updates: Partial<ChartStyleConfig>) => void;
   updateChartType: (chartType: ChartType) => void;
   resetToDefaults: () => void;
@@ -455,6 +469,32 @@ const createDefaultAVLs = (): AVLConfig[] => [
   }
 ];
 
+// SAR helper function
+const generateSARName = (start: number, maximum: number): string => {
+  return `SAR (${start}, ${maximum})`;
+};
+
+// Create default SAR configurations
+const createDefaultSARs = (): SARConfig[] => [
+  {
+    id: 'sar-1',
+    show: false,
+    start: 0.02,
+    maximum: 0.2,
+    color: '#FF4081', // Pink color for SAR
+    name: generateSARName(0.02, 0.2),
+    type: 'sar',
+  },
+  {
+    id: 'sar-2',
+    show: false,
+    start: 0.01,
+    maximum: 0.1,
+    color: '#7B1FA2', // Purple color
+    name: generateSARName(0.01, 0.1),
+    type: 'sar',
+  }
+];
 
 const defaultConfig: GlobalConfig = {
   chartType: 'candle',
@@ -472,6 +512,7 @@ const defaultConfig: GlobalConfig = {
     bb: createDefaultBBs(),
     vwap: createDefaultVWAPs(),
     avl: createDefaultAVLs(),
+    sar: createDefaultSARs(),
   },
 };
 
@@ -867,6 +908,47 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const updateSAR = useCallback((id: string, updates: Partial<SARConfig>) => {
+    setConfig(prev => {
+      const currentSAR = prev.indicators.sar.find(sar => sar.id === id);
+      
+      // Auto-update name if start or maximum changes and name follows default pattern
+      if ((updates.start !== undefined || updates.maximum !== undefined) && currentSAR) {
+        const oldStart = currentSAR.start;
+        const oldMaximum = currentSAR.maximum;
+        const newStart = updates.start !== undefined ? updates.start : oldStart;
+        const newMaximum = updates.maximum !== undefined ? updates.maximum : oldMaximum;
+        const defaultNamePattern = generateSARName(oldStart, oldMaximum);
+        
+        if (currentSAR.name === defaultNamePattern) {
+          updates.name = generateSARName(newStart, newMaximum);
+        }
+      }
+      
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          sar: prev.indicators.sar.map(sar => 
+            sar.id === id ? { ...sar, ...updates } : sar
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const toggleSAR = useCallback((id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        sar: prev.indicators.sar.map(sar => 
+          sar.id === id ? { ...sar, show: !sar.show } : sar
+        ),
+      },
+    }));
+  }, []);
+
   const updateChartStyle = useCallback((updates: Partial<ChartStyleConfig>) => {
     setConfig(prev => ({
       ...prev,
@@ -1000,6 +1082,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       toggleVWAP,
       updateAVL,
       toggleAVL,
+      updateSAR,
+      toggleSAR,
       updateChartStyle,
       updateChartType,
       resetToDefaults,
