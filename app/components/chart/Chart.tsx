@@ -179,6 +179,7 @@ export default function MainChart() {
     config.indicators.bb, 
     config.indicators.vwap,
     config.indicators.sar,
+    config.indicators.trix,
     setupMovingAverageOverlays
   ]);
 
