@@ -1,6 +1,6 @@
 // utils/indicatorRegistry.ts
 import { registerIndicator, KLineData } from 'klinecharts';
-import { RSIConfig, VolumeConfig, MAConfig, BBConfig, VWAPConfig, AVLConfig } from '@/context/GlobalContext';
+import { RSIConfig, VolumeConfig, MAConfig, BBConfig, VWAPConfig, AVLConfig, SARConfig  } from '@/context/GlobalContext';
 
 // Track registered indicators - reset on each config change
 const registeredIndicators = new Set();
@@ -37,6 +37,15 @@ export const generateVWAPKey = (vwapConfigs: VWAPConfig[]): string => {
   return vwapConfigs
     .filter(vwap => vwap.show)
     .map(vwap => `${vwap.id}_${vwap.length}_${vwap.color}_${vwap.lineSize}`)
+    .sort()
+    .join('_');
+};
+
+// Generate a unique key for SAR configurations
+export const generateSARKey = (sarConfigs: SARConfig[]): string => {
+  return sarConfigs
+    .filter(sar => sar.show)
+    .map(sar => `${sar.start}_${sar.maximum}_${sar.color}`)
     .sort()
     .join('_');
 };
@@ -591,6 +600,172 @@ export const registerCustomVWAPIndicator = (vwapConfigs: VWAPConfig[]) => {
     return uniqueName;
   } catch (error) {
     console.error('Error registering custom VWAP indicator:', error);
+    return null;
+  }
+};
+
+// Register Custom SAR Indicator
+export const registerCustomSARIndicator = (sarConfigs: SARConfig[]) => {
+  const enabledConfigs = sarConfigs.filter(sar => sar.show);
+
+  if (enabledConfigs.length === 0) return null;
+
+  const configKey = generateSARKey(sarConfigs);
+  const uniqueName = `CUSTOM_SAR_${configKey}`;
+  
+  try {    
+    registerIndicator({
+      name: uniqueName,
+      shortName: 'SAR',
+      calcParams: enabledConfigs.map(config => [config.start, config.maximum]).flat(),
+      figures: enabledConfigs.map((sarConfig, index) => ({
+        key: `sar${index}`,
+        title: `SAR (${sarConfig.start}, ${sarConfig.maximum}): `,
+        type: 'circle',
+        styles: () => ({
+          color: sarConfig.color,
+          size: 4, // Size of the SAR dots
+        })
+      })),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        
+        if (!dataList || dataList.length === 0) {
+          return result;
+        }
+
+        // Group params by config (each config has start and maximum)
+        const configs: { start: number, maximum: number }[] = [];
+        for (let i = 0; i < calcParams.length; i += 2) {
+          configs.push({
+            start: calcParams[i],
+            maximum: calcParams[i + 1]
+          });
+        }
+
+        // Initialize SAR calculation for each config
+        configs.forEach((config, configIndex) => {
+          const { start, maximum } = config;
+          
+          // Variables for SAR calculation
+          let sar: number | null = null;
+          let ep: number = 0; // Extreme point
+          let af: number = start; // Acceleration factor
+          let isUpTrend: boolean | null = null;
+          
+          for (let i = 0; i < dataList.length; i++) {
+            const currentData = dataList[i];
+            
+            // Initialize result array if needed
+            if (i >= result.length) {
+              result.push({});
+            }
+            
+            const key = `sar${configIndex}`;
+            
+            // First calculation
+            if (i === 0) {
+              // Start with no SAR value
+              result[i][key] = null;
+              continue;
+            }
+            
+            const previousData = dataList[i - 1];
+            
+            // Determine initial trend on second candle
+            if (i === 1) {
+              if (currentData.close > previousData.close) {
+                isUpTrend = true;
+                sar = previousData.low; // Start SAR at previous low
+                ep = currentData.high; // Extreme point is current high
+              } else {
+                isUpTrend = false;
+                sar = previousData.high; // Start SAR at previous high
+                ep = currentData.low; // Extreme point is current low
+              }
+              result[i][key] = sar;
+              continue;
+            }
+            
+            // Calculate SAR for current candle
+            if (isUpTrend) {
+              // Uptrend SAR calculation
+              sar = (sar as number) + af * (ep - (sar as number));
+              
+              // Check if we need to reverse trend
+              if (currentData.low <= sar) {
+                // Reverse to downtrend
+                isUpTrend = false;
+                sar = ep; // Start SAR at the extreme point
+                ep = currentData.low;
+                af = start; // Reset acceleration factor
+              } else {
+                // Continue uptrend
+                // Update extreme point if current high is higher
+                if (currentData.high > ep) {
+                  ep = currentData.high;
+                  // Increase acceleration factor
+                  af = Math.min(af + start, maximum);
+                }
+                
+                // SAR should not be above the previous two lows
+                if (i >= 2) {
+                  const prevLow1 = dataList[i - 1].low;
+                  const prevLow2 = dataList[i - 2].low;
+                  sar = Math.min(sar as number, prevLow1, prevLow2);
+                }
+              }
+            } else {
+              // Downtrend SAR calculation
+              sar = (sar as number) + af * (ep - (sar as number));
+              
+              // Check if we need to reverse trend
+              if (currentData.high >= sar) {
+                // Reverse to uptrend
+                isUpTrend = true;
+                sar = ep; // Start SAR at the extreme point
+                ep = currentData.high;
+                af = start; // Reset acceleration factor
+              } else {
+                // Continue downtrend
+                // Update extreme point if current low is lower
+                if (currentData.low < ep) {
+                  ep = currentData.low;
+                  // Increase acceleration factor
+                  af = Math.min(af + start, maximum);
+                }
+                
+                // SAR should not be below the previous two highs
+                if (i >= 2) {
+                  const prevHigh1 = dataList[i - 1].high;
+                  const prevHigh2 = dataList[i - 2].high;
+                  sar = Math.max(sar as number, prevHigh1, prevHigh2);
+                }
+              }
+            }
+            
+            // Final SAR adjustment
+            if (isUpTrend) {
+              // SAR should not be above the previous low
+              sar = Math.min(sar as number, previousData.low);
+            } else {
+              // SAR should not be below the previous high
+              sar = Math.max(sar as number, previousData.high);
+            }
+            
+            result[i][key] = sar;
+          }
+        });
+
+        return result;
+      },
+    });
+
+    registeredIndicators.add(uniqueName);
+    console.log(`Registered SAR indicator: ${uniqueName}`);
+    return uniqueName;
+  } catch (error) {
+    console.error('Error registering custom SAR indicator:', error);
     return null;
   }
 };

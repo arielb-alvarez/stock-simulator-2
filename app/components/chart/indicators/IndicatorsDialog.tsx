@@ -7,6 +7,7 @@ import { CompactVolumeConfig } from './CompactVolumeConfig';
 import { CompactBBConfig } from './CompactBBConfig';
 import { CompactVWAPConfig } from './CompactVWAPConfig';
 import { CompactAVLConfig } from './CompactAVLConfig';
+import { CompactSARConfig } from './CompactSARConfig';
 
 interface IndicatorsDialogProps {
   isOpen: boolean;
@@ -40,6 +41,8 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     toggleVWAP,
     updateAVL,
     toggleAVL,
+    updateSAR,
+    toggleSAR
   } = useGlobalContext();
 
   if (!isOpen) return null;
@@ -188,6 +191,22 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     updateAVL(avlId, { color });
   };
 
+  const handleToggleSAR = (sarId: string) => {
+    toggleSAR(sarId);
+  };
+
+  const handleStartChangeSAR = (sarId: string, start: number) => {
+    updateSAR(sarId, { start: Math.max(0.001, Math.min(0.1, start)) });
+  };
+
+  const handleMaximumChangeSAR = (sarId: string, maximum: number) => {
+    updateSAR(sarId, { maximum: Math.max(0.01, Math.min(1, maximum)) });
+  };
+
+  const handleColorChangeSAR = (sarId: string, color: string) => {
+    updateSAR(sarId, { color });
+  };
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
       <div className="bg-gray-800 rounded-xl w-[680px] max-h-[85vh] flex flex-col border border-gray-600 shadow-2xl">
@@ -242,7 +261,8 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                       { id: 'wma', label: 'Weighted MA' },
                       { id: 'avl', label: 'Average Value Line' },
                       { id: 'bb', label: 'Bollinger Bands' },
-                      { id: 'vwap', label: 'VWAP' }
+                      { id: 'vwap', label: 'VWAP' },
+                      { id: 'sar', label: 'SAR' }
                     ].map((item) => (
                       <button
                         key={item.id}
@@ -323,6 +343,16 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                     onPeriodChange={handlePeriodChangeAVL}
                     onLineSizeChange={handleLineSizeChangeAVL}
                     onColorChange={handleColorChangeAVL}
+                  />
+                )}
+
+                {activeSubMenu === 'sar' && (
+                  <CompactSARConfig
+                    sarConfigs={config.indicators.sar}
+                    onToggle={handleToggleSAR}
+                    onStartChange={handleStartChangeSAR}
+                    onMaximumChange={handleMaximumChangeSAR}
+                    onColorChange={handleColorChangeSAR}
                   />
                 )}
               </div>
