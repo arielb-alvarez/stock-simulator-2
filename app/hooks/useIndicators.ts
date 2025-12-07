@@ -8,6 +8,7 @@ import {
   registerCustomVWAPIndicator,
   registerCustomAVLIndicator,
   registerCustomSARIndicator ,
+  registerCustomTRIXIndicator,
   registerRSIIndicator,
   registerCustomVolumeIndicator,
   clearOverlayIndicators
@@ -40,6 +41,7 @@ export const useIndicators = () => {
     registerCustomBBIndicator(config.indicators.bb);
     registerCustomVWAPIndicator(config.indicators.vwap);
     registerCustomSARIndicator(config.indicators.sar);
+    registerCustomTRIXIndicator(config.indicators.trix);
     
     // Register RSI indicators
     if ((window as any).__registeredRSIIndicators) {

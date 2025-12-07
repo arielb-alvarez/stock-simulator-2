@@ -8,7 +8,8 @@ import {
   registerCustomAVLIndicator,
   registerCustomBBIndicator,
   registerCustomVWAPIndicator,
-  registerCustomSARIndicator ,
+  registerCustomSARIndicator,
+  registerCustomTRIXIndicator,
   registerRSIIndicator,
   registerCustomVolumeIndicator,
   clearOverlayIndicators
@@ -163,7 +164,8 @@ export const useIndicatorSetup = () => {
       const avlUniqueName = registerCustomAVLIndicator(config.indicators.avl);
       const bbUniqueName = registerCustomBBIndicator(config.indicators.bb);
       const vwapUniqueName = registerCustomVWAPIndicator(config.indicators.vwap);
-      const sarUniqueName = registerCustomSARIndicator(config.indicators.sar); 
+      const sarUniqueName = registerCustomSARIndicator(config.indicators.sar);
+      const trixUniqueName = registerCustomTRIXIndicator(config.indicators.trix);
 
       // Get enabled configurations for each type
       const enabledMA = config.indicators.ma.filter(ma => ma.show);
@@ -173,6 +175,7 @@ export const useIndicatorSetup = () => {
       const enabledBB = config.indicators.bb.filter(bb => bb.show);
       const enabledVWAP = config.indicators.vwap.filter(vwap => vwap.show);
       const enabledSAR = config.indicators.sar.filter(sar => sar.show);
+      const enabledTRIX = config.indicators.trix.filter(trix => trix.show);
 
       // Create overlays for enabled indicators
       if (enabledMA.length > 0 && maUniqueName) {
@@ -253,7 +256,18 @@ export const useIndicatorSetup = () => {
         }
       }
 
-      const totalOverlays = [enabledMA, enabledEMA, enabledWMA, enabledBB, enabledVWAP, enabledSAR]
+      if (enabledTRIX.length > 0 && trixUniqueName) {
+        try {
+          chart.createIndicator(trixUniqueName, true, { 
+            id: "candle_pane"
+          });
+          console.log(`Created TRIX overlay with periods:`, enabledTRIX.map(trix => trix.period));
+        } catch (createError) {
+          console.error('Failed to create TRIX overlay:', createError);
+        }
+      }
+
+      const totalOverlays = [enabledMA, enabledEMA, enabledWMA, enabledBB, enabledVWAP, enabledSAR, enabledTRIX]
         .filter(arr => arr.length > 0).length;
       console.log(`Created ${totalOverlays} moving average overlays in candle pane`);
 
@@ -267,7 +281,8 @@ export const useIndicatorSetup = () => {
     config.indicators.avl,
     config.indicators.bb, 
     config.indicators.vwap,
-    config.indicators.sar
+    config.indicators.sar,
+    config.indicators.trix
   ]);
 
   const applyChartStyles = useCallback((chart: any) => {
