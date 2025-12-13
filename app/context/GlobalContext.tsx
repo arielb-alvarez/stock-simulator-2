@@ -121,6 +121,32 @@ export interface TRIXConfig {
   name: string;
 }
 
+// SuperTrend Configuration
+export type SupertrendConfig = {
+  id: string;
+  show: boolean;
+  atrLength: number;
+  factor: number;
+  upTrend: {
+    lineColor: string;
+    lineWidth: number;
+    background: {
+      show: boolean;
+      color: string;
+    };
+  };
+  downTrend: {
+    lineColor: string;
+    lineWidth: number;
+    background: {
+      show: boolean;
+      color: string;
+    };
+  };
+  name: string;
+  type: 'supertrend';
+};
+
 // Chart Style Configuration
 interface ChartStyleConfig {
   layout: {
@@ -191,6 +217,7 @@ interface GlobalConfig {
     avl: AVLConfig[];
     sar: SARConfig[];
     trix: TRIXConfig[];
+    supertrend: SupertrendConfig[];
   };
 }
 
@@ -219,6 +246,8 @@ interface GlobalContextType {
   toggleSAR: (id: string) => void;
   updateTRIX: (id: string, updates: Partial<TRIXConfig>) => void;
   toggleTRIX: (id: string) => void;
+  updateSupertrend: (id: string, updates: Partial<SupertrendConfig>) => void;
+  toggleSupertrend: (id: string) => void;
   updateChartStyle: (updates: Partial<ChartStyleConfig>) => void;
   updateChartType: (chartType: ChartType) => void;
   resetToDefaults: () => void;
@@ -537,6 +566,38 @@ const createDefaultTRIXs = (): TRIXConfig[] => [
   }
 ];
 
+// Helper function to generate SuperTrend name
+const generateSupertrendName = (atrLength: number, factor: number): string => {
+  return `Supertrend (${atrLength}, ${factor})`;
+};
+
+// Create default SuperTrend configuration
+const createDefaultSupertrends = (): SupertrendConfig[] => [
+  {
+    id: 'supertrend-1',
+    show: false,
+    atrLength: 10,
+    factor: 3,
+    upTrend: {
+      lineColor: '#26A69A', // Teal
+      lineWidth: 1.5,
+      background: {
+        show: true,
+        color: '#26A69A',
+      },
+    },
+    downTrend: {
+      lineColor: '#EF5350', // Red
+      lineWidth: 1.5,
+      background: {
+        show: true,
+        color: '#EF5350',
+      },
+    },
+    name: generateSupertrendName(10, 3),
+    type: 'supertrend',
+  }
+];
 
 const defaultConfig: GlobalConfig = {
   chartType: 'candle',
@@ -556,6 +617,7 @@ const defaultConfig: GlobalConfig = {
     avl: createDefaultAVLs(),
     sar: createDefaultSARs(),
     trix: createDefaultTRIXs(),
+    supertrend: createDefaultSupertrends(),
   },
 };
 
@@ -1031,6 +1093,48 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  // Add these functions to the GlobalProvider component
+  const updateSupertrend = useCallback((id: string, updates: Partial<SupertrendConfig>) => {
+    setConfig(prev => {
+      const currentST = prev.indicators.supertrend.find(st => st.id === id);
+      
+      // Auto-update name if atrLength or factor changes and name follows default pattern
+      if ((updates.atrLength !== undefined || updates.factor !== undefined) && currentST) {
+        const oldAtrLength = currentST.atrLength;
+        const oldFactor = currentST.factor;
+        const newAtrLength = updates.atrLength !== undefined ? updates.atrLength : oldAtrLength;
+        const newFactor = updates.factor !== undefined ? updates.factor : oldFactor;
+        const defaultNamePattern = generateSupertrendName(oldAtrLength, oldFactor);
+        
+        if (currentST.name === defaultNamePattern) {
+          updates.name = generateSupertrendName(newAtrLength, newFactor);
+        }
+      }
+      
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          supertrend: prev.indicators.supertrend.map(st => 
+            st.id === id ? { ...st, ...updates } : st
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const toggleSupertrend = useCallback((id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        supertrend: prev.indicators.supertrend.map(st => 
+          st.id === id ? { ...st, show: !st.show } : st
+        ),
+      },
+    }));
+  }, []);
+
   const updateChartStyle = useCallback((updates: Partial<ChartStyleConfig>) => {
     setConfig(prev => ({
       ...prev,
@@ -1168,6 +1272,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       toggleSAR,
       updateTRIX,
       toggleTRIX,
+      updateSupertrend,
+      toggleSupertrend,
       updateChartStyle,
       updateChartType,
       resetToDefaults,

@@ -1,6 +1,6 @@
 // utils/indicatorRegistry.ts
 import { registerIndicator, KLineData } from 'klinecharts';
-import { RSIConfig, VolumeConfig, MAConfig, BBConfig, VWAPConfig, AVLConfig, SARConfig, TRIXConfig  } from '@/context/GlobalContext';
+import { RSIConfig, VolumeConfig, MAConfig, BBConfig, VWAPConfig, AVLConfig, SARConfig, TRIXConfig, SupertrendConfig } from '@/context/GlobalContext';
 
 // Track registered indicators - reset on each config change
 const registeredIndicators = new Set();
@@ -59,6 +59,15 @@ export const generateTRIXKey = (trixConfigs: TRIXConfig[]): string => {
     .join('_');
 };
 
+// Add helper function to generate SuperTrend key
+export const generateSupertrendKey = (supertrendConfigs: SupertrendConfig[]): string => {
+  return supertrendConfigs
+    .filter(st => st.show)
+    .map(st => `${st.atrLength}_${st.factor}_${st.upTrend.lineColor}_${st.downTrend.lineColor}_${st.upTrend.background.show ? 'upbg' : 'noupbg'}_${st.downTrend.background.show ? 'dnbg' : 'nodnbg'}`)
+    .sort()
+    .join('_');
+};
+
 // Clear all overlay indicators from chart
 export const clearOverlayIndicators = (chart: any) => {
   if (!chart) return;
@@ -68,8 +77,8 @@ export const clearOverlayIndicators = (chart: any) => {
     
     // Remove all possible overlay indicators by their base names and patterns
     const overlayPatterns = [
-      'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA', 'CUSTOM_AVL', 'CUSTOM_BB', 'CUSTOM_VWAP', 'CUSTOM_TRIX',
-      'MA', 'EMA', 'WMA', 'AVL', 'BB', 'VWAP', 'TRIX', 'BOLL'
+      'CUSTOM_MA', 'CUSTOM_EMA', 'CUSTOM_WMA', 'CUSTOM_AVL', 'CUSTOM_BB', 'CUSTOM_VWAP', 'CUSTOM_TRIX', 'CUSTOM_SUPERTREND',
+      'MA', 'EMA', 'WMA', 'AVL', 'BB', 'VWAP', 'TRIX', 'BOLL', 'SUPERTREND'
     ];
     
     // Try to remove indicators by common names
@@ -873,6 +882,192 @@ export const registerCustomTRIXIndicator = (trixConfigs: TRIXConfig[]) => {
     return uniqueName;
   } catch (error) {
     console.error('Error registering custom TRIX indicator:', error);
+    return null;
+  }
+};
+
+// Add registerCustomSupertrendIndicator function
+export const registerCustomSupertrendIndicator = (supertrendConfigs: SupertrendConfig[]) => {
+  const enabledConfigs = supertrendConfigs.filter(st => st.show);
+
+  if (enabledConfigs.length === 0) return null;
+
+  const configKey = generateSupertrendKey(supertrendConfigs);
+  const uniqueName = `CUSTOM_SUPERTREND_${configKey}`;
+  
+  try {    
+    registerIndicator({
+      name: uniqueName,
+      shortName: 'SUPERTREND',
+      calcParams: enabledConfigs.map(config => [config.atrLength, config.factor]).flat(),
+      figures: enabledConfigs.flatMap((stConfig, index) => [
+        // Up trend line
+        {
+          key: `st_up_${index}`,
+          title: `Supertrend Up (${stConfig.atrLength}, ${stConfig.factor}): `,
+          type: 'line',
+          styles: () => ({
+            color: stConfig.upTrend.lineColor,
+            size: stConfig.upTrend.lineWidth,
+          })
+        },
+        // Down trend line
+        {
+          key: `st_down_${index}`,
+          title: `Supertrend Down (${stConfig.atrLength}, ${stConfig.factor}): `,
+          type: 'line',
+          styles: () => ({
+            color: stConfig.downTrend.lineColor,
+            size: stConfig.downTrend.lineWidth,
+          })
+        }
+      ]),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        
+        if (!dataList || dataList.length === 0) {
+          return result;
+        }
+
+        // Group params by config (each config has atrLength and factor)
+        const configs: { atrLength: number, factor: number }[] = [];
+        for (let i = 0; i < calcParams.length; i += 2) {
+          configs.push({
+            atrLength: calcParams[i],
+            factor: calcParams[i + 1]
+          });
+        }
+
+        // Calculate for each SuperTrend configuration
+        configs.forEach((config, configIndex) => {
+          const { atrLength, factor } = config;
+          const upKey = `st_up_${configIndex}`;
+          const downKey = `st_down_${configIndex}`;
+          
+          // Initialize result array with undefined values
+          for (let i = 0; i < dataList.length; i++) {
+            result[i] = result[i] || {};
+            result[i][upKey] = undefined;  // Use undefined instead of null
+            result[i][downKey] = undefined; // Use undefined instead of null
+          }
+          
+          // Don't calculate if not enough data
+          if (dataList.length < atrLength) {
+            return;
+          }
+          
+          // Calculate True Range
+          const tr: number[] = new Array(dataList.length).fill(0);
+          for (let i = 0; i < dataList.length; i++) {
+            if (i === 0) {
+              tr[i] = dataList[i].high - dataList[i].low;
+            } else {
+              const hl = dataList[i].high - dataList[i].low;
+              const hc = Math.abs(dataList[i].high - dataList[i - 1].close);
+              const lc = Math.abs(dataList[i].low - dataList[i - 1].close);
+              tr[i] = Math.max(hl, hc, lc);
+            }
+          }
+          
+          // Calculate ATR (simple moving average of TR)
+          const atr: number[] = new Array(dataList.length).fill(0);
+          for (let i = atrLength - 1; i < dataList.length; i++) {
+            let sum = 0;
+            for (let j = 0; j < atrLength; j++) {
+              sum += tr[i - j];
+            }
+            atr[i] = sum / atrLength;
+          }
+          
+          // Calculate HL/2 (typical price for bands)
+          const hl2: number[] = new Array(dataList.length).fill(0);
+          for (let i = 0; i < dataList.length; i++) {
+            hl2[i] = (dataList[i].high + dataList[i].low) / 2;
+          }
+          
+          // Calculate basic upper and lower bands
+          const basicUpper: number[] = new Array(dataList.length).fill(0);
+          const basicLower: number[] = new Array(dataList.length).fill(0);
+          for (let i = atrLength - 1; i < dataList.length; i++) {
+            basicUpper[i] = hl2[i] + (factor * atr[i]);
+            basicLower[i] = hl2[i] - (factor * atr[i]);
+          }
+          
+          // Calculate final upper and lower bands with SuperTrend logic
+          const finalUpper: number[] = new Array(dataList.length).fill(0);
+          const finalLower: number[] = new Array(dataList.length).fill(0);
+          const supertrend: number[] = new Array(dataList.length).fill(0);
+          const trend: number[] = new Array(dataList.length).fill(0); // 1 for uptrend, -1 for downtrend
+          
+          // Initialize
+          finalUpper[atrLength - 1] = basicUpper[atrLength - 1];
+          finalLower[atrLength - 1] = basicLower[atrLength - 1];
+          
+          // Determine initial trend
+          if (dataList[atrLength - 1].close > finalUpper[atrLength - 1]) {
+            trend[atrLength - 1] = 1;
+            supertrend[atrLength - 1] = finalLower[atrLength - 1];
+          } else {
+            trend[atrLength - 1] = -1;
+            supertrend[atrLength - 1] = finalUpper[atrLength - 1];
+          }
+          
+          // Calculate for remaining candles
+          for (let i = atrLength; i < dataList.length; i++) {
+            // Adjust bands based on previous trend
+            if (trend[i - 1] === 1) {
+              finalUpper[i] = basicUpper[i];
+              finalLower[i] = Math.max(basicLower[i], finalLower[i - 1]);
+            } else {
+              finalUpper[i] = Math.min(basicUpper[i], finalUpper[i - 1]);
+              finalLower[i] = basicLower[i];
+            }
+            
+            // Determine current trend
+            if (dataList[i].close > finalUpper[i]) {
+              trend[i] = 1;
+              supertrend[i] = finalLower[i];
+            } else if (dataList[i].close < finalLower[i]) {
+              trend[i] = -1;
+              supertrend[i] = finalUpper[i];
+            } else {
+              trend[i] = trend[i - 1];
+              supertrend[i] = trend[i] === 1 ? finalLower[i] : finalUpper[i];
+            }
+          }
+          
+          // Set values - SIMPLE APPROACH: Only set the active trend line
+          // Leave the inactive line as undefined (not set at all)
+          for (let i = atrLength - 1; i < dataList.length; i++) {
+            if (trend[i] === 1) {
+              // Uptrend: only set upKey, leave downKey as undefined
+              result[i][upKey] = supertrend[i];
+              // downKey is already undefined
+            } else if (trend[i] === -1) {
+              // Downtrend: only set downKey, leave upKey as undefined
+              result[i][downKey] = supertrend[i];
+              // upKey is already undefined
+            }
+            // For trend[i] === 0 (initial), both remain undefined
+          }
+          
+          // IMPORTANT: No post-processing needed
+          // The lines will break naturally because:
+          // 1. We're using undefined (not null or 0)
+          // 2. When trend changes, the old line ends (last value set)
+          // 3. New line starts fresh with its first value
+          // 4. Since they're different keys, klinecharts won't connect them
+        });
+
+        return result;
+      },
+    });
+
+    registeredIndicators.add(uniqueName);
+    console.log(`Registered SuperTrend indicator: ${uniqueName}`);
+    return uniqueName;
+  } catch (error) {
+    console.error('Error registering custom SuperTrend indicator:', error);
     return null;
   }
 };
