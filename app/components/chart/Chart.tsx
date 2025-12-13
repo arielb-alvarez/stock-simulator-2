@@ -180,6 +180,7 @@ export default function MainChart() {
     config.indicators.vwap,
     config.indicators.sar,
     config.indicators.trix,
+    config.indicators.supertrend,
     setupMovingAverageOverlays
   ]);
 

@@ -9,6 +9,7 @@ import {
   registerCustomAVLIndicator,
   registerCustomSARIndicator ,
   registerCustomTRIXIndicator,
+  registerCustomSupertrendIndicator,
   registerRSIIndicator,
   registerCustomVolumeIndicator,
   clearOverlayIndicators
@@ -28,7 +29,8 @@ export const useIndicators = () => {
     config.indicators.avl,
     config.indicators.bb,
     config.indicators.vwap,
-    config.indicators.sar
+    config.indicators.sar,
+    config.indicators.supertrend
   ]);
 
   const registerAllIndicators = useCallback(() => {
@@ -42,6 +44,7 @@ export const useIndicators = () => {
     registerCustomVWAPIndicator(config.indicators.vwap);
     registerCustomSARIndicator(config.indicators.sar);
     registerCustomTRIXIndicator(config.indicators.trix);
+    registerCustomSupertrendIndicator(config.indicators.supertrend);
     
     // Register RSI indicators
     if ((window as any).__registeredRSIIndicators) {

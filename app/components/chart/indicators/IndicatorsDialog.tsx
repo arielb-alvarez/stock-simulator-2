@@ -9,6 +9,7 @@ import { CompactVWAPConfig } from './CompactVWAPConfig';
 import { CompactAVLConfig } from './CompactAVLConfig';
 import { CompactSARConfig } from './CompactSARConfig';
 import { CompactTRIXConfig } from './CompactTRIXConfig';
+import { CompactSupertrendConfig } from './CompactSuperTrendConfig';
 
 interface IndicatorsDialogProps {
   isOpen: boolean;
@@ -45,7 +46,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     updateSAR,
     toggleSAR,
     updateTRIX,
-    toggleTRIX
+    toggleTRIX,
+    updateSupertrend,
+    toggleSupertrend
   } = useGlobalContext();
 
   if (!isOpen) return null;
@@ -228,6 +231,103 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     updateTRIX(trixId, { color });
   };
 
+  // Add handler functions for Supertrend
+  const handleToggleSupertrend = (supertrendId: string) => {
+    toggleSupertrend(supertrendId);
+  };
+
+  const handleATRLengthChange = (supertrendId: string, atrLength: number) => {
+    updateSupertrend(supertrendId, { atrLength: Math.max(1, Math.min(100, atrLength)) });
+  };
+
+  const handleFactorChange = (supertrendId: string, factor: number) => {
+    updateSupertrend(supertrendId, { factor: Math.max(0.1, Math.min(10, factor)) });
+  };
+
+  const handleUpLineWidthChange = (supertrendId: string, lineWidth: number) => {
+    updateSupertrend(supertrendId, { 
+      upTrend: { 
+        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend,
+        lineWidth: Math.max(0.5, Math.min(5, lineWidth)) 
+      } 
+    });
+  };
+
+  const handleDownLineWidthChange = (supertrendId: string, lineWidth: number) => {
+    updateSupertrend(supertrendId, { 
+      downTrend: { 
+        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend,
+        lineWidth: Math.max(0.5, Math.min(5, lineWidth)) 
+      } 
+    });
+  };
+
+  const handleUpLineColorChange = (supertrendId: string, color: string) => {
+    updateSupertrend(supertrendId, { 
+      upTrend: { 
+        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend,
+        lineColor: color
+      } 
+    });
+  };
+
+  const handleDownLineColorChange = (supertrendId: string, color: string) => {
+    updateSupertrend(supertrendId, { 
+      downTrend: { 
+        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend,
+        lineColor: color
+      } 
+    });
+  };
+
+  const handleUpBackgroundToggle = (supertrendId: string, show: boolean) => {
+    updateSupertrend(supertrendId, { 
+      upTrend: { 
+        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend,
+        background: { 
+          ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend.background,
+          show 
+        }
+      } 
+    });
+  };
+
+  const handleDownBackgroundToggle = (supertrendId: string, show: boolean) => {
+    updateSupertrend(supertrendId, { 
+      downTrend: { 
+        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend,
+        background: { 
+          ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend.background,
+          show 
+        }
+      } 
+    });
+  };
+
+  const handleUpBackgroundColorChange = (supertrendId: string, color: string) => {
+    updateSupertrend(supertrendId, { 
+      upTrend: { 
+        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend,
+        background: { 
+          ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend.background,
+          color 
+        }
+      } 
+    });
+  };
+
+  const handleDownBackgroundColorChange = (supertrendId: string, color: string) => {
+    updateSupertrend(supertrendId, { 
+      downTrend: { 
+        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend,
+        background: { 
+          ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend.background,
+          color 
+        }
+      } 
+    });
+  };
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
       <div className="bg-gray-800 rounded-xl w-[680px] max-h-[85vh] flex flex-col border border-gray-600 shadow-2xl">
@@ -284,7 +384,8 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                       { id: 'bb', label: 'Bollinger Bands' },
                       { id: 'vwap', label: 'VWAP' },
                       { id: 'sar', label: 'SAR' },
-                      { id: 'trix', label: 'TRIX' }
+                      { id: 'trix', label: 'TRIX' },
+                      { id: 'supertrend', label: 'Supertrend' }
                     ].map((item) => (
                       <button
                         key={item.id}
@@ -385,6 +486,23 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                     onPeriodChange={handlePeriodChangeTRIX}
                     onLineSizeChange={handleLineSizeChangeTRIX}
                     onColorChange={handleColorChangeTRIX}
+                  />
+                )}
+
+                {activeSubMenu === 'supertrend' && (
+                  <CompactSupertrendConfig
+                    supertrendConfigs={config.indicators.supertrend}
+                    onToggle={handleToggleSupertrend}
+                    onATRLengthChange={handleATRLengthChange}
+                    onFactorChange={handleFactorChange}
+                    onUpLineWidthChange={handleUpLineWidthChange}
+                    onDownLineWidthChange={handleDownLineWidthChange}
+                    onUpLineColorChange={handleUpLineColorChange}
+                    onDownLineColorChange={handleDownLineColorChange}
+                    onUpBackgroundToggle={handleUpBackgroundToggle}
+                    onDownBackgroundToggle={handleDownBackgroundToggle}
+                    onUpBackgroundColorChange={handleUpBackgroundColorChange}
+                    onDownBackgroundColorChange={handleDownBackgroundColorChange}
                   />
                 )}
               </div>
