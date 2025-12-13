@@ -10,6 +10,7 @@ import {
   registerCustomVWAPIndicator,
   registerCustomSARIndicator,
   registerCustomTRIXIndicator,
+  registerCustomSupertrendIndicator,
   registerRSIIndicator,
   registerCustomVolumeIndicator,
   clearOverlayIndicators
@@ -166,6 +167,7 @@ export const useIndicatorSetup = () => {
       const vwapUniqueName = registerCustomVWAPIndicator(config.indicators.vwap);
       const sarUniqueName = registerCustomSARIndicator(config.indicators.sar);
       const trixUniqueName = registerCustomTRIXIndicator(config.indicators.trix);
+      const supertrendUniqueName = registerCustomSupertrendIndicator(config.indicators.supertrend);
 
       // Get enabled configurations for each type
       const enabledMA = config.indicators.ma.filter(ma => ma.show);
@@ -176,6 +178,7 @@ export const useIndicatorSetup = () => {
       const enabledVWAP = config.indicators.vwap.filter(vwap => vwap.show);
       const enabledSAR = config.indicators.sar.filter(sar => sar.show);
       const enabledTRIX = config.indicators.trix.filter(trix => trix.show);
+      const enabledSupertrend = config.indicators.supertrend.filter(st => st.show);
 
       // Create overlays for enabled indicators
       if (enabledMA.length > 0 && maUniqueName) {
@@ -267,7 +270,19 @@ export const useIndicatorSetup = () => {
         }
       }
 
-      const totalOverlays = [enabledMA, enabledEMA, enabledWMA, enabledBB, enabledVWAP, enabledSAR, enabledTRIX]
+      // Add SuperTrend overlay creation
+      if (enabledSupertrend.length > 0 && supertrendUniqueName) {
+        try {
+          chart.createIndicator(supertrendUniqueName, true, { 
+            id: "candle_pane"
+          });
+          console.log(`Created SuperTrend overlay with config: ATR=${enabledSupertrend[0].atrLength}, Factor=${enabledSupertrend[0].factor}`);
+        } catch (createError) {
+          console.error('Failed to create SuperTrend overlay:', createError);
+        }
+      }
+
+      const totalOverlays = [enabledMA, enabledEMA, enabledWMA, enabledBB, enabledVWAP, enabledSAR, enabledTRIX, enabledSupertrend]
         .filter(arr => arr.length > 0).length;
       console.log(`Created ${totalOverlays} moving average overlays in candle pane`);
 
@@ -282,7 +297,8 @@ export const useIndicatorSetup = () => {
     config.indicators.bb, 
     config.indicators.vwap,
     config.indicators.sar,
-    config.indicators.trix
+    config.indicators.trix,
+    config.indicators.supertrend
   ]);
 
   const applyChartStyles = useCallback((chart: any) => {
