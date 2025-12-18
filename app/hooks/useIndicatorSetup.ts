@@ -16,7 +16,8 @@ import {
   registerCustomVolumeIndicator,
   clearOverlayIndicators,
   registerMultiPeriodRSIIndicator,
-  registerMultiPeriodMFIIndicator
+  registerMultiPeriodMFIIndicator,
+  registerMultiPeriodKDJIndicator
 } from '@/utils/indicatorRegistry';
 
 export const useIndicatorSetup = () => {
@@ -154,6 +155,72 @@ export const useIndicatorSetup = () => {
       console.error('Error in MFI setup:', error);
     }
   }, [config.indicators.mfi]);
+
+  const setupKDJIndicators = useCallback((chart: any) => {
+    if (!chart) return;
+
+    try {
+      // Remove all existing KDJ indicators
+      const kdjPatterns = ['KDJ_', 'MULTI_KDJ_'];
+      kdjPatterns.forEach(pattern => {
+        try {
+          chart.removeIndicator(pattern);
+        } catch (e) {
+          // Ignore errors
+        }
+      });
+
+      // Get enabled KDJ configurations
+      const enabledKDJs = config.indicators.kdj.filter(kdj => kdj.show);
+      
+      if (enabledKDJs.length === 0) {
+        console.log('No enabled KDJ configurations');
+        return;
+      }
+
+      // Register multi-period KDJ indicator
+      const indicatorName = registerMultiPeriodKDJIndicator(config.indicators.kdj);
+      
+      if (!indicatorName) {
+        console.error('Failed to register multi-period KDJ indicator');
+        return;
+      }
+
+      // Use the first KDJ config for bands
+      const firstKDJConfig = enabledKDJs[0];
+      
+      try {
+        chart.createIndicator(indicatorName, false, {
+          id: 'kdj_pane',
+          height: 100,
+          gap: {
+            top: 0.2,
+            bottom: 0.2,
+          },
+          bands: [
+            {
+              value: firstKDJConfig.overbought,
+              color: firstKDJConfig.overboughtLineColor,
+              width: 1,
+              style: 'dashed',
+            },
+            {
+              value: firstKDJConfig.oversold,
+              color: firstKDJConfig.oversoldLineColor,
+              width: 1,
+              style: 'dashed',
+            },
+          ],
+        });
+        
+        console.log(`Created multi-period KDJ indicator with ${enabledKDJs.length} configurations`);
+      } catch (indicatorError) {
+        console.error(`Error creating KDJ indicator:`, indicatorError);
+      }
+    } catch (error) {
+      console.error('Error in KDJ setup:', error);
+    }
+  }, [config.indicators.kdj]);
 
   const setupVolumeIndicators = useCallback((chart: any) => {
     if (!chart) return;
@@ -392,6 +459,7 @@ export const useIndicatorSetup = () => {
   return {
     setupRSIIndicators,
     setupMFIIndicators,
+    setupKDJIndicators,
     setupVolumeIndicators,
     setupMovingAverageOverlays,
     applyChartStyles,
