@@ -11,6 +11,9 @@ import {
   registerCustomTRIXIndicator,
   registerCustomSupertrendIndicator,
   registerRSIIndicator,
+  registerMFIIndicator,
+  registerMultiPeriodRSIIndicator,
+  registerMultiPeriodMFIIndicator,
   registerCustomVolumeIndicator,
   clearOverlayIndicators
 } from '@/utils/indicatorRegistry';
@@ -46,18 +49,11 @@ export const useIndicators = () => {
     registerCustomTRIXIndicator(config.indicators.trix);
     registerCustomSupertrendIndicator(config.indicators.supertrend);
     
-    // Register RSI indicators
-    if ((window as any).__registeredRSIIndicators) {
-      (window as any).__registeredRSIIndicators = [];
-    }
+    // Register multi-period RSI indicator
+    registerMultiPeriodRSIIndicator(config.indicators.rsi);
     
-    config.indicators.rsi.forEach(rsiConfig => {
-      const indicatorName = registerRSIIndicator(rsiConfig);
-      if (!(window as any).__registeredRSIIndicators) {
-        (window as any).__registeredRSIIndicators = [];
-      }
-      (window as any).__registeredRSIIndicators.push(indicatorName);
-    });
+    // Register multi-period MFI indicator
+    registerMultiPeriodMFIIndicator(config.indicators.mfi);
 
     // Register volume indicators
     if ((window as any).__registeredVolumeIndicators) {
