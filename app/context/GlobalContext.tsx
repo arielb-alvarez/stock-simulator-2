@@ -121,6 +121,21 @@ export interface TRIXConfig {
   name: string;
 }
 
+// MFI Configuration interface
+export interface MFIConfig {
+  id: string;
+  show: boolean;
+  period: number;
+  lineColor: string;
+  lineSize: number;
+  overbought: number;
+  oversold: number;
+  overboughtLineColor: string;
+  oversoldLineColor: string;
+  name: string;
+  type: 'mfi';
+}
+
 // SuperTrend Configuration
 export type SupertrendConfig = {
   id: string;
@@ -208,6 +223,7 @@ interface GlobalConfig {
   series: unknown;
   indicators: {
     rsi: RSIConfig[];
+    mfi: MFIConfig[];
     volume: VolumeConfig[];
     ma: MAConfig[];
     ema: MAConfig[];
@@ -226,6 +242,8 @@ interface GlobalContextType {
   updateConfig: (updates: Partial<GlobalConfig>) => void;
   updateRSI: (id: string, updates: Partial<RSIConfig>) => void;
   toggleRSI: (id: string) => void;
+  updateMFI: (id: string, updates: Partial<MFIConfig>) => void;
+  toggleMFI: (id: string) => void;
   updateVolume: (id: string, updates: Partial<VolumeConfig>) => void;
   toggleVolume: (id: string) => void;
   updateVolumeMA: (volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => void;
@@ -390,6 +408,53 @@ const createDefaultRSIs = (): RSIConfig[] => [
     oversoldLineColor: '#00b15d',
     areaColor: 'rgba(78, 205, 196, 0.1)',
     name: generateRSIName(28),
+  }
+];
+
+const generateMFIName = (period: number): string => {
+  return `MFI ${period}`;
+};
+
+// Create default MFI configurations (3 by default, same as RSI)
+const createDefaultMFIs = (): MFIConfig[] => [
+  {
+    id: 'mfi-1',
+    show: false, // Default to false since RSI is already enabled
+    period: 14,
+    lineColor: '#FF6B6B', // Different color than RSI
+    lineSize: 2,
+    overbought: 80,
+    oversold: 20,
+    overboughtLineColor: '#ff5b5a',
+    oversoldLineColor: '#00b15d',
+    name: generateMFIName(14),
+    type: 'mfi',
+  },
+  {
+    id: 'mfi-2',
+    show: false,
+    period: 21,
+    lineColor: '#4ECDC4', // Teal color
+    lineSize: 1.5,
+    overbought: 80,
+    oversold: 20,
+    overboughtLineColor: '#ff5b5a',
+    oversoldLineColor: '#00b15d',
+    name: generateMFIName(21),
+    type: 'mfi',
+  },
+  {
+    id: 'mfi-3',
+    show: false,
+    period: 28,
+    lineColor: '#FFA726', // Orange color
+    lineSize: 1.5,
+    overbought: 85,
+    oversold: 15,
+    overboughtLineColor: '#ff5b5a',
+    oversoldLineColor: '#00b15d',
+    name: generateMFIName(28),
+    type: 'mfi',
   }
 ];
 
@@ -608,6 +673,7 @@ const defaultConfig: GlobalConfig = {
   series: {},
   indicators: {
     rsi: createDefaultRSIs(),
+    mfi: createDefaultMFIs(),
     volume: createDefaultVolume(),
     ma: createDefaultMAs('sma'),
     ema: createDefaultMAs('ema'),
@@ -765,6 +831,47 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
         ...prev.indicators,
         rsi: prev.indicators.rsi.map(rsi => 
           rsi.id === id ? { ...rsi, show: !rsi.show } : rsi
+        ),
+      },
+    }));
+  }, []);
+
+  const updateMFI = useCallback((id: string, updates: Partial<MFIConfig>) => {
+    setConfig(prev => {
+      const currentMFI = prev.indicators.mfi.find(mfi => mfi.id === id);
+      
+      // If period is being updated and name matches the pattern "MFI {oldPeriod}", auto-update the name
+      if (updates.period && currentMFI) {
+        const oldPeriod = currentMFI.period;
+        const newPeriod = updates.period;
+        
+        // Check if the current name follows the default pattern "MFI {period}"
+        const defaultNamePattern = `MFI ${oldPeriod}`;
+        if (currentMFI.name === defaultNamePattern) {
+          // Auto-update the name to match the new period
+          updates.name = generateMFIName(newPeriod);
+        }
+      }
+      
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          mfi: prev.indicators.mfi.map(mfi => 
+            mfi.id === id ? { ...mfi, ...updates } : mfi
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const toggleMFI = useCallback((id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        mfi: prev.indicators.mfi.map(mfi => 
+          mfi.id === id ? { ...mfi, show: !mfi.show } : mfi
         ),
       },
     }));
@@ -1252,6 +1359,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       updateConfig,
       updateRSI,
       toggleRSI,
+      updateMFI,
+      toggleMFI,
       updateVolume,
       toggleVolume,
       updateVolumeMA,

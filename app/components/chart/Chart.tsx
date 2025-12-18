@@ -42,6 +42,7 @@ export default function MainChart() {
   const { registerAllIndicators } = useIndicators();
   const {
     setupRSIIndicators,
+    setupMFIIndicators,
     setupVolumeIndicators,
     setupMovingAverageOverlays,
     applyChartStyles,
@@ -104,8 +105,30 @@ export default function MainChart() {
         
         // Apply styles and setup indicators
         applyChartStyles(chartInstance);
-        setupRSIIndicators(chartInstance);
-        setupMovingAverageOverlays(chartInstance);
+
+        setTimeout(() => {
+          if (mounted && chartInstance) {
+            setupRSIIndicators(chartInstance);
+          }
+        }, 100);
+        
+        setTimeout(() => {
+          if (mounted && chartInstance) {
+            setupMFIIndicators(chartInstance);
+          }
+        }, 150);
+        
+        setTimeout(() => {
+          if (mounted && chartInstance) {
+            setupVolumeIndicators(chartInstance);
+          }
+        }, 200);
+        
+        setTimeout(() => {
+          if (mounted && chartInstance) {
+            setupMovingAverageOverlays(chartInstance);
+          }
+        }, 250);
         
         // Give a small delay before setting up volume to ensure chart is ready
         setTimeout(() => {
@@ -204,6 +227,26 @@ export default function MainChart() {
     const timer = setTimeout(updateRSIIndicators, 50);
     return () => clearTimeout(timer);
   }, [config.indicators.rsi, setupRSIIndicators]);
+
+  useEffect(() => {
+    if (!chartRef.current || !currentDataRef.current.length) return;
+    
+    const updateMFIIndicators = async () => {
+      try {
+        setupMFIIndicators(chartRef.current);
+        
+        // Force complete refresh
+        setTimeout(() => {
+          chartRef.current?.resize();
+        }, 50);
+      } catch (error) {
+        console.error('Error updating MFI indicators:', error);
+      }
+    };
+
+    const timer = setTimeout(updateMFIIndicators, 50);
+    return () => clearTimeout(timer);
+  }, [config.indicators.mfi, setupMFIIndicators]);
 
   // Effect for Volume indicator changes
   useEffect(() => {
