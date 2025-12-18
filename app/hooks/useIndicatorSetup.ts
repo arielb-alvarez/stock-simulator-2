@@ -12,74 +12,148 @@ import {
   registerCustomTRIXIndicator,
   registerCustomSupertrendIndicator,
   registerRSIIndicator,
+  registerMFIIndicator,
   registerCustomVolumeIndicator,
-  clearOverlayIndicators
+  clearOverlayIndicators,
+  registerMultiPeriodRSIIndicator,
+  registerMultiPeriodMFIIndicator
 } from '@/utils/indicatorRegistry';
 
 export const useIndicatorSetup = () => {
   const { config } = useGlobalContext();
 
-  const setupRSIIndicators = useCallback((chart: any) => {
+   const setupRSIIndicators = useCallback((chart: any) => {
     if (!chart) return;
 
     try {
-      // Remove all existing RSI indicators first
-      const allRSINames = config.indicators.rsi.map(rsiConfig => 
-        `RSI_${rsiConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`
-      );
-      
-      allRSINames.forEach(indicatorName => {
+      // Remove all existing RSI indicators
+      const rsiPatterns = ['RSI_', 'MULTI_RSI_'];
+      rsiPatterns.forEach(pattern => {
         try {
-          chart.removeIndicator(indicatorName);
+          // Try to remove by pattern
+          chart.removeIndicator(pattern);
         } catch (e) {
-          // Ignore removal errors
+          // Ignore errors
         }
       });
 
-      // Add visible RSI indicators with updated styles
-      config.indicators.rsi
-        .filter(rsiConfig => rsiConfig.show)
-        .forEach((rsiConfig, index) => {
-          const indicatorName = `RSI_${rsiConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
-          
-          try {
-            chart.createIndicator(indicatorName, false, {
-              id: indicatorName,
-              height: 100,
-              gap: {
-                top: 0.2,
-                bottom: 0.2,
-              },
-              styles: {
-                rsi: {
-                  color: rsiConfig.lineColor,
-                  size: rsiConfig.lineSize,
-                },
-                marginTop: 10 * index,
-              },
-              bands: [
-                {
-                  value: rsiConfig.overbought,
-                  color: rsiConfig.overboughtLineColor,
-                  width: 1,
-                  style: 'dashed',
-                },
-                {
-                  value: rsiConfig.oversold,
-                  color: rsiConfig.oversoldLineColor,
-                  width: 1,
-                  style: 'dashed',
-                },
-              ],
-            });
-          } catch (indicatorError) {
-            console.error(`Error creating RSI indicator ${indicatorName}:`, indicatorError);
-          }
+      // Get enabled RSI configurations
+      const enabledRSIs = config.indicators.rsi.filter(rsi => rsi.show);
+      
+      if (enabledRSIs.length === 0) {
+        console.log('No enabled RSI configurations');
+        return;
+      }
+
+      // Register multi-period RSI indicator
+      const indicatorName = registerMultiPeriodRSIIndicator(config.indicators.rsi);
+      
+      if (!indicatorName) {
+        console.error('Failed to register multi-period RSI indicator');
+        return;
+      }
+
+      // Use the first RSI config for bands (common practice)
+      const firstRSIConfig = enabledRSIs[0];
+      
+      try {
+        chart.createIndicator(indicatorName, false, {
+          id: 'rsi_pane',
+          height: 100,
+          gap: {
+            top: 0.2,
+            bottom: 0.2,
+          },
+          bands: [
+            {
+              value: firstRSIConfig.overbought,
+              color: firstRSIConfig.overboughtLineColor,
+              width: 1,
+              style: 'dashed',
+            },
+            {
+              value: firstRSIConfig.oversold,
+              color: firstRSIConfig.oversoldLineColor,
+              width: 1,
+              style: 'dashed',
+            },
+          ],
         });
+        
+        console.log(`Created multi-period RSI indicator with ${enabledRSIs.length} lines`);
+      } catch (indicatorError) {
+        console.error(`Error creating RSI indicator:`, indicatorError);
+      }
     } catch (error) {
       console.error('Error in RSI setup:', error);
     }
   }, [config.indicators.rsi]);
+
+  const setupMFIIndicators = useCallback((chart: any) => {
+    if (!chart) return;
+
+    try {
+      // Remove all existing MFI indicators
+      const mfiPatterns = ['MFI_', 'MULTI_MFI_'];
+      mfiPatterns.forEach(pattern => {
+        try {
+          chart.removeIndicator(pattern);
+        } catch (e) {
+          // Ignore errors
+        }
+      });
+
+      // Get enabled MFI configurations
+      const enabledMFIs = config.indicators.mfi.filter(mfi => mfi.show);
+      
+      if (enabledMFIs.length === 0) {
+        console.log('No enabled MFI configurations');
+        return;
+      }
+
+      // Register multi-period MFI indicator
+      const indicatorName = registerMultiPeriodMFIIndicator(config.indicators.mfi);
+      
+      if (!indicatorName) {
+        console.error('Failed to register multi-period MFI indicator');
+        return;
+      }
+
+      // Use the first MFI config for bands
+      const firstMFIConfig = enabledMFIs[0];
+      
+      try {
+        chart.createIndicator(indicatorName, false, {
+          id: 'mfi_pane',
+          height: 100,
+          gap: {
+            top: 0.2,
+            bottom: 0.2,
+          },
+          bands: [
+            {
+              value: firstMFIConfig.overbought,
+              color: firstMFIConfig.overboughtLineColor,
+              width: 1,
+              style: 'dashed',
+            },
+            {
+              value: firstMFIConfig.oversold,
+              color: firstMFIConfig.oversoldLineColor,
+              width: 1,
+              style: 'dashed',
+            },
+          ],
+        });
+        
+        console.log(`Created multi-period MFI indicator with ${enabledMFIs.length} lines`);
+      } catch (indicatorError) {
+        console.error(`Error creating MFI indicator:`, indicatorError);
+      }
+    } catch (error) {
+      console.error('Error in MFI setup:', error);
+    }
+  }, [config.indicators.mfi]);
 
   const setupVolumeIndicators = useCallback((chart: any) => {
     if (!chart) return;
@@ -317,6 +391,7 @@ export const useIndicatorSetup = () => {
 
   return {
     setupRSIIndicators,
+    setupMFIIndicators,
     setupVolumeIndicators,
     setupMovingAverageOverlays,
     applyChartStyles,
