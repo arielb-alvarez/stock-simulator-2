@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useGlobalContext } from '@/context/GlobalContext';
 import { CompactMAConfig } from './CompactMAConfig';
 import { CompactRSIConfig } from './CompactRSIConfig';
+import { CompactMFIConfig } from './CompactMFIConfig';
 import { CompactVolumeConfig } from './CompactVolumeConfig';
 import { CompactBBConfig } from './CompactBBConfig';
 import { CompactVWAPConfig } from './CompactVWAPConfig';
@@ -27,6 +28,8 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     config,
     updateRSI,
     toggleRSI,
+    updateMFI,
+    toggleMFI,
     updateVolume,
     toggleVolume,
     updateVolumeMA,
@@ -68,6 +71,23 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
 
   const handleColorChangeRSI = (rsiId: string, lineColor: string) => {
     updateRSI(rsiId, { lineColor });
+  };
+
+  // Add MFI handlers
+  const handleToggleMFI = (mfiId: string) => {
+    toggleMFI(mfiId);
+  };
+
+  const handlePeriodChangeMFI = (mfiId: string, period: number) => {
+    updateMFI(mfiId, { period: Math.max(1, period) });
+  };
+
+  const handleLineSizeChangeMFI = (mfiId: string, lineSize: number) => {
+    updateMFI(mfiId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleColorChangeMFI = (mfiId: string, lineColor: string) => {
+    updateMFI(mfiId, { lineColor });
   };
 
   // Volume Handlers
@@ -517,6 +537,7 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                   <nav className="space-y-1">
                     {[
                       { id: 'rsi', label: 'RSI' },
+                      { id: 'mfi', label: 'MFI' },
                       { id: 'volume', label: 'Volume' }
                     ].map((item) => (
                       <button
@@ -544,6 +565,15 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                     onPeriodChange={handlePeriodChangeRSI}
                     onLineSizeChange={handleLineSizeChangeRSI}
                     onColorChange={handleColorChangeRSI}
+                  />
+                )}
+                {activeSubMenu === 'mfi' && ( // Add this
+                  <CompactMFIConfig
+                    mfiConfigs={config.indicators.mfi}
+                    onToggle={handleToggleMFI}
+                    onPeriodChange={handlePeriodChangeMFI}
+                    onLineSizeChange={handleLineSizeChangeMFI}
+                    onColorChange={handleColorChangeMFI}
                   />
                 )}
                 {activeSubMenu === 'volume' && (

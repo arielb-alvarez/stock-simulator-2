@@ -1,6 +1,6 @@
 // utils/indicatorRegistry.ts
 import { registerIndicator, KLineData } from 'klinecharts';
-import { RSIConfig, VolumeConfig, MAConfig, BBConfig, VWAPConfig, AVLConfig, SARConfig, TRIXConfig, SupertrendConfig } from '@/context/GlobalContext';
+import { RSIConfig, MFIConfig, VolumeConfig, MAConfig, BBConfig, VWAPConfig, AVLConfig, SARConfig, TRIXConfig, SupertrendConfig } from '@/context/GlobalContext';
 
 // Track registered indicators - reset on each config change
 const registeredIndicators = new Set();
@@ -1139,6 +1139,285 @@ export const registerRSIIndicator = (rsiConfig: RSIConfig) => {
   } catch (error) {
     console.error('Error registering RSI indicator:', error);
     return indicatorName;
+  }
+};
+
+// Register MFI Indicator with unique name
+export const registerMFIIndicator = (mfiConfig: MFIConfig) => {
+  const indicatorName = `MFI_${mfiConfig.id.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  
+  try {
+    registerIndicator({
+      name: indicatorName,
+      shortName: `MFI${mfiConfig.period}`,
+      calcParams: [mfiConfig.period],
+      figures: [
+        { 
+          key: 'mfi', 
+          title: `MFI${mfiConfig.period}: `, 
+          type: 'line',
+          styles: (mfiData: any) => {
+            const currentMFI = mfiData.mfi;
+            if (currentMFI > mfiConfig.overbought) {
+              return { 
+                color: mfiConfig.overboughtLineColor,
+                size: mfiConfig.lineSize 
+              };
+            } else if (currentMFI < mfiConfig.oversold) {
+              return { 
+                color: mfiConfig.oversoldLineColor,
+                size: mfiConfig.lineSize 
+              };
+            }
+            return { 
+              color: mfiConfig.lineColor,
+              size: mfiConfig.lineSize 
+            };
+          }
+        }
+      ],
+      calc: (dataList: KLineData[]) => {
+        const result: any[] = [];
+        const period = mfiConfig.period;
+        
+        // Array to store typical prices and raw money flow
+        const typicalPrices: number[] = [];
+        const moneyFlows: number[] = [];
+        
+        for (let i = 0; i < dataList.length; i++) {
+          // Calculate typical price: (high + low + close) / 3
+          const typicalPrice = (dataList[i].high + dataList[i].low + dataList[i].close) / 3;
+          typicalPrices.push(typicalPrice);
+          
+          // Calculate raw money flow: typical price * volume
+          const moneyFlow = typicalPrice * (dataList[i].volume || 0);
+          moneyFlows.push(moneyFlow);
+          
+          if (i < period) {
+            // Not enough data for MFI calculation
+            result.push({ mfi: 50 }); // Default to neutral 50
+            continue;
+          }
+          
+          // Calculate positive and negative money flow
+          let positiveMF = 0;
+          let negativeMF = 0;
+          
+          for (let j = i - period + 1; j <= i; j++) {
+            if (typicalPrices[j] > typicalPrices[j - 1]) {
+              positiveMF += moneyFlows[j];
+            } else if (typicalPrices[j] < typicalPrices[j - 1]) {
+              negativeMF += moneyFlows[j];
+            }
+            // If typical price is unchanged, no money flow is added
+          }
+          
+          if (negativeMF === 0) {
+            // Avoid division by zero
+            result.push({ mfi: 100 });
+          } else {
+            const moneyRatio = positiveMF / negativeMF;
+            const mfi = 100 - (100 / (1 + moneyRatio));
+            result.push({ mfi: Math.max(0, Math.min(100, mfi)) });
+          }
+        }
+        
+        return result;
+      },
+    });
+
+    return indicatorName;
+  } catch (error) {
+    console.error('Error registering MFI indicator:', error);
+    return indicatorName;
+  }
+};
+
+export const registerMultiPeriodRSIIndicator = (rsiConfigs: RSIConfig[]) => {
+  const enabledConfigs = rsiConfigs.filter(rsi => rsi.show);
+  
+  if (enabledConfigs.length === 0) return null;
+
+  // Sort by period to ensure consistent ordering
+  enabledConfigs.sort((a, b) => a.period - b.period);
+  
+  const configKey = enabledConfigs.map(c => `${c.period}_${c.lineColor}_${c.lineSize}`).join('_');
+  const uniqueName = `MULTI_RSI_${configKey}`;
+  
+  try {
+    registerIndicator({
+      name: uniqueName,
+      shortName: 'RSI',
+      calcParams: enabledConfigs.map(c => c.period),
+      figures: enabledConfigs.map((config, index) => ({
+        key: `rsi${index + 1}`,
+        title: `RSI${config.period}: `,
+        type: 'line',
+        styles: () => ({
+          color: config.lineColor,
+          size: config.lineSize,
+        })
+      })),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        
+        for (let i = 0; i < dataList.length; i++) {
+          const item: any = {};
+          
+          // Calculate RSI for each period
+          calcParams.forEach((period, index) => {
+            const key = `rsi${index + 1}`;
+            
+            if (i < period) {
+              item[key] = 50; // Not enough data, default to neutral
+              return;
+            }
+            
+            let gains = 0;
+            let losses = 0;
+            
+            // Calculate gains and losses for the period
+            for (let j = i - period + 1; j <= i; j++) {
+              const change = dataList[j].close - dataList[j - 1].close;
+              if (change > 0) {
+                gains += change;
+              } else {
+                losses += Math.abs(change);
+              }
+            }
+            
+            const avgGain = gains / period;
+            const avgLoss = losses / period;
+            
+            if (avgLoss === 0) {
+              item[key] = 100;
+            } else {
+              const rs = avgGain / avgLoss;
+              const rsi = 100 - (100 / (1 + rs));
+              item[key] = Math.max(0, Math.min(100, rsi));
+            }
+          });
+          
+          result.push(item);
+        }
+        
+        return result;
+      },
+    });
+
+    return uniqueName;
+  } catch (error) {
+    console.error('Error registering multi-period RSI indicator:', error);
+    return uniqueName;
+  }
+};
+
+export const registerMultiPeriodMFIIndicator = (mfiConfigs: MFIConfig[]) => {
+  const enabledConfigs = mfiConfigs.filter(mfi => mfi.show);
+  
+  if (enabledConfigs.length === 0) return null;
+
+  // Sort by period to ensure consistent ordering
+  enabledConfigs.sort((a, b) => a.period - b.period);
+  
+  const configKey = enabledConfigs.map(c => `${c.period}_${c.lineColor}_${c.lineSize}`).join('_');
+  const uniqueName = `MULTI_MFI_${configKey}`;
+  
+  try {
+    registerIndicator({
+      name: uniqueName,
+      shortName: 'MFI',
+      calcParams: enabledConfigs.map(c => c.period),
+      figures: enabledConfigs.map((config, index) => ({
+        key: `mfi${index + 1}`,
+        title: `MFI${config.period}: `,
+        type: 'line',
+        styles: (mfiData: any) => {
+          const currentMFI = mfiData[`mfi${index + 1}`];
+          if (currentMFI > config.overbought) {
+            return { 
+              color: config.overboughtLineColor,
+              size: config.lineSize 
+            };
+          } else if (currentMFI < config.oversold) {
+            return { 
+              color: config.oversoldLineColor,
+              size: config.lineSize 
+            };
+          }
+          return { 
+            color: config.lineColor,
+            size: config.lineSize 
+          };
+        }
+      })),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        
+        for (let i = 0; i < dataList.length; i++) {
+          const item: any = {};
+          
+          // Calculate MFI for each period
+          calcParams.forEach((period, index) => {
+            const key = `mfi${index + 1}`;
+            
+            if (i < period) {
+              item[key] = 50; // Not enough data, default to neutral
+              return;
+            }
+            
+            // Arrays to store typical prices and raw money flow for this calculation
+            const typicalPrices: number[] = [];
+            const moneyFlows: number[] = [];
+            
+            // Calculate for the required period
+            for (let j = i - period; j <= i; j++) {
+              // Calculate typical price: (high + low + close) / 3
+              const typicalPrice = (dataList[j].high + dataList[j].low + dataList[j].close) / 3;
+              typicalPrices.push(typicalPrice);
+              
+              // Calculate raw money flow: typical price * volume
+              const moneyFlow = typicalPrice * (dataList[j].volume || 0);
+              moneyFlows.push(moneyFlow);
+            }
+            
+            // Calculate positive and negative money flow
+            let positiveMF = 0;
+            let negativeMF = 0;
+            
+            for (let j = 1; j <= period; j++) {
+              const idx = typicalPrices.length - j;
+              const prevIdx = idx - 1;
+              
+              if (typicalPrices[idx] > typicalPrices[prevIdx]) {
+                positiveMF += moneyFlows[idx];
+              } else if (typicalPrices[idx] < typicalPrices[prevIdx]) {
+                negativeMF += moneyFlows[idx];
+              }
+              // If typical price is unchanged, no money flow is added
+            }
+            
+            if (negativeMF === 0) {
+              // Avoid division by zero
+              item[key] = 100;
+            } else {
+              const moneyRatio = positiveMF / negativeMF;
+              const mfi = 100 - (100 / (1 + moneyRatio));
+              item[key] = Math.max(0, Math.min(100, mfi));
+            }
+          });
+          
+          result.push(item);
+        }
+        
+        return result;
+      },
+    });
+
+    return uniqueName;
+  } catch (error) {
+    console.error('Error registering multi-period MFI indicator:', error);
+    return uniqueName;
   }
 };
 
