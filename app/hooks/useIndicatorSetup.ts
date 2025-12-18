@@ -17,7 +17,8 @@ import {
   clearOverlayIndicators,
   registerMultiPeriodRSIIndicator,
   registerMultiPeriodMFIIndicator,
-  registerMultiPeriodKDJIndicator
+  registerMultiPeriodKDJIndicator,
+  registerMultiPeriodEMVIndicator,
 } from '@/utils/indicatorRegistry';
 
 export const useIndicatorSetup = () => {
@@ -221,6 +222,55 @@ export const useIndicatorSetup = () => {
       console.error('Error in KDJ setup:', error);
     }
   }, [config.indicators.kdj]);
+
+  const setupEMVIndicators = useCallback((chart: any) => {
+    if (!chart) return;
+
+    try {
+      // Remove all existing EMV indicators
+      const emvPatterns = ['EMV_', 'MULTI_EMV_'];
+      emvPatterns.forEach(pattern => {
+        try {
+          chart.removeIndicator(pattern);
+        } catch (e) {
+          // Ignore errors
+        }
+      });
+
+      // Get enabled EMV configurations
+      const enabledEMVs = config.indicators.emv.filter(emv => emv.show);
+      
+      if (enabledEMVs.length === 0) {
+        console.log('No enabled EMV configurations');
+        return;
+      }
+
+      // Register multi-period EMV indicator
+      const indicatorName = registerMultiPeriodEMVIndicator(config.indicators.emv);
+      
+      if (!indicatorName) {
+        console.error('Failed to register multi-period EMV indicator');
+        return;
+      }
+      
+      try {
+        chart.createIndicator(indicatorName, false, {
+          id: 'emv_pane',
+          height: 100,
+          gap: {
+            top: 0.2,
+            bottom: 0.2,
+          },
+        });
+        
+        console.log(`Created multi-period EMV indicator with ${enabledEMVs.length} lines`);
+      } catch (indicatorError) {
+        console.error(`Error creating EMV indicator:`, indicatorError);
+      }
+    } catch (error) {
+      console.error('Error in EMV setup:', error);
+    }
+  }, [config.indicators.emv]);
 
   const setupVolumeIndicators = useCallback((chart: any) => {
     if (!chart) return;
@@ -460,6 +510,7 @@ export const useIndicatorSetup = () => {
     setupRSIIndicators,
     setupMFIIndicators,
     setupKDJIndicators,
+    setupEMVIndicators,
     setupVolumeIndicators,
     setupMovingAverageOverlays,
     applyChartStyles,

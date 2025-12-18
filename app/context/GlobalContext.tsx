@@ -156,6 +156,18 @@ export interface KDJConfig {
   type: 'kdj';
 }
 
+// EMV Configuration interface
+export interface EMVConfig {
+  id: string;
+  show: boolean;
+  period: number;
+  divisor: number;
+  lineColor: string;
+  lineSize: number;
+  name: string;
+  type: 'emv';
+}
+
 // SuperTrend Configuration
 export type SupertrendConfig = {
   id: string;
@@ -245,6 +257,7 @@ interface GlobalConfig {
     rsi: RSIConfig[];
     mfi: MFIConfig[];
     kdj: KDJConfig[];
+    emv: EMVConfig[];
     volume: VolumeConfig[];
     ma: MAConfig[];
     ema: MAConfig[];
@@ -265,6 +278,8 @@ interface GlobalContextType {
   toggleRSI: (id: string) => void;
   updateMFI: (id: string, updates: Partial<MFIConfig>) => void;
   toggleMFI: (id: string) => void;
+  updateEMV: (id: string, updates: Partial<EMVConfig>) => void;
+  toggleEMV: (id: string) => void;
   updateVolume: (id: string, updates: Partial<VolumeConfig>) => void;
   toggleVolume: (id: string) => void;
   updateVolumeMA: (volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => void;
@@ -714,6 +729,25 @@ const createDefaultKDJs = (): KDJConfig[] => [
   }
 ];
 
+// Helper function to generate EMV name
+const generateEMVName = (period: number, divisor: number): string => {
+  return `EMV (${period}, ${divisor})`;
+};
+
+// Create default EMV configuration
+const createDefaultEMVs = (): EMVConfig[] => [
+  {
+    id: 'emv-1',
+    show: false,
+    period: 14,
+    divisor: 10000,
+    lineColor: '#FF6B6B',
+    lineSize: 1.5,
+    name: generateEMVName(14, 10000),
+    type: 'emv',
+  }
+];
+
 const defaultConfig: GlobalConfig = {
   chartType: 'candle',
   symbol: 'BTCUSDT',
@@ -725,6 +759,7 @@ const defaultConfig: GlobalConfig = {
     rsi: createDefaultRSIs(),
     mfi: createDefaultMFIs(),
     kdj: createDefaultKDJs(),
+    emv: createDefaultEMVs(),
     volume: createDefaultVolume(),
     ma: createDefaultMAs('sma'),
     ema: createDefaultMAs('ema'),
@@ -923,6 +958,47 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
         ...prev.indicators,
         mfi: prev.indicators.mfi.map(mfi => 
           mfi.id === id ? { ...mfi, show: !mfi.show } : mfi
+        ),
+      },
+    }));
+  }, []);
+
+  const updateEMV = useCallback((id: string, updates: Partial<EMVConfig>) => {
+    setConfig(prev => {
+      const currentEMV = prev.indicators.emv.find(emv => emv.id === id);
+      
+      // Auto-update name if period or divisor changes
+      if ((updates.period !== undefined || updates.divisor !== undefined) && currentEMV) {
+        const oldPeriod = currentEMV.period;
+        const oldDivisor = currentEMV.divisor;
+        const newPeriod = updates.period !== undefined ? updates.period : oldPeriod;
+        const newDivisor = updates.divisor !== undefined ? updates.divisor : oldDivisor;
+        const defaultNamePattern = generateEMVName(oldPeriod, oldDivisor);
+        
+        if (currentEMV.name === defaultNamePattern) {
+          updates.name = generateEMVName(newPeriod, newDivisor);
+        }
+      }
+      
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          emv: prev.indicators.emv.map(emv => 
+            emv.id === id ? { ...emv, ...updates } : emv
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const toggleEMV = useCallback((id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        emv: prev.indicators.emv.map(emv => 
+          emv.id === id ? { ...emv, show: !emv.show } : emv
         ),
       },
     }));
@@ -1479,6 +1555,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       toggleSupertrend,
       updateKDJ,
       toggleKDJ,
+      updateEMV,
+      toggleEMV,
       updateChartStyle,
       updateChartType,
       resetToDefaults,

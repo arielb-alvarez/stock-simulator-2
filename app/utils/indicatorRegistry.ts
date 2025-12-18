@@ -11,7 +11,8 @@ import {
   SARConfig,
   TRIXConfig,
   SupertrendConfig,
-  KDJConfig
+  KDJConfig,
+  EMVConfig
 } from '@/context/GlobalContext';
 
 // Track registered indicators - reset on each config change
@@ -85,6 +86,14 @@ export const generateKDJKey = (kdjConfigs: KDJConfig[]): string => {
   return kdjConfigs
     .filter(kdj => kdj.show)
     .map(kdj => `${kdj.period}_${kdj.kPeriod}_${kdj.dPeriod}_${kdj.kLineColor}_${kdj.dLineColor}_${kdj.jLineColor}`)
+    .sort()
+    .join('_');
+};
+
+export const generateEMVKey = (emvConfigs: EMVConfig[]): string => {
+  return emvConfigs
+    .filter(emv => emv.show)
+    .map(emv => `${emv.period}_${emv.divisor}_${emv.lineColor}_${emv.lineSize}`)
     .sort()
     .join('_');
 };
@@ -1711,5 +1720,118 @@ export const registerMultiPeriodKDJIndicator = (kdjConfigs: KDJConfig[]) => {
   } catch (error) {
     console.error('Error registering multi-period KDJ indicator:', error);
     return uniqueName;
+  }
+};
+
+// Register Multi-Period EMV Indicator
+export const registerMultiPeriodEMVIndicator = (emvConfigs: EMVConfig[]) => {
+  const enabledConfigs = emvConfigs.filter(emv => emv.show);
+  
+  if (enabledConfigs.length === 0) return null;
+
+  const configKey = generateEMVKey(emvConfigs);
+  const uniqueName = `MULTI_EMV_${configKey}`;
+  
+  try {
+    registerIndicator({
+      name: uniqueName,
+      shortName: 'EMV',
+      calcParams: enabledConfigs.map(c => [c.period, c.divisor]).flat(),
+      figures: enabledConfigs.map((config, index) => ({
+        key: `emv${index}`,
+        title: `EMV (${config.period}, ${config.divisor}): `,
+        type: 'line',
+        styles: () => ({
+          color: config.lineColor,
+          size: config.lineSize,
+        })
+      })),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        
+        if (!dataList || dataList.length === 0) {
+          return result;
+        }
+
+        // Group params by config (each config has period and divisor)
+        const configs: { period: number, divisor: number }[] = [];
+        for (let i = 0; i < calcParams.length; i += 2) {
+          configs.push({
+            period: calcParams[i],
+            divisor: calcParams[i + 1]
+          });
+        }
+
+        // Calculate EMV for each configuration
+        configs.forEach((config, configIndex) => {
+          const { period, divisor } = config;
+          const emvKey = `emv${configIndex}`;
+          
+          // Initialize result array
+          for (let i = 0; i < dataList.length; i++) {
+            result[i] = result[i] || {};
+            result[i][emvKey] = 0;
+          }
+          
+          // Don't calculate if not enough data
+          if (dataList.length < period + 1) {
+            return;
+          }
+          
+          // Calculate EMV
+          for (let i = 1; i < dataList.length; i++) {
+            const currentData = dataList[i];
+            const previousData = dataList[i - 1];
+            
+            // Calculate Midpoint Move
+            const currentMidpoint = (currentData.high + currentData.low) / 2;
+            const previousMidpoint = (previousData.high + previousData.low) / 2;
+            const midpointMove = currentMidpoint - previousMidpoint;
+            
+            // Calculate Box Ratio (Volume Ratio)
+            const boxRatio = (currentData.volume || 0) / divisor;
+            const distanceMoved = (currentData.high - currentData.low);
+            
+            // Calculate EMV (Ease of Movement Value)
+            if (boxRatio > 0 && distanceMoved > 0) {
+              result[i][emvKey] = (midpointMove / (boxRatio / distanceMoved));
+            } else {
+              result[i][emvKey] = 0;
+            }
+          }
+          
+          // Calculate EMA of EMV (smoothing)
+          const emvValues: number[] = new Array(dataList.length).fill(0);
+          
+          for (let i = 0; i < dataList.length; i++) {
+            if (i === 0) {
+              emvValues[i] = result[i][emvKey] || 0;
+            } else if (i < period) {
+              // Simple average for initial values
+              let sum = 0;
+              for (let j = 0; j <= i; j++) {
+                sum += result[j][emvKey] || 0;
+              }
+              emvValues[i] = sum / (i + 1);
+            } else {
+              // EMA calculation
+              const multiplier = 2 / (period + 1);
+              const currentValue = result[i][emvKey] || 0;
+              const previousEMA = emvValues[i - 1];
+              emvValues[i] = (currentValue * multiplier) + (previousEMA * (1 - multiplier));
+            }
+            
+            result[i][emvKey] = emvValues[i];
+          }
+        });
+        
+        return result;
+      },
+    });
+
+    return uniqueName;
+  } catch (error) {
+    console.error('Error registering multi-period EMV indicator:', error);
+    return null;
   }
 };
