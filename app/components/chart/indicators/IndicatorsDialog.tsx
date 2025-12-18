@@ -12,6 +12,7 @@ import { CompactSARConfig } from './CompactSARConfig';
 import { CompactTRIXConfig } from './CompactTRIXConfig';
 import { CompactSupertrendConfig } from './CompactSuperTrendConfig';
 import { CompactKDJConfig } from './CompactKDJConfig';
+import { CompactEMVConfig } from './CompactEMVConfig';
 
 interface IndicatorsDialogProps {
   isOpen: boolean;
@@ -54,7 +55,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     updateSupertrend,
     toggleSupertrend,
     updateKDJ,
-    toggleKDJ
+    toggleKDJ,
+    updateEMV,
+    toggleEMV
   } = useGlobalContext();
 
   if (!isOpen) return null;
@@ -400,6 +403,27 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     updateKDJ(kdjId, { oversold: Math.max(0, Math.min(50, value)) });
   };
 
+  // EMV handlers
+  const handleToggleEMV = (emvId: string) => {
+    toggleEMV(emvId);
+  };
+
+  const handlePeriodChangeEMV = (emvId: string, period: number) => {
+    updateEMV(emvId, { period: Math.max(5, Math.min(50, period)) });
+  };
+
+  const handleDivisorChange = (emvId: string, divisor: number) => {
+    updateEMV(emvId, { divisor: Math.max(1000, Math.min(1000000, divisor)) });
+  };
+
+  const handleLineSizeChangeEMV = (emvId: string, lineSize: number) => {
+    updateEMV(emvId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleColorChangeEMV = (emvId: string, color: string) => {
+    updateEMV(emvId, { lineColor: color });
+  };
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
       <div className="bg-gray-800 rounded-xl w-[680px] max-h-[85vh] flex flex-col border border-gray-600 shadow-2xl">
@@ -591,6 +615,7 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                       { id: 'rsi', label: 'RSI' },
                       { id: 'mfi', label: 'MFI' },
                       { id: 'kdj', label: 'KDJ' },
+                      { id: 'emv', label: 'EMV' },
                       { id: 'volume', label: 'Volume' }
                     ].map((item) => (
                       <button
@@ -656,6 +681,16 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                     onJColorChange={handleJColorChangeKDJ}
                     onOverboughtChange={handleOverboughtChangeKDJ}
                     onOversoldChange={handleOversoldChangeKDJ}
+                  />
+                )}
+                {activeSubMenu === 'emv' && (
+                  <CompactEMVConfig
+                    emvConfigs={config.indicators.emv}
+                    onToggle={handleToggleEMV}
+                    onPeriodChange={handlePeriodChangeEMV}
+                    onDivisorChange={handleDivisorChange}
+                    onLineSizeChange={handleLineSizeChangeEMV}
+                    onColorChange={handleColorChangeEMV}
                   />
                 )}
               </div>
