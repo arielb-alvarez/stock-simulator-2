@@ -44,6 +44,7 @@ export default function MainChart() {
     setupRSIIndicators,
     setupMFIIndicators,
     setupVolumeIndicators,
+    setupKDJIndicators,
     setupMovingAverageOverlays,
     applyChartStyles,
   } = useIndicatorSetup();
@@ -130,12 +131,17 @@ export default function MainChart() {
           }
         }, 250);
         
-        // Give a small delay before setting up volume to ensure chart is ready
         setTimeout(() => {
           if (mounted && chartInstance) {
             setupVolumeIndicators(chartInstance);
           }
         }, 100);
+
+        setTimeout(() => {
+          if (mounted && chartInstance) {
+            setupKDJIndicators(chartInstance);
+          }
+        }, 175);
         
         setupWebSocket();
 
@@ -247,6 +253,26 @@ export default function MainChart() {
     const timer = setTimeout(updateMFIIndicators, 50);
     return () => clearTimeout(timer);
   }, [config.indicators.mfi, setupMFIIndicators]);
+
+  useEffect(() => {
+    if (!chartRef.current || !currentDataRef.current.length) return;
+    
+    const updateKDJIndicators = async () => {
+      try {
+        setupKDJIndicators(chartRef.current);
+        
+        // Force complete refresh
+        setTimeout(() => {
+          chartRef.current?.resize();
+        }, 50);
+      } catch (error) {
+        console.error('Error updating KDJ indicators:', error);
+      }
+    };
+
+    const timer = setTimeout(updateKDJIndicators, 50);
+    return () => clearTimeout(timer);
+  }, [config.indicators.kdj, setupKDJIndicators]);
 
   // Effect for Volume indicator changes
   useEffect(() => {

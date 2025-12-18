@@ -11,6 +11,7 @@ import { CompactAVLConfig } from './CompactAVLConfig';
 import { CompactSARConfig } from './CompactSARConfig';
 import { CompactTRIXConfig } from './CompactTRIXConfig';
 import { CompactSupertrendConfig } from './CompactSuperTrendConfig';
+import { CompactKDJConfig } from './CompactKDJConfig';
 
 interface IndicatorsDialogProps {
   isOpen: boolean;
@@ -51,7 +52,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     updateTRIX,
     toggleTRIX,
     updateSupertrend,
-    toggleSupertrend
+    toggleSupertrend,
+    updateKDJ,
+    toggleKDJ
   } = useGlobalContext();
 
   if (!isOpen) return null;
@@ -348,6 +351,55 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     });
   };
 
+  // Add KDJ handlers
+  const handleToggleKDJ = (kdjId: string) => {
+    toggleKDJ(kdjId);
+  };
+
+  const handlePeriodChangeKDJ = (kdjId: string, period: number) => {
+    updateKDJ(kdjId, { period: Math.max(1, period) });
+  };
+
+  const handleKPeriodChange = (kdjId: string, kPeriod: number) => {
+    updateKDJ(kdjId, { kPeriod: Math.max(1, kPeriod) });
+  };
+
+  const handleDPeriodChange = (kdjId: string, dPeriod: number) => {
+    updateKDJ(kdjId, { dPeriod: Math.max(1, dPeriod) });
+  };
+
+  const handleKLineSizeChangeKDJ = (kdjId: string, lineSize: number) => {
+    updateKDJ(kdjId, { kLineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleDLineSizeChangeKDJ = (kdjId: string, lineSize: number) => {
+    updateKDJ(kdjId, { dLineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleJLineSizeChangeKDJ = (kdjId: string, lineSize: number) => {
+    updateKDJ(kdjId, { jLineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleKColorChangeKDJ = (kdjId: string, color: string) => {
+    updateKDJ(kdjId, { kLineColor: color });
+  };
+
+  const handleDColorChangeKDJ = (kdjId: string, color: string) => {
+    updateKDJ(kdjId, { dLineColor: color });
+  };
+
+  const handleJColorChangeKDJ = (kdjId: string, color: string) => {
+    updateKDJ(kdjId, { jLineColor: color });
+  };
+
+  const handleOverboughtChangeKDJ = (kdjId: string, value: number) => {
+    updateKDJ(kdjId, { overbought: Math.max(50, Math.min(100, value)) });
+  };
+
+  const handleOversoldChangeKDJ = (kdjId: string, value: number) => {
+    updateKDJ(kdjId, { oversold: Math.max(0, Math.min(50, value)) });
+  };
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
       <div className="bg-gray-800 rounded-xl w-[680px] max-h-[85vh] flex flex-col border border-gray-600 shadow-2xl">
@@ -538,6 +590,7 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                     {[
                       { id: 'rsi', label: 'RSI' },
                       { id: 'mfi', label: 'MFI' },
+                      { id: 'kdj', label: 'KDJ' },
                       { id: 'volume', label: 'Volume' }
                     ].map((item) => (
                       <button
@@ -586,6 +639,23 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                     onOpacityChange={handleOpacityChange}
                     onUpdateVolumeMA={handleUpdateVolumeMA}
                     onToggleVolumeMA={handleToggleVolumeMA}
+                  />
+                )}
+                {activeSubMenu === 'kdj' && (
+                  <CompactKDJConfig
+                    kdjConfigs={config.indicators.kdj}
+                    onToggle={handleToggleKDJ}
+                    onPeriodChange={handlePeriodChangeKDJ}
+                    onKPeriodChange={handleKPeriodChange}
+                    onDPeriodChange={handleDPeriodChange}
+                    onKLineSizeChange={handleKLineSizeChangeKDJ}
+                    onDLineSizeChange={handleDLineSizeChangeKDJ}
+                    onJLineSizeChange={handleJLineSizeChangeKDJ}
+                    onKColorChange={handleKColorChangeKDJ}
+                    onDColorChange={handleDColorChangeKDJ}
+                    onJColorChange={handleJColorChangeKDJ}
+                    onOverboughtChange={handleOverboughtChangeKDJ}
+                    onOversoldChange={handleOversoldChangeKDJ}
                   />
                 )}
               </div>

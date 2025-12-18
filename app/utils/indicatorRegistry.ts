@@ -1,6 +1,18 @@
 // utils/indicatorRegistry.ts
 import { registerIndicator, KLineData } from 'klinecharts';
-import { RSIConfig, MFIConfig, VolumeConfig, MAConfig, BBConfig, VWAPConfig, AVLConfig, SARConfig, TRIXConfig, SupertrendConfig } from '@/context/GlobalContext';
+import {
+  RSIConfig,
+  MFIConfig,
+  VolumeConfig,
+  MAConfig,
+  BBConfig,
+  VWAPConfig,
+  AVLConfig,
+  SARConfig,
+  TRIXConfig,
+  SupertrendConfig,
+  KDJConfig
+} from '@/context/GlobalContext';
 
 // Track registered indicators - reset on each config change
 const registeredIndicators = new Set();
@@ -59,11 +71,20 @@ export const generateTRIXKey = (trixConfigs: TRIXConfig[]): string => {
     .join('_');
 };
 
-// Add helper function to generate SuperTrend key
+// Generate SuperTrend key
 export const generateSupertrendKey = (supertrendConfigs: SupertrendConfig[]): string => {
   return supertrendConfigs
     .filter(st => st.show)
     .map(st => `${st.atrLength}_${st.factor}_${st.upTrend.lineColor}_${st.downTrend.lineColor}_${st.upTrend.background.show ? 'upbg' : 'noupbg'}_${st.downTrend.background.show ? 'dnbg' : 'nodnbg'}`)
+    .sort()
+    .join('_');
+};
+
+// Generate KDJ key
+export const generateKDJKey = (kdjConfigs: KDJConfig[]): string => {
+  return kdjConfigs
+    .filter(kdj => kdj.show)
+    .map(kdj => `${kdj.period}_${kdj.kPeriod}_${kdj.dPeriod}_${kdj.kLineColor}_${kdj.dLineColor}_${kdj.jLineColor}`)
     .sort()
     .join('_');
 };
@@ -1503,5 +1524,192 @@ export const registerCustomVolumeIndicator = (volumeConfig: VolumeConfig) => {
   } catch (error) {
     console.error('Error registering custom Volume indicator:', error);
     return indicatorName;
+  }
+};
+
+// Register Multi-Period KDJ Indicator
+export const registerMultiPeriodKDJIndicator = (kdjConfigs: KDJConfig[]) => {
+  const enabledConfigs = kdjConfigs.filter(kdj => kdj.show);
+  
+  if (enabledConfigs.length === 0) return null;
+
+  const configKey = generateKDJKey(kdjConfigs);
+  const uniqueName = `MULTI_KDJ_${configKey}`;
+  
+  try {
+    registerIndicator({
+      name: uniqueName,
+      shortName: 'KDJ',
+      calcParams: enabledConfigs.map(c => [c.period, c.kPeriod, c.dPeriod]).flat(),
+      figures: enabledConfigs.flatMap((config, index) => [
+        {
+          key: `k${index}`,
+          title: `K(${config.kPeriod}): `,
+          type: 'line',
+          styles: () => ({
+            color: config.kLineColor,
+            size: config.kLineSize,
+          })
+        },
+        {
+          key: `d${index}`,
+          title: `D(${config.dPeriod}): `,
+          type: 'line',
+          styles: () => ({
+            color: config.dLineColor,
+            size: config.dLineSize,
+          })
+        },
+        {
+          key: `j${index}`,
+          title: `J: `,
+          type: 'line',
+          styles: () => ({
+            color: config.jLineColor,
+            size: config.jLineSize,
+          })
+        }
+      ]),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: number[] }) => {
+        const result: any[] = [];
+        
+        if (!dataList || dataList.length === 0) {
+          return result;
+        }
+
+        // Group params by config (each config has period, kPeriod, dPeriod)
+        const configs: { period: number, kPeriod: number, dPeriod: number }[] = [];
+        for (let i = 0; i < calcParams.length; i += 3) {
+          configs.push({
+            period: calcParams[i],
+            kPeriod: calcParams[i + 1],
+            dPeriod: calcParams[i + 2]
+          });
+        }
+
+        // Initialize result array
+        for (let i = 0; i < dataList.length; i++) {
+          result[i] = result[i] || {};
+        }
+
+        // Calculate KDJ for each configuration
+        configs.forEach((config, configIndex) => {
+          const { period, kPeriod, dPeriod } = config;
+          const kKey = `k${configIndex}`;
+          const dKey = `d${configIndex}`;
+          const jKey = `j${configIndex}`;
+          
+          // Arrays to store calculated values
+          const highestHighs: number[] = [];
+          const lowestLows: number[] = [];
+          const rsValues: number[] = [];
+          
+          // Step 1: Calculate highest highs and lowest lows for the period
+          for (let i = 0; i < dataList.length; i++) {
+            if (i < period - 1) {
+              highestHighs[i] = 0;
+              lowestLows[i] = 0;
+              rsValues[i] = 0;
+              continue;
+            }
+            
+            let highestHigh = dataList[i].high;
+            let lowestLow = dataList[i].low;
+            
+            for (let j = 1; j < period; j++) {
+              if (dataList[i - j].high > highestHigh) {
+                highestHigh = dataList[i - j].high;
+              }
+              if (dataList[i - j].low < lowestLow) {
+                lowestLow = dataList[i - j].low;
+              }
+            }
+            
+            highestHighs[i] = highestHigh;
+            lowestLows[i] = lowestLow;
+            
+            // Calculate RSV (Raw Stochastic Value)
+            if (highestHigh - lowestLow === 0) {
+              rsValues[i] = 50; // Default to middle value if no range
+            } else {
+              rsValues[i] = ((dataList[i].close - lowestLow) / (highestHigh - lowestLow)) * 100;
+            }
+          }
+          
+          // Step 2: Calculate K line (fast stochastic)
+          const kValues: number[] = new Array(dataList.length).fill(0);
+          for (let i = 0; i < dataList.length; i++) {
+            if (i < period - 1) {
+              kValues[i] = 50; // Default value
+              continue;
+            }
+            
+            // K is SMA of RSV over kPeriod
+            if (i < period + kPeriod - 2) {
+              // Not enough data for full SMA, use average of available RSV values
+              let sum = 0;
+              let count = 0;
+              for (let j = 0; j <= i - (period - 1); j++) {
+                if (rsValues[i - j] > 0) {
+                  sum += rsValues[i - j];
+                  count++;
+                }
+              }
+              kValues[i] = count > 0 ? sum / count : 50;
+            } else {
+              // Full SMA calculation
+              let sum = 0;
+              for (let j = 0; j < kPeriod; j++) {
+                sum += rsValues[i - j];
+              }
+              kValues[i] = sum / kPeriod;
+            }
+          }
+          
+          // Step 3: Calculate D line (slow stochastic)
+          const dValues: number[] = new Array(dataList.length).fill(0);
+          for (let i = 0; i < dataList.length; i++) {
+            if (i < period + kPeriod + dPeriod - 3) {
+              // Not enough data for D calculation
+              dValues[i] = 50; // Default value
+              continue;
+            }
+            
+            // D is SMA of K over dPeriod
+            let sum = 0;
+            for (let j = 0; j < dPeriod; j++) {
+              sum += kValues[i - j];
+            }
+            dValues[i] = sum / dPeriod;
+          }
+          
+          // Step 4: Calculate J line: J = 3K - 2D
+          const jValues: number[] = new Array(dataList.length).fill(0);
+          for (let i = 0; i < dataList.length; i++) {
+            if (i < period + kPeriod + dPeriod - 3) {
+              jValues[i] = 50; // Default value
+            } else {
+              jValues[i] = (3 * kValues[i]) - (2 * dValues[i]);
+              // Clamp J values between 0 and 100 for realistic range
+              jValues[i] = Math.max(0, Math.min(100, jValues[i]));
+            }
+          }
+          
+          // Assign values to result
+          for (let i = 0; i < dataList.length; i++) {
+            result[i][kKey] = kValues[i];
+            result[i][dKey] = dValues[i];
+            result[i][jKey] = jValues[i];
+          }
+        });
+        
+        return result;
+      },
+    });
+
+    return uniqueName;
+  } catch (error) {
+    console.error('Error registering multi-period KDJ indicator:', error);
+    return uniqueName;
   }
 };
