@@ -136,6 +136,26 @@ export interface MFIConfig {
   type: 'mfi';
 }
 
+export interface KDJConfig {
+  id: string;
+  show: boolean;
+  period: number;        // Calculating Period (n)
+  kPeriod: number;       // MA Period for K (m1)
+  dPeriod: number;       // MA Period for D (m2)
+  kLineColor: string;
+  kLineSize: number;
+  dLineColor: string;
+  dLineSize: number;
+  jLineColor: string;
+  jLineSize: number;
+  overbought: number;
+  oversold: number;
+  overboughtLineColor: string;
+  oversoldLineColor: string;
+  name: string;
+  type: 'kdj';
+}
+
 // SuperTrend Configuration
 export type SupertrendConfig = {
   id: string;
@@ -224,6 +244,7 @@ interface GlobalConfig {
   indicators: {
     rsi: RSIConfig[];
     mfi: MFIConfig[];
+    kdj: KDJConfig[];
     volume: VolumeConfig[];
     ma: MAConfig[];
     ema: MAConfig[];
@@ -266,6 +287,8 @@ interface GlobalContextType {
   toggleTRIX: (id: string) => void;
   updateSupertrend: (id: string, updates: Partial<SupertrendConfig>) => void;
   toggleSupertrend: (id: string) => void;
+  updateKDJ: (id: string, updates: Partial<KDJConfig>) => void;
+  toggleKDJ: (id: string) => void;
   updateChartStyle: (updates: Partial<ChartStyleConfig>) => void;
   updateChartType: (chartType: ChartType) => void;
   resetToDefaults: () => void;
@@ -664,6 +687,33 @@ const createDefaultSupertrends = (): SupertrendConfig[] => [
   }
 ];
 
+const generateKDJName = (period: number, kPeriod: number, dPeriod: number): string => {
+  return `KDJ (${period}, ${kPeriod}, ${dPeriod})`;
+};
+
+// Create default KDJ configuration
+const createDefaultKDJs = (): KDJConfig[] => [
+  {
+    id: 'kdj-1',
+    show: false,
+    period: 9,
+    kPeriod: 3,
+    dPeriod: 3,
+    kLineColor: '#2962FF',    // Blue for K line
+    kLineSize: 1.5,
+    dLineColor: '#FF6B6B',    // Red for D line
+    dLineSize: 1.5,
+    jLineColor: '#00b15d',    // Green for J line
+    jLineSize: 1.5,
+    overbought: 80,
+    oversold: 20,
+    overboughtLineColor: '#ff5b5a',
+    oversoldLineColor: '#00b15d',
+    name: generateKDJName(9, 3, 3),
+    type: 'kdj',
+  }
+];
+
 const defaultConfig: GlobalConfig = {
   chartType: 'candle',
   symbol: 'BTCUSDT',
@@ -674,6 +724,7 @@ const defaultConfig: GlobalConfig = {
   indicators: {
     rsi: createDefaultRSIs(),
     mfi: createDefaultMFIs(),
+    kdj: createDefaultKDJs(),
     volume: createDefaultVolume(),
     ma: createDefaultMAs('sma'),
     ema: createDefaultMAs('ema'),
@@ -1242,6 +1293,49 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const updateKDJ = useCallback((id: string, updates: Partial<KDJConfig>) => {
+    setConfig(prev => {
+      const currentKDJ = prev.indicators.kdj.find(kdj => kdj.id === id);
+      
+      // Auto-update name if period changes
+      if ((updates.period !== undefined || updates.kPeriod !== undefined || updates.dPeriod !== undefined) && currentKDJ) {
+        const oldPeriod = currentKDJ.period;
+        const oldKPeriod = currentKDJ.kPeriod;
+        const oldDPeriod = currentKDJ.dPeriod;
+        const newPeriod = updates.period !== undefined ? updates.period : oldPeriod;
+        const newKPeriod = updates.kPeriod !== undefined ? updates.kPeriod : oldKPeriod;
+        const newDPeriod = updates.dPeriod !== undefined ? updates.dPeriod : oldDPeriod;
+        const defaultNamePattern = generateKDJName(oldPeriod, oldKPeriod, oldDPeriod);
+        
+        if (currentKDJ.name === defaultNamePattern) {
+          updates.name = generateKDJName(newPeriod, newKPeriod, newDPeriod);
+        }
+      }
+      
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          kdj: prev.indicators.kdj.map(kdj => 
+            kdj.id === id ? { ...kdj, ...updates } : kdj
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const toggleKDJ = useCallback((id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        kdj: prev.indicators.kdj.map(kdj => 
+          kdj.id === id ? { ...kdj, show: !kdj.show } : kdj
+        ),
+      },
+    }));
+  }, []);
+
   const updateChartStyle = useCallback((updates: Partial<ChartStyleConfig>) => {
     setConfig(prev => ({
       ...prev,
@@ -1383,6 +1477,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       toggleTRIX,
       updateSupertrend,
       toggleSupertrend,
+      updateKDJ,
+      toggleKDJ,
       updateChartStyle,
       updateChartType,
       resetToDefaults,
