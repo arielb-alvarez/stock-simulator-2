@@ -16,7 +16,9 @@ import {
   registerMultiPeriodMFIIndicator,
   registerCustomVolumeIndicator,
   registerMultiPeriodKDJIndicator,
-  clearOverlayIndicators
+  registerMultiPeriodEMVIndicator,
+  clearOverlayIndicators,
+  registerMultiPeriodMTMIndicator
 } from '@/utils/indicatorRegistry';
 
 export const useIndicators = () => {
@@ -53,6 +55,8 @@ export const useIndicators = () => {
     registerMultiPeriodRSIIndicator(config.indicators.rsi);
     registerMultiPeriodMFIIndicator(config.indicators.mfi);
     registerMultiPeriodKDJIndicator(config.indicators.kdj);
+    registerMultiPeriodEMVIndicator(config.indicators.emv);
+    registerMultiPeriodMTMIndicator(config.indicators.mtm);
 
     // Register volume indicators
     if ((window as any).__registeredVolumeIndicators) {

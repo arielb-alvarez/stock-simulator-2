@@ -45,6 +45,8 @@ export default function MainChart() {
     setupMFIIndicators,
     setupVolumeIndicators,
     setupKDJIndicators,
+    setupEMVIndicators,
+    setupMTMIndicators,
     setupMovingAverageOverlays,
     applyChartStyles,
   } = useIndicatorSetup();
@@ -142,6 +144,18 @@ export default function MainChart() {
             setupKDJIndicators(chartInstance);
           }
         }, 175);
+
+        setTimeout(() => {
+          if (mounted && chartInstance) {
+            setupEMVIndicators(chartInstance);
+          }
+        }, 225);
+
+        setTimeout(() => {
+          if (mounted && chartInstance) {
+            setupMTMIndicators(chartInstance);
+          }
+        }, 125);
         
         setupWebSocket();
 
@@ -273,6 +287,46 @@ export default function MainChart() {
     const timer = setTimeout(updateKDJIndicators, 50);
     return () => clearTimeout(timer);
   }, [config.indicators.kdj, setupKDJIndicators]);
+
+  useEffect(() => {
+    if (!chartRef.current || !currentDataRef.current.length) return;
+    
+    const updateEMVIndicators = async () => {
+      try {
+        setupEMVIndicators(chartRef.current);
+        
+        // Force complete refresh
+        setTimeout(() => {
+          chartRef.current?.resize();
+        }, 50);
+      } catch (error) {
+        console.error('Error updating EMV indicators:', error);
+      }
+    };
+
+    const timer = setTimeout(updateEMVIndicators, 50);
+    return () => clearTimeout(timer);
+  }, [config.indicators.emv, setupEMVIndicators]);
+
+  useEffect(() => {
+    if (!chartRef.current || !currentDataRef.current.length) return;
+    
+    const updateMTMIndicators = async () => {
+      try {
+        setupMTMIndicators(chartRef.current);
+        
+        // Force complete refresh
+        setTimeout(() => {
+          chartRef.current?.resize();
+        }, 50);
+      } catch (error) {
+        console.error('Error updating MTM indicators:', error);
+      }
+    };
+
+    const timer = setTimeout(updateMTMIndicators, 50);
+    return () => clearTimeout(timer);
+  }, [config.indicators.mtm, setupMTMIndicators]);
 
   // Effect for Volume indicator changes
   useEffect(() => {

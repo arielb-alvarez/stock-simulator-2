@@ -17,7 +17,9 @@ import {
   clearOverlayIndicators,
   registerMultiPeriodRSIIndicator,
   registerMultiPeriodMFIIndicator,
-  registerMultiPeriodKDJIndicator
+  registerMultiPeriodKDJIndicator,
+  registerMultiPeriodEMVIndicator,
+  registerMultiPeriodMTMIndicator,
 } from '@/utils/indicatorRegistry';
 
 export const useIndicatorSetup = () => {
@@ -222,6 +224,55 @@ export const useIndicatorSetup = () => {
     }
   }, [config.indicators.kdj]);
 
+  const setupEMVIndicators = useCallback((chart: any) => {
+    if (!chart) return;
+
+    try {
+      // Remove all existing EMV indicators
+      const emvPatterns = ['EMV_', 'MULTI_EMV_'];
+      emvPatterns.forEach(pattern => {
+        try {
+          chart.removeIndicator(pattern);
+        } catch (e) {
+          // Ignore errors
+        }
+      });
+
+      // Get enabled EMV configurations
+      const enabledEMVs = config.indicators.emv.filter(emv => emv.show);
+      
+      if (enabledEMVs.length === 0) {
+        console.log('No enabled EMV configurations');
+        return;
+      }
+
+      // Register multi-period EMV indicator
+      const indicatorName = registerMultiPeriodEMVIndicator(config.indicators.emv);
+      
+      if (!indicatorName) {
+        console.error('Failed to register multi-period EMV indicator');
+        return;
+      }
+      
+      try {
+        chart.createIndicator(indicatorName, false, {
+          id: 'emv_pane',
+          height: 100,
+          gap: {
+            top: 0.2,
+            bottom: 0.2,
+          },
+        });
+        
+        console.log(`Created multi-period EMV indicator with ${enabledEMVs.length} lines`);
+      } catch (indicatorError) {
+        console.error(`Error creating EMV indicator:`, indicatorError);
+      }
+    } catch (error) {
+      console.error('Error in EMV setup:', error);
+    }
+  }, [config.indicators.emv]);
+
   const setupVolumeIndicators = useCallback((chart: any) => {
     if (!chart) return;
 
@@ -286,6 +337,64 @@ export const useIndicatorSetup = () => {
       console.error('Error in volume indicator setup:', error);
     }
   }, [config.indicators.volume]);
+
+  const setupMTMIndicators = useCallback((chart: any) => {
+    if (!chart) return;
+
+    try {
+      // Remove all existing MTM indicators
+      const mtmPatterns = ['MTM_', 'MULTI_MTM_'];
+      mtmPatterns.forEach(pattern => {
+        try {
+          chart.removeIndicator(pattern);
+        } catch (e) {
+          // Ignore errors
+        }
+      });
+
+      // Get enabled MTM configurations
+      const enabledMTMs = config.indicators.mtm.filter(mtm => mtm.show);
+      
+      if (enabledMTMs.length === 0) {
+        console.log('No enabled MTM configurations');
+        return;
+      }
+
+      // Register multi-period MTM indicator
+      const indicatorName = registerMultiPeriodMTMIndicator(config.indicators.mtm);
+      
+      if (!indicatorName) {
+        console.error('Failed to register multi-period MTM indicator');
+        return;
+      }
+      
+      try {
+        chart.createIndicator(indicatorName, false, {
+          id: 'mtm_pane',
+          height: 80,
+          gap: {
+            top: 0.2,
+            bottom: 0.2,
+          },
+          // Add a zero line for MTM
+          bands: [
+            {
+              value: 0,
+              color: 'rgba(128, 128, 128, 0.3)',
+              width: 1,
+              style: 'dashed',
+            },
+          ],
+        });
+        
+        console.log(`Created MTM indicator with ${enabledMTMs.length} configurations`);
+      } catch (indicatorError) {
+        console.error(`Error creating MTM indicator:`, indicatorError);
+      }
+    } catch (error) {
+      console.error('Error in MTM setup:', error);
+    }
+  }, [config.indicators.mtm]);
 
   const setupMovingAverageOverlays = useCallback((chart: any) => {
     if (!chart) {
@@ -460,6 +569,8 @@ export const useIndicatorSetup = () => {
     setupRSIIndicators,
     setupMFIIndicators,
     setupKDJIndicators,
+    setupMTMIndicators,
+    setupEMVIndicators,
     setupVolumeIndicators,
     setupMovingAverageOverlays,
     applyChartStyles,
