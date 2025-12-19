@@ -1,6 +1,6 @@
 // components/chart/indicators/IndicatorsDialog.tsx
 import { useState } from 'react';
-import { useGlobalContext } from '@/context/GlobalContext';
+import { MTMConfig, useGlobalContext } from '@/context/GlobalContext';
 import { CompactMAConfig } from './CompactMAConfig';
 import { CompactRSIConfig } from './CompactRSIConfig';
 import { CompactMFIConfig } from './CompactMFIConfig';
@@ -13,6 +13,7 @@ import { CompactTRIXConfig } from './CompactTRIXConfig';
 import { CompactSupertrendConfig } from './CompactSuperTrendConfig';
 import { CompactKDJConfig } from './CompactKDJConfig';
 import { CompactEMVConfig } from './CompactEMVConfig';
+import { CompactMTMConfig } from './CompactMTMConfig';
 
 interface IndicatorsDialogProps {
   isOpen: boolean;
@@ -57,7 +58,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     updateKDJ,
     toggleKDJ,
     updateEMV,
-    toggleEMV
+    toggleEMV,
+    updateMTM,
+    toggleMTM
   } = useGlobalContext();
 
   if (!isOpen) return null;
@@ -424,6 +427,27 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     updateEMV(emvId, { lineColor: color });
   };
 
+  // MTM Handlers
+  const handleToggleMTM = (mtmId: string) => {
+    toggleMTM(mtmId);
+  };
+
+  const handlePeriodChangeMTM = (mtmId: string, period: number) => {
+    updateMTM(mtmId, { period: Math.max(1, period) });
+  };
+
+  const handlePriceTypeChangeMTM = (mtmId: string, priceType: MTMConfig['priceType']) => {
+    updateMTM(mtmId, { priceType });
+  };
+
+  const handleLineSizeChangeMTM = (mtmId: string, lineSize: number) => {
+    updateMTM(mtmId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
+  };
+
+  const handleColorChangeMTM = (mtmId: string, color: string) => {
+    updateMTM(mtmId, { lineColor: color });
+  };
+
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
       <div className="bg-gray-800 rounded-xl w-[680px] max-h-[85vh] flex flex-col border border-gray-600 shadow-2xl">
@@ -616,6 +640,7 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                       { id: 'mfi', label: 'MFI' },
                       { id: 'kdj', label: 'KDJ' },
                       { id: 'emv', label: 'EMV' },
+                      { id: 'mtm', label: 'Momentum (MTM)' },
                       { id: 'volume', label: 'Volume' }
                     ].map((item) => (
                       <button
@@ -691,6 +716,16 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                     onDivisorChange={handleDivisorChange}
                     onLineSizeChange={handleLineSizeChangeEMV}
                     onColorChange={handleColorChangeEMV}
+                  />
+                )}
+                {activeSubMenu === 'mtm' && (
+                  <CompactMTMConfig
+                    mtmConfigs={config.indicators.mtm}
+                    onToggle={handleToggleMTM}
+                    onPeriodChange={handlePeriodChangeMTM}
+                    onPriceTypeChange={handlePriceTypeChangeMTM}
+                    onLineSizeChange={handleLineSizeChangeMTM}
+                    onColorChange={handleColorChangeMTM}
                   />
                 )}
               </div>

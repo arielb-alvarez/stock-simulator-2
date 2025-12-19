@@ -12,7 +12,8 @@ import {
   TRIXConfig,
   SupertrendConfig,
   KDJConfig,
-  EMVConfig
+  EMVConfig,
+  MTMConfig
 } from '@/context/GlobalContext';
 
 // Track registered indicators - reset on each config change
@@ -94,6 +95,14 @@ export const generateEMVKey = (emvConfigs: EMVConfig[]): string => {
   return emvConfigs
     .filter(emv => emv.show)
     .map(emv => `${emv.period}_${emv.divisor}_${emv.lineColor}_${emv.lineSize}`)
+    .sort()
+    .join('_');
+};
+
+export const generateMTMKey = (mtmConfigs: MTMConfig[]): string => {
+  return mtmConfigs
+    .filter(mtm => mtm.show)
+    .map(mtm => `${mtm.period}_${mtm.priceType}_${mtm.lineColor}_${mtm.lineSize}`)
     .sort()
     .join('_');
 };
@@ -1832,6 +1841,97 @@ export const registerMultiPeriodEMVIndicator = (emvConfigs: EMVConfig[]) => {
     return uniqueName;
   } catch (error) {
     console.error('Error registering multi-period EMV indicator:', error);
+    return null;
+  }
+};
+
+// Register Multi-Period MTM Indicator
+export const registerMultiPeriodMTMIndicator = (mtmConfigs: MTMConfig[]) => {
+  const enabledConfigs = mtmConfigs.filter(mtm => mtm.show);
+  
+  if (enabledConfigs.length === 0) return null;
+
+  const configKey = generateMTMKey(mtmConfigs);
+  const uniqueName = `MULTI_MTM_${configKey}`;
+  
+  try {
+    registerIndicator({
+      name: uniqueName,
+      shortName: 'MTM',
+      calcParams: enabledConfigs.map(c => [c.period, c.priceType]).flat(),
+      figures: enabledConfigs.map((config, index) => ({
+        key: `mtm${index + 1}`,
+        title: `MTM ${config.period} (${config.priceType}): `,
+        type: 'line',
+        styles: () => ({
+          color: config.lineColor,
+          size: config.lineSize,
+        })
+      })),
+      calc: (dataList: KLineData[], { calcParams }: { calcParams: (number | string)[] }) => {
+        const result: any[] = [];
+        
+        if (!dataList || dataList.length === 0) {
+          return result;
+        }
+
+        // Group params by config (each config has period and priceType)
+        const configs: { period: number, priceType: string }[] = [];
+        for (let i = 0; i < calcParams.length; i += 2) {
+          configs.push({
+            period: calcParams[i] as number,
+            priceType: calcParams[i + 1] as string
+          });
+        }
+
+        // Initialize result array
+        for (let i = 0; i < dataList.length; i++) {
+          result[i] = result[i] || {};
+        }
+
+        // Calculate MTM for each configuration
+        configs.forEach((config, configIndex) => {
+          const { period, priceType } = config;
+          const key = `mtm${configIndex + 1}`;
+          
+          // Get price based on priceType
+          const getPrice = (data: KLineData): number => {
+            switch (priceType) {
+              case 'high': return data.high;
+              case 'low': return data.low;
+              case 'open': return data.open;
+              case 'hl2': return (data.high + data.low) / 2;
+              case 'hlc3': return (data.high + data.low + data.close) / 3;
+              case 'ohlc4': return (data.open + data.high + data.low + data.close) / 4;
+              case 'close':
+              default: return data.close;
+            }
+          };
+          
+          // Calculate MTM for each data point
+          for (let i = 0; i < dataList.length; i++) {
+            if (i < period) {
+              // Not enough data for comparison
+              result[i][key] = 0;
+            } else {
+              const currentPrice = getPrice(dataList[i]);
+              const pastPrice = getPrice(dataList[i - period]);
+              
+              // MTM = Current Price - Price N periods ago
+              result[i][key] = currentPrice - pastPrice;
+            }
+          }
+        });
+        
+        return result;
+      },
+    });
+
+    registeredIndicators.add(uniqueName);
+    console.log(`Registered MTM indicator: ${uniqueName}`);
+    return uniqueName;
+  } catch (error) {
+    console.error('Error registering MTM indicator:', error);
     return null;
   }
 };
