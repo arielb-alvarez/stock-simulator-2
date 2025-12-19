@@ -194,6 +194,18 @@ export type SupertrendConfig = {
   type: 'supertrend';
 };
 
+// MTM Configuration
+export interface MTMConfig {
+  id: string;
+  show: boolean;
+  period: number;
+  priceType: 'close' | 'high' | 'low' | 'open' | 'hl2' | 'hlc3' | 'ohlc4';
+  lineColor: string;
+  lineSize: number;
+  name: string;
+  type: 'mtm';
+}
+
 // Chart Style Configuration
 interface ChartStyleConfig {
   layout: {
@@ -258,6 +270,7 @@ interface GlobalConfig {
     mfi: MFIConfig[];
     kdj: KDJConfig[];
     emv: EMVConfig[];
+    mtm: MTMConfig[];
     volume: VolumeConfig[];
     ma: MAConfig[];
     ema: MAConfig[];
@@ -304,6 +317,8 @@ interface GlobalContextType {
   toggleSupertrend: (id: string) => void;
   updateKDJ: (id: string, updates: Partial<KDJConfig>) => void;
   toggleKDJ: (id: string) => void;
+  updateMTM: (id: string, updates: Partial<MTMConfig>) => void;
+  toggleMTM: (id: string) => void;
   updateChartStyle: (updates: Partial<ChartStyleConfig>) => void;
   updateChartType: (chartType: ChartType) => void;
   resetToDefaults: () => void;
@@ -748,6 +763,24 @@ const createDefaultEMVs = (): EMVConfig[] => [
   }
 ];
 
+const generateMTMName = (period: number, priceType: string): string => {
+  return `MTM ${period} (${priceType})`;
+};
+
+// Create default MTM configuration (just one configuration as requested)
+const createDefaultMTM = (): MTMConfig[] => [
+  {
+    id: 'mtm-1',
+    show: false,
+    period: 10,
+    priceType: 'close',
+    lineColor: '#FF6B6B',
+    lineSize: 1.5,
+    name: generateMTMName(10, 'close'),
+    type: 'mtm',
+  }
+];
+
 const defaultConfig: GlobalConfig = {
   chartType: 'candle',
   symbol: 'BTCUSDT',
@@ -760,6 +793,7 @@ const defaultConfig: GlobalConfig = {
     mfi: createDefaultMFIs(),
     kdj: createDefaultKDJs(),
     emv: createDefaultEMVs(),
+    mtm: createDefaultMTM(),
     volume: createDefaultVolume(),
     ma: createDefaultMAs('sma'),
     ema: createDefaultMAs('ema'),
@@ -1412,6 +1446,47 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const updateMTM = useCallback((id: string, updates: Partial<MTMConfig>) => {
+    setConfig(prev => {
+      const currentMTM = prev.indicators.mtm.find(mtm => mtm.id === id);
+      
+      // Auto-update name if period or priceType changes
+      if ((updates.period !== undefined || updates.priceType !== undefined) && currentMTM) {
+        const oldPeriod = currentMTM.period;
+        const oldPriceType = currentMTM.priceType;
+        const newPeriod = updates.period !== undefined ? updates.period : oldPeriod;
+        const newPriceType = updates.priceType !== undefined ? updates.priceType : oldPriceType;
+        const defaultNamePattern = generateMTMName(oldPeriod, oldPriceType);
+        
+        if (currentMTM.name === defaultNamePattern) {
+          updates.name = generateMTMName(newPeriod, newPriceType);
+        }
+      }
+      
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          mtm: prev.indicators.mtm.map(mtm => 
+            mtm.id === id ? { ...mtm, ...updates } : mtm
+          ),
+        },
+      };
+    });
+  }, []);
+
+  const toggleMTM = useCallback((id: string) => {
+    setConfig(prev => ({
+      ...prev,
+      indicators: {
+        ...prev.indicators,
+        mtm: prev.indicators.mtm.map(mtm => 
+          mtm.id === id ? { ...mtm, show: !mtm.show } : mtm
+        ),
+      },
+    }));
+  }, []);
+
   const updateChartStyle = useCallback((updates: Partial<ChartStyleConfig>) => {
     setConfig(prev => ({
       ...prev,
@@ -1557,6 +1632,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       toggleKDJ,
       updateEMV,
       toggleEMV,
+      updateMTM,
+      toggleMTM,
       updateChartStyle,
       updateChartType,
       resetToDefaults,
