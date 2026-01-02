@@ -18,7 +18,6 @@ export default function ChartControls() {
     isCurrentTimeFramePinned,
     getDisplayTimeFrames,
     getAvailableTimeFrames,
-    handleTimeFrameChange,
     togglePinnedTimeFrame
   } = usePinnedTimeFrames(config.interval);
 
@@ -37,6 +36,10 @@ export default function ChartControls() {
   const handleChartTypeChange = (chartType: ChartType) => {
     updateConfig({ chartType });
   };
+
+  const handleTimeFrameChange = (timeFrame: string) => {
+    updateConfig({ interval: timeFrame });
+  }
 
   return (
     <>
