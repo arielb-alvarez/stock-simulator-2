@@ -2,6 +2,7 @@
 import { GlobalProvider } from '@/context/GlobalContext';
 import './globals.css';
 import { Metadata } from 'next';
+import { Suspense } from 'react';
 
 export const metadata: Metadata = {
   title: 'Stock Simulator',
@@ -16,9 +17,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" className="dark">
       <body className="bg-background text-foreground">
-        <GlobalProvider>
-          {children}
-        </GlobalProvider>
+        <Suspense>
+          <GlobalProvider>
+            {children}
+          </GlobalProvider>
+        </Suspense>
       </body>
     </html>
   );

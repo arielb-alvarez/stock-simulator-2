@@ -1,6 +1,7 @@
 // components/chart/Chart.tsx
 'use client';
 import { useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { cryptoService } from '@/services/cryptoService';
 import { useChart } from '@/hooks/useChart';
 import { useWebSocket } from '@/hooks/useWebSocket';
@@ -12,7 +13,11 @@ import DrawingTools from './DrawingTools';
 import ChartStatus from './ChartStatus';
 
 export default function MainChart() {
-  const { config } = useGlobalContext();
+  const { config, updateConfig } = useGlobalContext();
+  const searchParams = useSearchParams();
+
+  const symbolFromQuery = searchParams?.get('symbol') || 'BTCUSDT';
+  const currentSymbol = symbolFromQuery.toUpperCase();
   
   const {
     chartContainerRef,
@@ -28,12 +33,13 @@ export default function MainChart() {
     initializeChart,
     updateChartWithData,
     cleanup,
-  } = useChart();
+  } = useChart(currentSymbol);
 
   const { setupWebSocket } = useWebSocket(
     chartRef,
     currentDataRef,
-    config,
+    currentSymbol,
+    config.interval,
     setLastUpdateTime,
     setError,
     updateChartWithData
@@ -54,6 +60,13 @@ export default function MainChart() {
   const { activeDrawingTool, handleDrawingToolSelect } = useDrawingTools(chartRef);
 
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
+
+  // Update config if query parameter symbol is different
+  useEffect(() => {
+    if (currentSymbol !== config.symbol) {
+      updateConfig({ symbol: currentSymbol });
+    }
+  }, [currentSymbol, config.symbol, updateConfig]);
 
   // Register all custom indicators
   useEffect(() => {
@@ -184,7 +197,7 @@ export default function MainChart() {
       cleanup();
     };
   }, [
-    config.symbol, 
+    currentSymbol, 
     config.interval, 
     config.limit,
     chartKey
