@@ -5,7 +5,7 @@ import { useGlobalContext } from '@/context/GlobalContext';
 import { cryptoService, CryptoData } from '@/services/cryptoService';
 import { convertToKLineData } from '@/utils/chartHelpers';
 
-export const useChart = () => {
+export const useChart = (symbol: string) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<any>(null);
   const { config } = useGlobalContext();
