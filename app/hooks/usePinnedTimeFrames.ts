@@ -48,11 +48,6 @@ export const usePinnedTimeFrames = (currentInterval: string) => {
     return ALL_TIME_FRAMES.filter(tf => !pinnedTimeFrames.includes(tf.value));
   };
 
-  const handleTimeFrameChange = (timeFrame: string) => {
-    // This would typically call a context update function
-    console.log('Timeframe changed to:', timeFrame);
-  };
-
   const togglePinnedTimeFrame = (timeFrame: string) => {
     setPinnedTimeFrames(prev => 
       prev.includes(timeFrame) 
@@ -66,7 +61,6 @@ export const usePinnedTimeFrames = (currentInterval: string) => {
     isCurrentTimeFramePinned,
     getDisplayTimeFrames,
     getAvailableTimeFrames,
-    handleTimeFrameChange,
     togglePinnedTimeFrame
   };
 };
