@@ -1,6 +1,6 @@
 // components/chart/Chart.tsx
 'use client';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { cryptoService } from '@/services/cryptoService';
 import { useChart } from '@/hooks/useChart';
@@ -16,8 +16,21 @@ export default function MainChart() {
   const { config, updateConfig } = useGlobalContext();
   const searchParams = useSearchParams();
 
+  // Read symbol from query parameter
   const symbolFromQuery = searchParams?.get('symbol') || 'BTCUSDT';
   const currentSymbol = symbolFromQuery.toUpperCase();
+  
+  // State to track symbol changes and chart loading
+  const [previousSymbol, setPreviousSymbol] = useState(currentSymbol);
+  const [chartVersion, setChartVersion] = useState(0);
+  const [isChartReady, setIsChartReady] = useState(false);
+  
+  // Refs for cleanup and tracking
+  const cleanupRequestedRef = useRef(false);
+  const chartInstanceRef = useRef<any>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const isInitializingRef = useRef(false);
+  const mountedRef = useRef(true);
   
   const {
     chartContainerRef,
@@ -25,15 +38,14 @@ export default function MainChart() {
     isLoading,
     error,
     lastUpdateTime,
-    chartKey,
     currentDataRef,
     setIsLoading,
     setError,
     setLastUpdateTime,
     initializeChart,
     updateChartWithData,
-    cleanup,
-  } = useChart(currentSymbol);
+    cleanup: chartCleanup,
+  } = useChart();
 
   const { setupWebSocket } = useWebSocket(
     chartRef,
@@ -59,153 +71,239 @@ export default function MainChart() {
 
   const { activeDrawingTool, handleDrawingToolSelect } = useDrawingTools(chartRef);
 
-  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  // Safe cleanup function
+  const performCleanup = useCallback(() => {
+    console.log('Performing cleanup...');
+    
+    // Set flag to prevent any further operations on the chart
+    isChartReadyRef.current = false;
+    
+    // Clean up resize observer
+    if (resizeObserverRef.current) {
+      try {
+        if (chartContainerRef.current) {
+          resizeObserverRef.current.unobserve(chartContainerRef.current);
+        }
+      } catch (e) {
+        console.warn('Error unobserving resize observer:', e);
+      }
+      resizeObserverRef.current = null;
+    }
+    
+    // Clean up chart instance
+    if (chartInstanceRef.current) {
+      try {
+        // Don't call destroy() directly - let klinecharts dispose handle it
+        chartInstanceRef.current = null;
+      } catch (e) {
+        console.warn('Error clearing chart instance:', e);
+      }
+    }
+    
+    // Clean up via chartCleanup (dispose)
+    try {
+      // Only call chartCleanup if container exists
+      if (chartContainerRef.current) {
+        chartCleanup();
+      } else {
+        console.log('Chart container not available for cleanup');
+      }
+    } catch (e) {
+      console.warn('Error in chartCleanup:', e);
+    }
+    
+    // Clear refs
+    chartRef.current = null;
+    
+    cleanupRequestedRef.current = false;
+  }, [chartCleanup, chartContainerRef, chartRef]);
 
-  // Update config if query parameter symbol is different
+  // Ref for tracking chart readiness
+  const isChartReadyRef = useRef(false);
+
+  // Update config when symbol changes
   useEffect(() => {
     if (currentSymbol !== config.symbol) {
       updateConfig({ symbol: currentSymbol });
     }
   }, [currentSymbol, config.symbol, updateConfig]);
 
+  // For symbol change detection
+  useEffect(() => {
+    if (currentSymbol !== previousSymbol) {
+      console.log(`Symbol changed from ${previousSymbol} to ${currentSymbol}`);
+      setPreviousSymbol(currentSymbol);
+      setChartVersion(prev => prev + 1);
+    }
+  }, [currentSymbol, previousSymbol]);
+
   // Register all custom indicators
   useEffect(() => {
     registerAllIndicators();
   }, [registerAllIndicators]);
 
-  // Main initialization effect
+  // Main initialization effect - UPDATED
   useEffect(() => {
     let mounted = true;
-    let chartInstance: any = null;
-
-    const initializeChartAndData = async () => {
-      if (!mounted) return;
-
+    mountedRef.current = true;
+    cleanupRequestedRef.current = false;
+    isInitializingRef.current = true;
+    isChartReadyRef.current = false;
+    
+    const initChart = async () => {
+      if (!mounted || cleanupRequestedRef.current) return;
+      
+      console.log(`Initializing chart for ${currentSymbol} (version: ${chartVersion})`);
       setIsLoading(true);
       setError(null);
-
+      setIsChartReady(false);
+      
       try {
-        chartInstance = initializeChart();
-        if (!chartInstance) {
-          throw new Error('Chart initialization failed');
+        // Clean up any existing chart
+        performCleanup();
+        
+        // Check if container exists
+        if (!chartContainerRef.current) {
+          console.warn('Chart container not found');
+          return;
         }
-
+        
+        // Initialize new chart
+        const chartInstance = initializeChart();
+        if (!chartInstance) throw new Error('Chart initialization failed');
+        
+        // Store chart instance for cleanup
+        chartInstanceRef.current = chartInstance;
         chartRef.current = chartInstance;
-
-        // Set up resize observer
-        const handleResize = () => {
-          chartInstance.resize();
-        };
-
-        resizeObserverRef.current = new ResizeObserver(handleResize);
+        
+        // Setup resize observer
+        resizeObserverRef.current = new ResizeObserver(() => {
+          if (chartInstance && mounted) {
+            chartInstance.resize();
+          }
+        });
+        
         if (chartContainerRef.current) {
           resizeObserverRef.current.observe(chartContainerRef.current);
         }
-
+        
+        // Fetch data with current symbol
+        console.log(`Fetching data for ${currentSymbol}...`);
         const candlestickData = await cryptoService.getHistoricalData(
-          config.symbol,
+          currentSymbol,
           config.interval,
           config.limit
         );
-
-        if (!mounted) return;
+        
+        if (!mounted || cleanupRequestedRef.current) return;
         
         if (candlestickData.length === 0) {
-          setError('No data received from API');
-          return;
+          throw new Error(`No data available for ${currentSymbol}`);
         }
-
+        
+        console.log(`Received ${candlestickData.length} candles for ${currentSymbol}`);
+        
+        // Update data reference
         currentDataRef.current = candlestickData;
-
+        
+        // Update chart with data
         updateChartWithData(chartInstance, candlestickData, false);
         
-        // Apply styles and setup indicators
+        // Apply styles and indicators
         applyChartStyles(chartInstance);
-
+        
+        // Setup indicators with delays to ensure chart is ready
         setTimeout(() => {
-          if (mounted && chartInstance) {
+          if (mounted && !cleanupRequestedRef.current && chartRef.current) {
             setupRSIIndicators(chartInstance);
           }
         }, 100);
         
         setTimeout(() => {
-          if (mounted && chartInstance) {
+          if (mounted && !cleanupRequestedRef.current && chartRef.current) {
             setupMFIIndicators(chartInstance);
           }
         }, 150);
         
         setTimeout(() => {
-          if (mounted && chartInstance) {
+          if (mounted && !cleanupRequestedRef.current && chartRef.current) {
             setupVolumeIndicators(chartInstance);
           }
         }, 200);
         
         setTimeout(() => {
-          if (mounted && chartInstance) {
+          if (mounted && !cleanupRequestedRef.current && chartRef.current) {
             setupMovingAverageOverlays(chartInstance);
           }
         }, 250);
-        
-        setTimeout(() => {
-          if (mounted && chartInstance) {
-            setupVolumeIndicators(chartInstance);
-          }
-        }, 100);
 
         setTimeout(() => {
-          if (mounted && chartInstance) {
+          if (mounted && !cleanupRequestedRef.current && chartRef.current) {
             setupKDJIndicators(chartInstance);
           }
         }, 175);
 
         setTimeout(() => {
-          if (mounted && chartInstance) {
+          if (mounted && !cleanupRequestedRef.current && chartRef.current) {
             setupEMVIndicators(chartInstance);
           }
         }, 225);
 
         setTimeout(() => {
-          if (mounted && chartInstance) {
+          if (mounted && !cleanupRequestedRef.current && chartRef.current) {
             setupMTMIndicators(chartInstance);
           }
         }, 125);
         
-        setupWebSocket();
-
-      } catch (err) {
-        if (!mounted) return;
+        // Mark chart as ready after a delay
+        setTimeout(() => {
+          if (mounted && !cleanupRequestedRef.current) {
+            setIsChartReady(true);
+            isChartReadyRef.current = true;
+          }
+        }, 300);
         
-        console.error('Error in chart initialization:', err);
-        setError(`Failed to initialize chart: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        // Setup WebSocket
+        setupWebSocket();
+        
+      } catch (err) {
+        if (!mounted || cleanupRequestedRef.current) return;
+        
+        console.error('Chart initialization error:', err);
+        setError(`Failed to load ${currentSymbol}: ${err instanceof Error ? err.message : 'Unknown error'}`);
       } finally {
-        if (mounted) {
+        if (mounted && !cleanupRequestedRef.current) {
           setIsLoading(false);
+          isInitializingRef.current = false;
         }
       }
     };
-
-    initializeChartAndData();
-
+    
+    // Small delay to ensure cleanup completes
+    const timer = setTimeout(() => {
+      initChart();
+    }, 100);
+    
     return () => {
+      console.log('Cleanup requested for chart effect');
       mounted = false;
+      mountedRef.current = false;
+      cleanupRequestedRef.current = true;
+      clearTimeout(timer);
       
-      if (resizeObserverRef.current && chartContainerRef.current) {
-        resizeObserverRef.current.unobserve(chartContainerRef.current);
-        resizeObserverRef.current = null;
-      }
-      
-      cleanup();
+      // Don't perform cleanup here - let the next initialization handle it
+      // This prevents the disposal error
     };
   }, [
-    currentSymbol, 
-    config.interval, 
+    currentSymbol,
+    config.interval,
     config.limit,
-    chartKey
+    chartVersion,
   ]);
 
   // Effect for overlay indicator changes (MA, EMA, WMA, BB, VWAP, SAR)
   useEffect(() => {
-    if (!chartRef.current || !currentDataRef.current.length) return;
+    if (!chartRef.current || !currentDataRef.current.length || !isChartReady) return;
     
     console.log('Overlay configuration changed, updating indicators...');
     
@@ -237,12 +335,13 @@ export default function MainChart() {
     config.indicators.sar,
     config.indicators.trix,
     config.indicators.supertrend,
-    setupMovingAverageOverlays
+    setupMovingAverageOverlays,
+    isChartReady
   ]);
 
   // Effect for RSI indicator changes
   useEffect(() => {
-    if (!chartRef.current || !currentDataRef.current.length) return;
+    if (!chartRef.current || !currentDataRef.current.length || !isChartReady) return;
     
     const updateRSIIndicators = async () => {
       try {
@@ -259,10 +358,10 @@ export default function MainChart() {
 
     const timer = setTimeout(updateRSIIndicators, 50);
     return () => clearTimeout(timer);
-  }, [config.indicators.rsi, setupRSIIndicators]);
+  }, [config.indicators.rsi, setupRSIIndicators, isChartReady]);
 
   useEffect(() => {
-    if (!chartRef.current || !currentDataRef.current.length) return;
+    if (!chartRef.current || !currentDataRef.current.length || !isChartReady) return;
     
     const updateMFIIndicators = async () => {
       try {
@@ -279,10 +378,10 @@ export default function MainChart() {
 
     const timer = setTimeout(updateMFIIndicators, 50);
     return () => clearTimeout(timer);
-  }, [config.indicators.mfi, setupMFIIndicators]);
+  }, [config.indicators.mfi, setupMFIIndicators, isChartReady]);
 
   useEffect(() => {
-    if (!chartRef.current || !currentDataRef.current.length) return;
+    if (!chartRef.current || !currentDataRef.current.length || !isChartReady) return;
     
     const updateKDJIndicators = async () => {
       try {
@@ -299,10 +398,10 @@ export default function MainChart() {
 
     const timer = setTimeout(updateKDJIndicators, 50);
     return () => clearTimeout(timer);
-  }, [config.indicators.kdj, setupKDJIndicators]);
+  }, [config.indicators.kdj, setupKDJIndicators, isChartReady]);
 
   useEffect(() => {
-    if (!chartRef.current || !currentDataRef.current.length) return;
+    if (!chartRef.current || !currentDataRef.current.length || !isChartReady) return;
     
     const updateEMVIndicators = async () => {
       try {
@@ -319,10 +418,10 @@ export default function MainChart() {
 
     const timer = setTimeout(updateEMVIndicators, 50);
     return () => clearTimeout(timer);
-  }, [config.indicators.emv, setupEMVIndicators]);
+  }, [config.indicators.emv, setupEMVIndicators, isChartReady]);
 
   useEffect(() => {
-    if (!chartRef.current || !currentDataRef.current.length) return;
+    if (!chartRef.current || !currentDataRef.current.length || !isChartReady) return;
     
     const updateMTMIndicators = async () => {
       try {
@@ -339,11 +438,11 @@ export default function MainChart() {
 
     const timer = setTimeout(updateMTMIndicators, 50);
     return () => clearTimeout(timer);
-  }, [config.indicators.mtm, setupMTMIndicators]);
+  }, [config.indicators.mtm, setupMTMIndicators, isChartReady]);
 
   // Effect for Volume indicator changes
   useEffect(() => {
-    if (!chartRef.current) {
+    if (!chartRef.current || !isChartReady) {
       console.log('Chart not ready for volume update');
       return;
     }
@@ -366,18 +465,18 @@ export default function MainChart() {
 
     const timer = setTimeout(updateVolumeIndicators, 50);
     return () => clearTimeout(timer);
-  }, [config.indicators.volume, setupVolumeIndicators]);
+  }, [config.indicators.volume, setupVolumeIndicators, isChartReady]);
 
   // Effect for chart style changes
   useEffect(() => {
-    if (!chartRef.current) return;
+    if (!chartRef.current || !isChartReady) return;
     
     const timer = setTimeout(() => {
       applyChartStyles(chartRef.current);
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [config.chart, applyChartStyles]);
+  }, [config.chart, applyChartStyles, isChartReady]);
 
   return (
     <div className="w-full h-full flex flex-col relative">
@@ -387,17 +486,18 @@ export default function MainChart() {
         lastUpdateTime={lastUpdateTime}
       />
       
+      {/* Current symbol display */}
+      {/* <div className="absolute top-4 left-4 text-white text-lg font-bold bg-gray-800 px-3 py-1 rounded z-10">
+        {currentSymbol}
+        {isLoading && <span className="ml-2 text-xs text-yellow-400 animate-pulse">Loading...</span>}
+      </div> */}
+      
       {/* Main Chart container */}
       <div 
-        key={chartKey}
+        key={`chart-${currentSymbol}-${chartVersion}`}
         ref={chartContainerRef} 
         className="w-full h-full bg-gray-900 rounded-lg"
       />
-      
-      {/* <DrawingTools 
-        activeTool={activeDrawingTool}
-        onToolSelect={handleDrawingToolSelect}
-      /> */}
     </div>
   );
 }
