@@ -1,8 +1,8 @@
 // components/chart/ChartControls.tsx
 'use client';
 import { useGlobalContext, ChartType } from '@/context/GlobalContext';
-import { useState, useRef, useEffect } from 'react';
-import { CandleIcon, LineIcon, AreaIcon, BarIcon, ChevronDown, EditIcon, IndicatorsIcon } from './ChartIcons';
+import { useState } from 'react';
+import { IndicatorsIcon } from './ChartIcons';
 import { TimeFrameSelector } from '@/components/chart/TimeFrameSelector';
 import { ChartTypeSelector } from '@/components/chart/ChartTypeSelector';
 import { IndicatorsDialog } from '@/app/components/chart/indicators/IndicatorsDialog';
@@ -10,7 +10,7 @@ import { usePinnedTimeFrames } from '@/hooks/usePinnedTimeFrames';
 import { useDropdown } from '@/hooks/useDropdown';
 
 export default function ChartControls() {
-  const { config, updateConfig  } = useGlobalContext();
+  const { config, updateConfig, updateChartType } = useGlobalContext();
   const [isIndicatorsOpen, setIsIndicatorsOpen] = useState(false);
   
   const {
@@ -34,7 +34,7 @@ export default function ChartControls() {
   } = useDropdown();
 
   const handleChartTypeChange = (chartType: ChartType) => {
-    updateConfig({ chartType });
+    updateChartType(chartType);
   };
 
   const handleTimeFrameChange = (timeFrame: string) => {
