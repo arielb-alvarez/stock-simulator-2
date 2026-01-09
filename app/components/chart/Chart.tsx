@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { cryptoService } from '@/services/cryptoService';
+import { tradeService } from '@/services/tradeService';
 import { useChart } from '@/hooks/useChart';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useIndicators } from '@/hooks/useIndicators';
@@ -16,14 +17,20 @@ export default function MainChart() {
   const { config, updateConfig } = useGlobalContext();
   const searchParams = useSearchParams();
 
-  // Read symbol from query parameter
+  // Read symbol and token from query parameters
   const symbolFromQuery = searchParams?.get('symbol') || 'BTCUSDT';
+  const token = searchParams?.get('token') || null;
   const currentSymbol = symbolFromQuery.toUpperCase();
   
   // State to track symbol changes and chart loading
   const [previousSymbol, setPreviousSymbol] = useState(currentSymbol);
   const [chartVersion, setChartVersion] = useState(0);
   const [isChartReady, setIsChartReady] = useState(false);
+  
+  // State for authentication status
+  const [isLoadingAuth, setIsLoadingAuth] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [hasValidToken, setHasValidToken] = useState<boolean | null>(null);
   
   // Refs for cleanup and tracking
   const cleanupRequestedRef = useRef(false);
@@ -70,6 +77,42 @@ export default function MainChart() {
   } = useIndicatorSetup();
 
   const { activeDrawingTool, handleDrawingToolSelect } = useDrawingTools(chartRef);
+
+  // Function to validate token using tradeService
+  const validateToken = useCallback(async () => {
+    if (!token) {
+      setHasValidToken(null); // No token means public access
+      setAuthError(null);
+      return;
+    }
+
+    setIsLoadingAuth(true);
+    setAuthError(null);
+
+    try {
+      // Use the tradeService to validate token (fetch just 1 trade to check auth)
+      await tradeService.getTradeHistory(
+        token,
+        currentSymbol, // Use current symbol for validation
+        1, // page
+        1 // limit - just need to check if auth works
+      );
+
+      // If we get here without error, token is valid
+      setHasValidToken(true);
+    } catch (err) {
+      console.error('Token validation error:', err);
+      setAuthError(err instanceof Error ? err.message : 'Authentication failed');
+      setHasValidToken(false);
+    } finally {
+      setIsLoadingAuth(false);
+    }
+  }, [token, currentSymbol]);
+
+  // Effect to validate token when it changes
+  useEffect(() => {
+    validateToken();
+  }, [token, currentSymbol, validateToken]);
 
   // Safe cleanup function
   const performCleanup = useCallback(() => {
@@ -142,8 +185,15 @@ export default function MainChart() {
     registerAllIndicators();
   }, [registerAllIndicators]);
 
-  // Main initialization effect - UPDATED
+  // Main initialization effect - only run if token is valid or no token
   useEffect(() => {
+    // Don't initialize chart if we have a token and it's invalid
+    if (token && hasValidToken === false) {
+      // Clean up any existing chart
+      performCleanup();
+      return;
+    }
+
     let mounted = true;
     mountedRef.current = true;
     cleanupRequestedRef.current = false;
@@ -299,6 +349,8 @@ export default function MainChart() {
     config.interval,
     config.limit,
     chartVersion,
+    token,
+    hasValidToken,
   ]);
 
   // Effect for overlay indicator changes (MA, EMA, WMA, BB, VWAP, SAR)
@@ -478,26 +530,85 @@ export default function MainChart() {
     return () => clearTimeout(timer);
   }, [config.chart, applyChartStyles, isChartReady]);
 
+  // Don't show ChartStatus when token is invalid
+  const shouldShowChartStatus = () => {
+    // Don't show chart status when:
+    // 1. We're loading authentication
+    // 2. There's an authentication error
+    // 3. Token exists but is invalid
+    if (isLoadingAuth || authError || (token && hasValidToken === false)) {
+      return false;
+    }
+    return true;
+  };
+
+  // Render authentication error message
+  const renderAuthError = () => {
+    let errorMessage = authError || 'Authentication failed';
+    
+    // Provide more user-friendly messages for common errors
+    if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+      errorMessage = 'Invalid or expired authentication token.';
+    } else if (errorMessage.includes('Network Error') || errorMessage.includes('Failed to fetch')) {
+      errorMessage = 'Network error. Please check your connection.';
+    }
+    
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-900 rounded-lg">
+        <div className="bg-gray-800 p-8 rounded-lg max-w-md text-center">
+          <div className="text-red-500 text-4xl mb-4">🔒</div>
+          <h2 className="text-white text-xl font-bold mb-2">Authentication Required</h2>
+          <p className="text-gray-300 mb-4">{errorMessage}</p>
+          <div className="text-gray-400 text-sm mt-4">
+            <p>Please provide a valid authentication token to view the chart.</p>
+            <p className="mt-2">Current symbol: <span className="text-blue-400">{currentSymbol}</span></p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render loading state for authentication
+  const renderAuthLoading = () => {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-900 rounded-lg">
+        <div className="text-white text-lg">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4">Verifying authentication...</p>
+        </div>
+      </div>
+    );
+  };
+
+  // Render the chart
+  const renderChart = () => {
+    return (
+      <>
+        <div 
+          key={`chart-${currentSymbol}-${chartVersion}`}
+          ref={chartContainerRef} 
+          className="w-full h-full bg-gray-900 rounded-lg"
+        />
+      </>
+    );
+  };
+
+  // Main render logic
   return (
     <div className="w-full h-full flex flex-col relative">
-      <ChartStatus 
-        isLoading={isLoading}
-        error={error}
-        lastUpdateTime={lastUpdateTime}
-      />
+      {/* Show ChartStatus only when authentication is valid */}
+      {shouldShowChartStatus() && (
+        <ChartStatus 
+          isLoading={isLoading}
+          error={error}
+          lastUpdateTime={lastUpdateTime}
+        />
+      )}
       
-      {/* Current symbol display */}
-      {/* <div className="absolute top-4 left-4 text-white text-lg font-bold bg-gray-800 px-3 py-1 rounded z-10">
-        {currentSymbol}
-        {isLoading && <span className="ml-2 text-xs text-yellow-400 animate-pulse">Loading...</span>}
-      </div> */}
-      
-      {/* Main Chart container */}
-      <div 
-        key={`chart-${currentSymbol}-${chartVersion}`}
-        ref={chartContainerRef} 
-        className="w-full h-full bg-gray-900 rounded-lg"
-      />
+      {/* Conditional rendering based on authentication status */}
+      {isLoadingAuth && renderAuthLoading()}
+      {!isLoadingAuth && token && hasValidToken === false && renderAuthError()}
+      {!isLoadingAuth && (!token || hasValidToken === true) && renderChart()}
     </div>
   );
 }
