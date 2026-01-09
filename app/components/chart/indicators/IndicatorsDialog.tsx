@@ -449,11 +449,11 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
-      <div className="bg-gray-800 rounded-xl w-[680px] max-h-[85vh] flex flex-col border border-gray-600 shadow-2xl">
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm p-2 sm:p-4">
+      <div className="bg-gray-800 rounded-xl w-full max-w-[680px] h-full max-h-[90vh] sm:max-h-[85vh] flex flex-col border border-gray-600 shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
-          <h2 className="text-lg font-semibold text-white">Indicators</h2>
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-700 flex-shrink-0">
+          <h2 className="text-base sm:text-lg font-semibold text-white">Indicators</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors text-lg p-1 rounded hover:bg-gray-700"
@@ -463,10 +463,10 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-700">
+        <div className="flex border-b border-gray-700 flex-shrink-0">
           <button
             onClick={() => setActiveTab('main')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+            className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
               activeTab === 'main'
                 ? 'text-yellow-400 border-b-2 border-yellow-400'
                 : 'text-gray-400 hover:text-gray-200'
@@ -476,7 +476,7 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('sub')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors ${
+            className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
               activeTab === 'sub'
                 ? 'text-yellow-400 border-b-2 border-yellow-400'
                 : 'text-gray-400 hover:text-gray-200'
@@ -487,21 +487,21 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
         </div>
 
         {/* Content */}
-        <div className="flex-1 flex min-h-[500px]">
+        <div className="flex-1 flex flex-col sm:flex-row min-h-0 overflow-hidden">
           {activeTab === 'main' ? (
             /* Main Indicator Content */
             <>
-              {/* Vertical Menu */}
-              <div className="w-44 border-r border-gray-700 bg-gray-750/50">
-                <div className="p-3">
-                  <h3 className="text-xs text-gray-400 mb-3 font-medium">MAIN INDICATORS</h3>
-                  <nav className="space-y-1">
+              {/* Vertical Menu - Hidden on mobile, shown as horizontal on small screens */}
+              <div className="sm:w-44 border-b sm:border-b-0 sm:border-r border-gray-700 bg-gray-750/50 flex-shrink-0 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto">
+                <div className="p-3 min-w-max sm:min-w-0 sm:pb-4">
+                  <h3 className="text-xs text-gray-400 mb-3 font-medium hidden sm:block sticky top-0 bg-gray-750/95 py-1 z-10">MAIN INDICATORS</h3>
+                  <nav className="flex sm:flex-col gap-1 sm:gap-0 sm:space-y-1">
                     {[
-                      { id: 'ma', label: 'Moving Average' },
-                      { id: 'ema', label: 'Exponential MA' },
-                      { id: 'wma', label: 'Weighted MA' },
-                      { id: 'avl', label: 'Average Value Line' },
-                      { id: 'bb', label: 'Bollinger Bands' },
+                      { id: 'ma', label: 'MA' },
+                      { id: 'ema', label: 'EMA' },
+                      { id: 'wma', label: 'WMA' },
+                      { id: 'avl', label: 'AVL' },
+                      { id: 'bb', label: 'BB' },
                       { id: 'vwap', label: 'VWAP' },
                       { id: 'sar', label: 'SAR' },
                       { id: 'trix', label: 'TRIX' },
@@ -510,7 +510,7 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                       <button
                         key={item.id}
                         onClick={() => setActiveSubMenu(item.id)}
-                        className={`w-full text-left px-3 py-2.5 rounded text-sm font-medium transition-colors whitespace-nowrap ${
+                        className={`px-3 py-2.5 rounded text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 sm:flex-shrink ${
                           activeSubMenu === item.id
                             ? 'bg-yellow-500/20 text-yellow-400'
                             : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
@@ -524,7 +524,7 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
               </div>
 
               {/* Content Area */}
-              <div className="flex-1 p-4 overflow-y-auto">
+              <div className="flex-1 p-3 sm:p-4 overflow-y-auto">
                 {activeSubMenu === 'ma' && (
                   <CompactMAConfig
                     configs={config.indicators.ma}
@@ -630,23 +630,23 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
           ) : (
             /* Sub Indicator Content */
             <>
-              {/* Vertical Menu */}
-              <div className="w-44 border-r border-gray-700 bg-gray-750/50">
-                <div className="p-3">
-                  <h3 className="text-xs text-gray-400 mb-3 font-medium">SUB INDICATORS</h3>
-                  <nav className="space-y-1">
+              {/* Vertical Menu - Hidden on mobile, shown as horizontal on small screens */}
+              <div className="sm:w-44 border-b sm:border-b-0 sm:border-r border-gray-700 bg-gray-750/50 flex-shrink-0 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto">
+                <div className="p-3 min-w-max sm:min-w-0 sm:pb-4">
+                  <h3 className="text-xs text-gray-400 mb-3 font-medium hidden sm:block sticky top-0 bg-gray-750/95 py-1 z-10">SUB INDICATORS</h3>
+                  <nav className="flex sm:flex-col gap-1 sm:gap-0 sm:space-y-1">
                     {[
                       { id: 'rsi', label: 'RSI' },
                       { id: 'mfi', label: 'MFI' },
                       { id: 'kdj', label: 'KDJ' },
                       { id: 'emv', label: 'EMV' },
-                      { id: 'mtm', label: 'Momentum (MTM)' },
+                      { id: 'mtm', label: 'Momentum' },
                       { id: 'volume', label: 'Volume' }
                     ].map((item) => (
                       <button
                         key={item.id}
                         onClick={() => setActiveSubMenu(item.id)}
-                        className={`w-full text-left px-3 py-2.5 rounded text-sm font-medium transition-colors whitespace-nowrap ${
+                        className={`px-3 py-2.5 rounded text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 sm:flex-shrink ${
                           activeSubMenu === item.id
                             ? 'bg-yellow-500/20 text-yellow-400'
                             : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
@@ -660,7 +660,7 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
               </div>
 
               {/* Content Area */}
-              <div className="flex-1 p-4 overflow-y-auto">
+              <div className="flex-1 p-3 sm:p-4 overflow-y-auto">
                 {activeSubMenu === 'rsi' && (
                   <CompactRSIConfig
                     rsiConfigs={config.indicators.rsi}
