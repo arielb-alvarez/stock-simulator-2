@@ -583,13 +583,17 @@ export default function MainChart() {
   // Render the chart
   const renderChart = () => {
     return (
-      <>
+      <div className="w-full h-full relative">
         <div 
           key={`chart-${currentSymbol}-${chartVersion}`}
           ref={chartContainerRef} 
-          className="w-full h-full bg-gray-900 rounded-lg"
+          className="w-full h-full bg-gray-900 rounded-lg absolute inset-0"
         />
-      </>
+        <DrawingTools 
+          onToolSelect={handleDrawingToolSelect}
+          activeTool={activeDrawingTool}
+        />
+      </div>
     );
   };
 
@@ -608,7 +612,11 @@ export default function MainChart() {
       {/* Conditional rendering based on authentication status */}
       {isLoadingAuth && renderAuthLoading()}
       {!isLoadingAuth && token && hasValidToken === false && renderAuthError()}
-      {!isLoadingAuth && (!token || hasValidToken === true) && renderChart()}
+      {!isLoadingAuth && (!token || hasValidToken === true) && (
+        <div className="flex-1 relative min-h-0">
+          {renderChart()}
+        </div>
+      )}
     </div>
   );
 }
