@@ -1,7 +1,20 @@
-// components/chart/DrawingTools.tsx
+// DrawingTools.tsx - Updated with better positioning
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useGlobalContext } from '@/context/GlobalContext';
+import {
+  MousePointer2, // Select
+  Minus, // Horizontal Line
+  MoveVertical, // Vertical Line
+  TrendingUp, // Trend Line
+  Wind, // Fibonacci
+  Square, // Rectangle
+  Circle, // Circle
+  RotateCcw, // Reset/Confirm
+  ChevronRight, // Expand arrow
+  ChevronLeft, // Collapse arrow
+  Settings // Settings icon for reset
+} from 'lucide-react';
 
 interface DrawingToolsProps {
   onToolSelect: (tool: string) => void;
@@ -11,6 +24,8 @@ interface DrawingToolsProps {
 const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool }) => {
   const { config, resetToDefaults } = useGlobalContext();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showTooltip, setShowTooltip] = useState<string | null>(null);
 
   // Auto-hide reset confirmation after 3 seconds
   useEffect(() => {
@@ -33,149 +48,118 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
     }
   };
 
+  const tools = [
+    { id: 'select', icon: MousePointer2, label: 'Select', title: 'Select and move drawings' },
+    { id: 'horizontalLine', icon: Minus, label: 'Horizontal', title: 'Horizontal Line' },
+    { id: 'verticalLine', icon: MoveVertical, label: 'Vertical', title: 'Vertical Line' },
+    { id: 'trendLine', icon: TrendingUp, label: 'Trend', title: 'Trend Line' },
+    { id: 'fibonacci', icon: Wind, label: 'Fibonacci', title: 'Fibonacci Retracement' },
+    { id: 'rectangle', icon: Square, label: 'Rectangle', title: 'Rectangle' },
+    { id: 'circle', icon: Circle, label: 'Circle', title: 'Circle' },
+  ];
+
   return (
-    <div className="flex flex-wrap items-center gap-2 p-4 bg-gray-800 border-b border-gray-700">
-      {/* Drawing Tools */}
-      <div className="flex items-center gap-1">
-        <span className="text-xs text-gray-400 mr-1">Tools:</span>
-        <button
-          onClick={() => onToolSelect('select')}
-          className={`px-3 py-1 rounded text-sm ${
-            activeTool === 'select' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-          title="Select and move drawings"
-        >
-          Select
-        </button>
-        <button
-          onClick={() => onToolSelect('horizontalLine')}
-          className={`px-3 py-1 rounded text-sm ${
-            activeTool === 'horizontalLine' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-          title="Horizontal Line"
-        >
-          Horizontal
-        </button>
-        <button
-          onClick={() => onToolSelect('verticalLine')}
-          className={`px-3 py-1 rounded text-sm ${
-            activeTool === 'verticalLine' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-          title="Vertical Line"
-        >
-          Vertical
-        </button>
-        <button
-          onClick={() => onToolSelect('trendLine')}
-          className={`px-3 py-1 rounded text-sm ${
-            activeTool === 'trendLine' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-          title="Trend Line"
-        >
-          Trend Line
-        </button>
-        <button
-          onClick={() => onToolSelect('fibonacci')}
-          className={`px-3 py-1 rounded text-sm ${
-            activeTool === 'fibonacci' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-          title="Fibonacci Retracement"
-        >
-          Fibonacci
-        </button>
-        <button
-          onClick={() => onToolSelect('rectangle')}
-          className={`px-3 py-1 rounded text-sm ${
-            activeTool === 'rectangle' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-          title="Rectangle"
-        >
-          Rectangle
-        </button>
-        <button
-          onClick={() => onToolSelect('circle')}
-          className={`px-3 py-1 rounded text-sm ${
-            activeTool === 'circle' ? 'bg-blue-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-          title="Circle"
-        >
-          Circle
-        </button>
-      </div>
+    <>
+      {/* Drawing Tools Panel */}
+      <div className="absolute left-0 top-1/2 transform -translate-y-1/2 z-30">
+        {/* Main Tools Panel */}
+        <div className={`
+          flex transition-all duration-300 ease-in-out
+          ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+        `}>
+          {/* Tools Column */}
+          <div className="flex flex-col w-12 bg-gray-800/95 border-r border-gray-700/50 backdrop-blur-sm rounded-r-lg shadow-lg">
+            {/* Tools */}
+            <div className="flex-1 flex flex-col items-center py-3 space-y-2">
+              {tools.map((tool) => (
+                <button
+                  key={tool.id}
+                  onClick={() => {
+                    onToolSelect(tool.id);
+                    setShowTooltip(null);
+                  }}
+                  onMouseEnter={() => setShowTooltip(tool.id)}
+                  onMouseLeave={() => setShowTooltip(null)}
+                  className={`
+                    relative w-8 h-8 flex items-center justify-center rounded-md
+                    transition-all duration-150 hover:scale-105 active:scale-95
+                    ${activeTool === tool.id 
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' 
+                      : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/70 hover:text-white'
+                    }
+                  `}
+                  aria-label={tool.label}
+                >
+                  <tool.icon size={16} strokeWidth={2} />
+                  
+                  {/* Tooltip */}
+                  {showTooltip === tool.id && (
+                    <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 z-50 pointer-events-none">
+                      <div className="bg-gray-900 text-white text-xs py-1 px-2 rounded shadow-lg whitespace-nowrap">
+                        {tool.title}
+                      </div>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
 
-      {/* RSI Toggles */}
-      <div className="flex items-center gap-1 ml-2 pl-2 border-l border-gray-600">
-        <span className="text-xs text-gray-400 mr-1">RSI:</span>
-        {config.indicators.rsi.map((rsi) => (
+            {/* Reset Button at Bottom */}
+            <div className="py-2 border-t border-gray-700/50">
+              <button
+                onClick={handleResetClick}
+                onMouseEnter={() => setShowTooltip('reset')}
+                onMouseLeave={() => setShowTooltip(null)}
+                className={`
+                  relative w-8 h-8 mx-auto flex items-center justify-center rounded-md
+                  transition-all duration-150 hover:scale-105 active:scale-95
+                  ${showResetConfirm 
+                    ? 'bg-red-600/90 text-white animate-pulse' 
+                    : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/70 hover:text-white'
+                  }
+                `}
+                aria-label="Reset settings"
+              >
+                {showResetConfirm ? (
+                  <RotateCcw size={16} strokeWidth={2} className="animate-spin" />
+                ) : (
+                  <Settings size={16} strokeWidth={2} />
+                )}
+                
+                {/* Tooltip */}
+                {showTooltip === 'reset' && (
+                  <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 z-50 pointer-events-none">
+                    <div className="bg-gray-900 text-white text-xs py-1 px-2 rounded shadow-lg whitespace-nowrap">
+                      {showResetConfirm ? 'Click to confirm reset' : 'Reset all settings'}
+                    </div>
+                  </div>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Collapse Button */}
           <button
-            key={rsi.id}
-            onClick={() => onToolSelect(`rsi-toggle-${rsi.id}`)}
-            className={`px-2 py-1 rounded text-xs ${
-              rsi.show ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            } ${
-              activeTool === `rsi-toggle-${rsi.id}` ? 'ring-2 ring-blue-400' : ''
-            }`}
-            style={{ borderLeft: `3px solid ${rsi.lineColor}` }}
-            title={`${rsi.name} (Period: ${rsi.period}) - ${rsi.show ? 'Visible' : 'Hidden'}`}
+            onClick={() => setIsExpanded(false)}
+            className="w-6 h-10 flex items-center justify-center bg-gray-800/90 hover:bg-gray-800 text-gray-400 hover:text-white rounded-r-md transition-colors self-center"
+            aria-label="Collapse drawing tools"
           >
-            {rsi.name}
-            {rsi.show && (
-              <span className="ml-1 text-xs">✓</span>
-            )}
+            <ChevronLeft size={12} strokeWidth={2} />
           </button>
-        ))}
-      </div>
+        </div>
 
-      {/* Volume Toggle */}
-      <div className="flex items-center gap-1 ml-2 pl-2 border-l border-gray-600">
-        <span className="text-xs text-gray-400 mr-1">Volume:</span>
-        {config.indicators.volume.map((volume) => (
+        {/* Small Trigger Button when collapsed */}
+        {!isExpanded && (
           <button
-            key={volume.id}
-            onClick={() => onToolSelect(`volume-toggle-${volume.id}`)}
-            className={`px-2 py-1 rounded text-xs ${
-              volume.show ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            } ${
-              activeTool === `volume-toggle-${volume.id}` ? 'ring-2 ring-blue-400' : ''
-            }`}
-            // title={`${volume.name} ${volume.show ? `with MA${volume.maPeriod}` : ''} - ${volume.show ? 'Visible' : 'Hidden'}`}
+            onClick={() => setIsExpanded(true)}
+            className="w-6 h-10 flex items-center justify-center bg-gray-800/90 hover:bg-gray-800 text-gray-400 hover:text-white rounded-r-md shadow-lg transition-all hover:scale-105"
+            aria-label="Expand drawing tools"
           >
-            {volume.name}
-            {volume.show && (
-              <span className="ml-1 text-xs">✓</span>
-            )}
+            <ChevronRight size={12} strokeWidth={2} />
           </button>
-        ))}
-      </div>
-
-      {/* Reset Button */}
-      <div className="flex items-center gap-1 ml-2 pl-2 border-l border-gray-600">
-        <button
-          onClick={handleResetClick}
-          className={`px-3 py-1 rounded text-sm ${
-            showResetConfirm 
-              ? 'bg-red-600 text-white' 
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-          title="Reset all settings to defaults"
-        >
-          {showResetConfirm ? 'Confirm Reset' : 'Reset Settings'}
-        </button>
-        {showResetConfirm && (
-          <span className="text-xs text-yellow-400 ml-1">
-            Click again to confirm
-          </span>
         )}
       </div>
-
-      {/* Persistence Status Indicator */}
-      <div className="flex items-center gap-1 ml-2 pl-2 border-l border-gray-600">
-        <div className="flex items-center text-xs text-gray-400">
-          <div className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse"></div>
-          Auto-saved
-        </div>
-      </div>
-    </div>
+    </>
   );
 };
 
