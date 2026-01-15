@@ -1,4 +1,4 @@
-// DrawingTools.tsx - Updated with better positioning
+// DrawingTools.tsx - Updated to not overlap with header
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useGlobalContext } from '@/context/GlobalContext';
@@ -26,6 +26,7 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showTooltip, setShowTooltip] = useState<string | null>(null);
+  const [containerHeight, setContainerHeight] = useState('100%');
 
   // Auto-hide reset confirmation after 3 seconds
   useEffect(() => {
@@ -36,6 +37,37 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
       return () => clearTimeout(timer);
     }
   }, [showResetConfirm]);
+
+  // Calculate container height to match chart container
+  useEffect(() => {
+    const calculateHeight = () => {
+      // Get the chart container element
+      const chartContainer = document.querySelector('[class*="min-h-0"]') || 
+                             document.querySelector('.flex-1');
+      
+      if (chartContainer) {
+        const rect = chartContainer.getBoundingClientRect();
+        // Set height to match the chart container's height
+        setContainerHeight(`${rect.height}px`);
+      }
+    };
+
+    // Calculate initially
+    calculateHeight();
+
+    // Recalculate on resize
+    window.addEventListener('resize', calculateHeight);
+    
+    // Recalculate when expanded state changes
+    if (isExpanded) {
+      // Small delay to ensure DOM is updated
+      setTimeout(calculateHeight, 100);
+    }
+
+    return () => {
+      window.removeEventListener('resize', calculateHeight);
+    };
+  }, [isExpanded]);
 
   const handleResetClick = () => {
     if (showResetConfirm) {
@@ -60,48 +92,49 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
 
   return (
     <>
-      {/* Drawing Tools Panel */}
-      <div className="absolute left-0 top-1/2 transform -translate-y-1/2 z-30">
-        {/* Main Tools Panel */}
-        <div className={`
-          flex transition-all duration-300 ease-in-out
-          ${isExpanded ? 'opacity-100' : 'opacity-0 pointer-events-none'}
-        `}>
-          {/* Tools Column */}
-          <div className="flex flex-col w-12 bg-gray-800/95 border-r border-gray-700/50 backdrop-blur-sm rounded-r-lg shadow-lg">
-            {/* Tools */}
-            <div className="flex-1 flex flex-col items-center py-3 space-y-2">
-              {tools.map((tool) => (
-                <button
-                  key={tool.id}
-                  onClick={() => {
-                    onToolSelect(tool.id);
-                    setShowTooltip(null);
-                  }}
-                  onMouseEnter={() => setShowTooltip(tool.id)}
-                  onMouseLeave={() => setShowTooltip(null)}
-                  className={`
-                    relative w-8 h-8 flex items-center justify-center rounded-md
-                    transition-all duration-150 hover:scale-105 active:scale-95
-                    ${activeTool === tool.id 
-                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' 
-                      : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/70 hover:text-white'
-                    }
-                  `}
-                  aria-label={tool.label}
-                >
-                  <tool.icon size={16} strokeWidth={2} />
-                  
-                  {/* Tooltip */}
-                  {showTooltip === tool.id && (
-                    <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 z-50 pointer-events-none">
-                      <div className="bg-gray-900 text-white text-xs py-1 px-2 rounded shadow-lg whitespace-nowrap">
-                        {tool.title}
+      {/* Drawing Tools Container - Positioned absolutely within the chart container */}
+      <div className="absolute left-0 top-0 h-full z-30 flex items-center">
+        {/* Tools Panel - Only shown when expanded */}
+        {isExpanded && (
+          <div 
+            className="flex flex-col w-10 md:w-12 bg-gray-800/95 border-r border-gray-700/50 backdrop-blur-sm"
+            style={{ height: containerHeight }}
+          >
+            {/* Tools Section - Takes available space */}
+            <div className="flex-1 flex flex-col py-2 md:py-3">
+              <div className="flex flex-col items-center space-y-1 md:space-y-2">
+                {tools.map((tool) => (
+                  <button
+                    key={tool.id}
+                    onClick={() => {
+                      onToolSelect(tool.id);
+                      setShowTooltip(null);
+                    }}
+                    onMouseEnter={() => setShowTooltip(tool.id)}
+                    onMouseLeave={() => setShowTooltip(null)}
+                    className={`
+                      relative w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-md
+                      transition-all duration-150 hover:scale-105 active:scale-95
+                      ${activeTool === tool.id 
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20' 
+                        : 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/70 hover:text-white'
+                      }
+                    `}
+                    aria-label={tool.label}
+                  >
+                    <tool.icon className="w-3.5 h-3.5 md:w-4 md:h-4" strokeWidth={2} />
+                    
+                    {/* Tooltip - Hidden on mobile, shown on desktop */}
+                    {showTooltip === tool.id && (
+                      <div className="hidden md:block absolute left-full ml-2 top-1/2 transform -translate-y-1/2 z-50 pointer-events-none">
+                        <div className="bg-gray-900 text-white text-xs py-1 px-2 rounded shadow-lg whitespace-nowrap">
+                          {tool.title}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </button>
-              ))}
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Reset Button at Bottom */}
@@ -111,7 +144,7 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
                 onMouseEnter={() => setShowTooltip('reset')}
                 onMouseLeave={() => setShowTooltip(null)}
                 className={`
-                  relative w-8 h-8 mx-auto flex items-center justify-center rounded-md
+                  relative w-7 h-7 md:w-8 md:h-8 mx-auto flex items-center justify-center rounded-md
                   transition-all duration-150 hover:scale-105 active:scale-95
                   ${showResetConfirm 
                     ? 'bg-red-600/90 text-white animate-pulse' 
@@ -121,14 +154,14 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
                 aria-label="Reset settings"
               >
                 {showResetConfirm ? (
-                  <RotateCcw size={16} strokeWidth={2} className="animate-spin" />
+                  <RotateCcw className="w-3.5 h-3.5 md:w-4 md:h-4 animate-spin" strokeWidth={2} />
                 ) : (
-                  <Settings size={16} strokeWidth={2} />
+                  <Settings className="w-3.5 h-3.5 md:w-4 md:h-4" strokeWidth={2} />
                 )}
                 
-                {/* Tooltip */}
+                {/* Tooltip - Hidden on mobile, shown on desktop */}
                 {showTooltip === 'reset' && (
-                  <div className="absolute left-full ml-2 top-1/2 transform -translate-y-1/2 z-50 pointer-events-none">
+                  <div className="hidden md:block absolute left-full ml-2 top-1/2 transform -translate-y-1/2 z-50 pointer-events-none">
                     <div className="bg-gray-900 text-white text-xs py-1 px-2 rounded shadow-lg whitespace-nowrap">
                       {showResetConfirm ? 'Click to confirm reset' : 'Reset all settings'}
                     </div>
@@ -137,27 +170,27 @@ const DrawingTools: React.FC<DrawingToolsProps> = ({ onToolSelect, activeTool })
               </button>
             </div>
           </div>
-
-          {/* Collapse Button */}
-          <button
-            onClick={() => setIsExpanded(false)}
-            className="w-6 h-10 flex items-center justify-center bg-gray-800/90 hover:bg-gray-800 text-gray-400 hover:text-white rounded-r-md transition-colors self-center"
-            aria-label="Collapse drawing tools"
-          >
-            <ChevronLeft size={12} strokeWidth={2} />
-          </button>
-        </div>
-
-        {/* Small Trigger Button when collapsed */}
-        {!isExpanded && (
-          <button
-            onClick={() => setIsExpanded(true)}
-            className="w-6 h-10 flex items-center justify-center bg-gray-800/90 hover:bg-gray-800 text-gray-400 hover:text-white rounded-r-md shadow-lg transition-all hover:scale-105"
-            aria-label="Expand drawing tools"
-          >
-            <ChevronRight size={12} strokeWidth={2} />
-          </button>
         )}
+
+        {/* Single Trigger Button - Responsive sizing */}
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className={`
+            w-5 h-8 md:w-6 md:h-10 flex items-center justify-center
+            transition-all duration-200 hover:scale-105 active:scale-95
+            ${isExpanded 
+              ? 'bg-gray-800/90 hover:bg-gray-800 text-gray-400 hover:text-white rounded-r-md' 
+              : 'bg-gray-800/90 hover:bg-gray-800 text-gray-400 hover:text-white rounded-r-md shadow-lg'
+            }
+          `}
+          aria-label={isExpanded ? "Collapse drawing tools" : "Expand drawing tools"}
+        >
+          {isExpanded ? (
+            <ChevronLeft className="w-3 h-3 md:w-3.5 md:h-3.5" strokeWidth={2} />
+          ) : (
+            <ChevronRight className="w-3 h-3 md:w-3.5 md:h-3.5" strokeWidth={2} />
+          )}
+        </button>
       </div>
     </>
   );
