@@ -12,3 +12,10 @@ export enum ECandlesExchange {
     KUCOIN = "kucoin",
     BINANCE = "binance"
 }
+
+export enum ECandleWebsocketsChannel {
+    CANDLE = "candle",
+    TICKER = "ticker",
+    TRADE = "trade",
+    ORDERBOOK = "orderbook",
+}
