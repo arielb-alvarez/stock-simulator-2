@@ -16,6 +16,11 @@ export type TDataTradingCandles = {
 }
 
 export type TParamsTradingCandles = {
-    symbol: string, //example: btcusdt
+    symbol: string;       // symbol in lowercase, with '-' removed
+    interval?: ECandlesInterval;     // e.g., '1m', '5m', '1h', defaults to '1m'
+    exchange?: ECandlesExchange;     // lowercase, defaults to 'kucoin'
+    startTime?: number;   // optional, UNIX timestamp in ms
+    endTime?: number;     // optional, UNIX timestamp in ms
+    limit?: number;        // min 100, max 1000
 }
 
