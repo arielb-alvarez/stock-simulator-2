@@ -4,3 +4,7 @@ export enum EUserBroadcastingChannel {
     TRADE = "trade",
     ORDERBOOK = "orderbook",
 }
+
+export enum EUserBroadcastingAction {
+    SUBSCRIBE = "action"
+}

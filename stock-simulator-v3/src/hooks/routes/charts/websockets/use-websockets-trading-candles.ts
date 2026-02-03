@@ -1,5 +1,5 @@
 
-import { EUserBroadcastingChannel } from "@/enum/websockets/enum.user.broadcasting";
+import { EUserBroadcastingAction, EUserBroadcastingChannel } from "@/enum/websockets/enum.user.broadcasting";
 import { TParamsTradingCandles } from "@/types/services/dev-coin-user/types.candles";
 import { RefObject } from "react";
 
@@ -19,12 +19,12 @@ const useWebsocketsTradingCandles = ({ parameters, wsRef }: Props) => {
             console.log("You are subscribing to this channel", channel);
 
             const subscriptionMessage: {
-                action: "subscribe",
+                action: EUserBroadcastingAction.SUBSCRIBE,
                 data: {
                     channel: string
                 }
             } = {
-                action: "subscribe",
+                action: EUserBroadcastingAction.SUBSCRIBE,
                 data: {
                     channel
                 }
