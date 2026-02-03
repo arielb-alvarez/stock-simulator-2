@@ -43,3 +43,12 @@ const useTradingCandlesStats = ({ symbol }: Pick<TParamsTradingCandlesStats, "sy
 }
 
 export default useTradingCandlesStats;
+
+export const MOCK_DATA_useTradingCandlesStats: TDataTradingCandlesStats = {
+    open: 50000,    // opening price
+    close: 50500,   // closing price
+    high: 50750,    // highest price
+    low: 49850,     // lowest price
+    volume: 1234.56, // total traded volume
+    count: 150      // number of trades in the interval
+};

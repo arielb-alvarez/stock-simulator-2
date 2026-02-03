@@ -43,3 +43,12 @@ const useTradingCandlesLatest = ({ symbol }: Pick<TParamsTradingCandlesLatest, "
 }
 
 export default useTradingCandlesLatest;
+
+export const MOCK_DATA_useTradingCandlesLatest: TDataTradingCandlesLatest = {
+    timestamp: 1675305600000,
+    open: 50000,
+    high: 50500,
+    low: 49850,
+    close: 50200,
+    volume: 120.5
+}
