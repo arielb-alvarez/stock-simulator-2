@@ -23,7 +23,7 @@ const useTradingCandlesLatest = ({ symbol }: Pick<TParamsTradingCandlesLatest, "
         }
         catch (error) {
             console.error(error);
-            throw error
+            return;
         }
         finally {
             setLoading(false);
