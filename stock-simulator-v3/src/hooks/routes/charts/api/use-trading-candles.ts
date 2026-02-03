@@ -2,10 +2,12 @@
 import LOCAL_SERVICES from "@/constant/constant.local.service";
 import { ECandlesExchange, ECandlesInterval } from "@/enum/services/dev-coin-user/enum.candles";
 import { TDataTradingCandles, TParamsTradingCandles } from "@/types/services/dev-coin-user/types.candles";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import useWebsocketsTradingCandles from "../websockets/use-websockets-trading-candles";
 
 const useTradingCandles = ({ symbol }: Pick<TParamsTradingCandles, "symbol">) => {
 
+    const WS_REF = useRef<WebSocket | null>(null);
     const [params, setParams] = useState<Omit<TParamsTradingCandles, "symbol">>({
         interval: ECandlesInterval.ONE_MINUTE,
         exchange: ECandlesExchange.KUCOIN,
@@ -13,6 +15,7 @@ const useTradingCandles = ({ symbol }: Pick<TParamsTradingCandles, "symbol">) =>
         endTime: undefined,
         limit: 100
     })
+
 
     const [loading, setLoading] = useState<boolean>(true);
     const [data, setData] = useState<TDataTradingCandles[]>([]);
@@ -33,10 +36,25 @@ const useTradingCandles = ({ symbol }: Pick<TParamsTradingCandles, "symbol">) =>
         }
     }
 
+    const {
+        WS_CONNECT
+    } = useWebsocketsTradingCandles({
+        parameters: {
+            symbol,
+            interval: params.interval
+        },
+        wsRef: WS_REF
+    })
+
     useEffect(() => {
         if (!symbol) return;
         getTradingCandles();
     }, [params]);
+
+    useEffect(() => {
+        if (!symbol) return;
+        WS_CONNECT();
+    }, []);
 
     return {
         data,
