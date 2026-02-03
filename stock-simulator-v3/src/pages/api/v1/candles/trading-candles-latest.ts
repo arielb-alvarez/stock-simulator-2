@@ -10,7 +10,7 @@ export default async function handler(
 ) {
     try {
         if (req.method !== "POST") throw new Error("Method Not Allowed");
-        const response = await MAIN_SERVICES.mainCandleService.mainGetCandleSymbol(
+        const response = await MAIN_SERVICES.mainCandleService.mainGetCandleSymbolLatest(
             {
                 data: req?.body as TParamsTradingCandlesLatest,
                 // config: req.headers

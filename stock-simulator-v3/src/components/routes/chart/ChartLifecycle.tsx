@@ -7,6 +7,8 @@ import { useWebSocket } from '@/hooks/routes/charts/useWebSocket';
 import { useDrawingTools } from '@/hooks/routes/charts/useDrawingTools';
 import { AuthState } from './ChartAuth';
 import useTradingCandles from '@/hooks/routes/charts/api/use-trading-candles';
+import useTradingCandlesLatest from '@/hooks/routes/charts/api/use-trading-candles-latest';
+import useTradingCandlesStats from '@/hooks/routes/charts/api/use-trading-candles-stats';
 
 export interface LifecycleState {
   chartContainerRef: React.RefObject<HTMLDivElement>;
@@ -52,6 +54,7 @@ export default function ChartLifecycle({
     symbol: currentSymbol
   });
 
+
   const cleanupRequestedRef = useRef(false);
   const chartInstanceRef = useRef<any>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
@@ -72,15 +75,15 @@ export default function ChartLifecycle({
     cleanup: chartCleanup,
   } = useChart();
 
-  const { setupWebSocket } = useWebSocket(
-    chartRef,
-    currentDataRef,
-    currentSymbol,
-    config.interval,
-    setLastUpdateTime,
-    setError,
-    updateChartWithData
-  );
+  // const { setupWebSocket } = useWebSocket(
+  //   chartRef,
+  //   currentDataRef,
+  //   currentSymbol,
+  //   config.interval,
+  //   setLastUpdateTime,
+  //   setError,
+  //   updateChartWithData
+  // );
 
   const { activeDrawingTool, handleDrawingToolSelect } = useDrawingTools(chartRef);
 
@@ -170,7 +173,7 @@ export default function ChartLifecycle({
       setIsChartReady(true);
 
       // Setup WebSocket for real-time updates
-      setupWebSocket();
+      // setupWebSocket();
 
     } catch (err) {
       console.error('Chart initialization error:', err);
@@ -186,7 +189,7 @@ export default function ChartLifecycle({
     authState.isLoadingAuth,
     initializeChart,
     chartCleanup,
-    setupWebSocket,
+    // setupWebSocket,
     updateChartWithData,
     tradingCandles,
   ]);
