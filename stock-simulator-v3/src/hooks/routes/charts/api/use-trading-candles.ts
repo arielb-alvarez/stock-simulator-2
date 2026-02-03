@@ -36,7 +36,7 @@ const useTradingCandles = ({ symbol }: Pick<TParamsTradingCandles, "symbol">) =>
     useEffect(() => {
         if (!symbol) return;
         getTradingCandles();
-    }, []);
+    }, [params]);
 
     return {
         data,
