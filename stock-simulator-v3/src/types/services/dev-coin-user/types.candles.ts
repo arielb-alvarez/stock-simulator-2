@@ -24,3 +24,34 @@ export type TParamsTradingCandles = {
     limit?: number;        // min 100, max 1000
 }
 
+
+export type TDataTradingCandlesStats = {
+    open: number,
+    close: number,
+    high: number,
+    low: number,
+    volume: number,
+    count: number
+}
+
+export type TDataTradingCandlesLatest = {
+    timestamp: number,
+    open: number,
+    high: number,
+    low: number,
+    close: number,
+    volume: number,
+}
+
+export type TParamsTradingCandlesLatest = {
+    symbol: string;
+    interval?: ECandlesInterval;     // e.g., '1m', '5m', '1h', defaults to '1m'
+    exchange?: ECandlesExchange;     // lowercase, defaults to 'kucoin'
+}
+
+export type TParamsTradingCandlesStats = {
+    symbol: string;
+    interval?: ECandlesInterval;     // e.g., '1m', '5m', '1h', defaults to '1m'
+    exchange?: ECandlesExchange;     // lowercase, defaults to 'kucoin'
+}
+

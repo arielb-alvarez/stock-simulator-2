@@ -1,7 +1,7 @@
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import MAIN_SERVICES from "@/constant/constant.main.service";
 import { ERROR_RESPONSE } from "@/services/dev-coin-user/main/services.main";
-import { TParamsTradingCandles } from "@/types/services/dev-coin-user/types.candles";
+import { TParamsTradingCandlesStats } from "@/types/services/dev-coin-user/types.candles";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export default async function handler(
@@ -12,7 +12,7 @@ export default async function handler(
         if (req.method !== "POST") throw new Error("Method Not Allowed");
         const response = await MAIN_SERVICES.mainCandleService.mainGetCandleSymbol(
             {
-                data: req?.body as TParamsTradingCandles,
+                data: req?.body as TParamsTradingCandlesStats,
                 // config: req.headers
                 // config: getRequestConfig(req)
             })

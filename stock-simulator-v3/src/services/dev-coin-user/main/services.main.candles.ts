@@ -1,6 +1,6 @@
 import { AxiosResponse } from "axios";
 import MainService from "./services.main";
-import { TParamsTradingCandles, TResponseCandles, TDataTradingCandles } from "@/types/services/dev-coin-user/types.candles";
+import { TParamsTradingCandles, TResponseCandles, TDataTradingCandles, TParamsTradingCandlesStats, TDataTradingCandlesStats, TDataTradingCandlesLatest } from "@/types/services/dev-coin-user/types.candles";
 
 type CandleResponse<T = undefined> = Promise<AxiosResponse<TResponseCandles<T>>>
 
@@ -12,7 +12,7 @@ class MainCandleService extends MainService {
         super();
     }
 
-    public async mainCandleService({
+    public async mainGetCandleSymbol({
         data
     }: {
         data: TParamsTradingCandles
@@ -33,6 +33,34 @@ class MainCandleService extends MainService {
             throw error
         }
     }
+
+    public async mainGetCandleSymbolStats({
+        data
+    }: {
+        data: TParamsTradingCandlesStats
+    }): CandleResponse<TDataTradingCandlesStats> {
+        const query = new URLSearchParams();
+        if (data?.interval) query.append("interval", data?.interval);
+        if (data?.exchange) query.append("exchange", data?.exchange);
+
+        const endpoint: string = `/${data?.symbol}/stats?${query}`
+        return await this.client.get(MAIN_API_URL_TEMPLATE + endpoint);
+    }
+
+
+    public async mainGetCandleSymbolLatest({
+        data
+    }: {
+        data: TParamsTradingCandlesStats
+    }): CandleResponse<TDataTradingCandlesLatest> {
+        const query = new URLSearchParams();
+        if (data?.interval) query.append("interval", data?.interval);
+        if (data?.exchange) query.append("exchange", data?.exchange);
+
+        const endpoint: string = `/${data?.symbol}/latest?${query}`
+        return await this.client.get(MAIN_API_URL_TEMPLATE + endpoint);
+    }
+
 }
 
 const mainCandleService = new MainCandleService();

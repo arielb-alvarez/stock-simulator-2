@@ -1,26 +1,23 @@
 // hooks/routes/charts/api/use-trading-candles.ts
 import LOCAL_SERVICES from "@/constant/constant.local.service";
 import { ECandlesExchange, ECandlesInterval } from "@/enum/services/dev-coin-user/enum.candles";
-import { TDataTradingCandles, TParamsTradingCandles } from "@/types/services/dev-coin-user/types.candles";
+import { TDataTradingCandlesLatest, TParamsTradingCandlesLatest } from "@/types/services/dev-coin-user/types.candles";
 import { useEffect, useState } from "react";
 
-const useTradingCandles = ({ symbol }: Pick<TParamsTradingCandles, "symbol">) => {
+const useTradingCandlesLatest = ({ symbol }: Pick<TParamsTradingCandlesLatest, "symbol">) => {
 
-    const [params, setParams] = useState<Omit<TParamsTradingCandles, "symbol">>({
+    const [params, setParams] = useState<Omit<TParamsTradingCandlesLatest, "symbol">>({
         interval: ECandlesInterval.ONE_MINUTE,
         exchange: ECandlesExchange.KUCOIN,
-        startTime: undefined,
-        endTime: undefined,
-        limit: 100
     })
 
     const [loading, setLoading] = useState<boolean>(true);
-    const [data, setData] = useState<TDataTradingCandles[]>([]);
+    const [data, setData] = useState<TDataTradingCandlesLatest | undefined>(undefined);
 
-    const getTradingCandles = async () => {
+    const getTradingCandlesLatest = async () => {
         setLoading(true);
         try {
-            const response = await LOCAL_SERVICES.localCandleService.localGetCandleSymbol({ symbol, ...params });
+            const response = await LOCAL_SERVICES.localCandleService.localGetCandleSymbolLatest({ symbol, ...params });
             if (!response?.success) throw new Error();
             setData(response?.data)
         }
@@ -35,7 +32,7 @@ const useTradingCandles = ({ symbol }: Pick<TParamsTradingCandles, "symbol">) =>
 
     useEffect(() => {
         if (!symbol) return;
-        getTradingCandles();
+        getTradingCandlesLatest();
     }, [params]);
 
     return {
@@ -45,4 +42,4 @@ const useTradingCandles = ({ symbol }: Pick<TParamsTradingCandles, "symbol">) =>
     }
 }
 
-export default useTradingCandles;
+export default useTradingCandlesLatest;
