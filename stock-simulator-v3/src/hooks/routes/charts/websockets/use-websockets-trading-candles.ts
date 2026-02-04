@@ -1,7 +1,9 @@
 
 import { EUserBroadcastingAction, EUserBroadcastingChannel } from "@/enum/websockets/enum.user.broadcasting";
-import { TParamsTradingCandles } from "@/types/services/dev-coin-user/types.candles";
+import { TDataCandlesWebsockets, TParamsTradingCandles } from "@/types/services/dev-coin-user/types.candles";
 import { RefObject } from "react";
+import { marketdata } from '@/proto/candles';
+
 
 const useWebsocketsTradingCandles = ({ parameters, wsRef }: Props) => {
     const WS_TRADING_CANDLES_URL: string | undefined = process.env.NEXT_PUBLIC_USER_BROADCASTING;
@@ -52,7 +54,23 @@ const useWebsocketsTradingCandles = ({ parameters, wsRef }: Props) => {
             ws.onmessage = (event) => {
                 try {
                     const data = event?.data;
-                    console.log("event11111", data)
+                    if(data instanceof ArrayBuffer){
+
+                        const bytes = new Uint8Array(data);
+                        const DecodedMessage = marketdata.CandleMessage.decode(bytes);
+                        const OpenBytes = DecodedMessage.open;
+
+                        const encoder = new TextEncoder();
+                        const candleBytes = encoder.encode(OpenBytes);
+                        let CandleDecodeMessage = marketdata.CandleMessage.decode(candleBytes) as TDataCandlesWebsockets;
+                        if(CandleDecodeMessage?.interval || CandleDecodeMessage?.interval?.length === 0){
+                            CandleDecodeMessage = {
+                                ...CandleDecodeMessage,
+                                interval: parameters?.interval as string
+                            }
+                        }
+                        console.log("Candle Decode Message", CandleDecodeMessage);                        
+                    }
                 }
                 catch (error) {
                     console.error("failed to capture event", error);

@@ -55,3 +55,17 @@ export type TParamsTradingCandlesStats = {
     exchange?: ECandlesExchange;     // lowercase, defaults to 'kucoin'
 }
 
+export type TDataCandlesWebsockets = {
+    close: string,
+    header: {
+        exchange: string,
+        symbol: string,
+        timestamp: number,
+    },
+    high: string,
+    interval: string,
+    low: string,
+    open: string,
+    trades: number,
+    volume: string
+}

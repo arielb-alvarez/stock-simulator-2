@@ -1,3 +1,10 @@
+PROTO WEBSOCKETS
+
+0. Insert proto files inside root/proto
+1. mkdir -p src/proto
+2. npx pbjs -p proto -t static-module -w es6 -o src/proto/candles.js proto/candles.proto
+3. npx pbts -o src/proto/candles.d.ts src/proto/candles.js
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/pages/api-reference/create-next-app).
 
 ## Getting Started
