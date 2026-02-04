@@ -6,5 +6,5 @@ export enum EUserBroadcastingChannel {
 }
 
 export enum EUserBroadcastingAction {
-    SUBSCRIBE = "action"
+    SUBSCRIBE = "subscribe"
 }
