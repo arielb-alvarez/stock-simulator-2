@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package marketdata;
+
+// 주문서 레벨 (가격, 수량)
+message OrderBookLevel {
+  double price = 1;
+  double quantity = 2;
+}
+
+// 공통 메시지 헤더
+message MessageHeader {
+  string exchange = 1;        // 거래소 이름 (예: "kucoin")
+  int64 timestamp = 2;         // 타임스탬프
+  string symbol = 3;          // 심볼 (예: "btc-usdt")
+}
+
+// Ticker 메시지
+message TickerMessage {
+  MessageHeader header = 1;
+  // Ticker 관련 필드 추가 가능
+}
+
+// Trade 메시지
+message TradeMessage {
+  MessageHeader header = 1;
+  string price = 2;           // 거래 가격
+  int32 side = 3;             // 거래 방향 (1=매수, 2=매도)
+  string size = 4;            // 거래 수량
+  string trade_id = 5;         // 거래 ID
+}
+
+// OrderBook 메시지
+message OrderBookMessage {
+  MessageHeader header = 1;
+  repeated OrderBookLevel bids = 2;  // 매수 주문 배열
+  repeated OrderBookLevel asks = 3;  // 매도 주문 배열
+}
+
+// Candle/Kline 메시지
+message CandleMessage {
+  MessageHeader header = 1;
+  string interval = 2;        // 캔들 간격 (예: "1h", "5m", "15m", "1d")
+  int64 open_time = 3;        // 캔들 시작 시간 (Unix timestamp in milliseconds)
+  int64 close_time = 4;       // 캔들 종료 시간 (Unix timestamp in milliseconds)
+  string open = 5;            // 시가
+  string high = 6;            // 고가
+  string low = 7;             // 저가
+  string close = 8;           // 종가
+  string volume = 9;          // 거래량
+  int64 trades = 10;          // 거래 건수
+}
+
+// 통합 시장 데이터 메시지 (oneof 사용)
+message MarketDataMessage {
+  MessageHeader header = 1;
+  
+  oneof message_type {
+    TickerMessage ticker = 2;
+    TradeMessage trade = 3;
+    OrderBookMessage orderbook = 4;
+    CandleMessage candle = 5;
+  }
+  
+  bytes extra_data = 6;        // 추가 데이터 (JSON 인코딩)
+}

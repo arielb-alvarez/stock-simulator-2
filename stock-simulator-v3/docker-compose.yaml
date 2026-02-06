@@ -1,0 +1,26 @@
+version: '3'
+services:
+  web:
+    image: coin-betting-user
+    container_name: container-coin-betting-user
+    ports:
+      - '3000:3000'
+    volumes:
+      - '.:/app'
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - network-coin-betting-user
+      
+    develop:
+      watch:
+        - path: ./package.json
+          action: rebuild
+        - path: ./package-lock.json
+          action: rebuild
+
+networks:
+  network-coin-betting-user:
+    driver: bridge
+
+    #need to create your network first
