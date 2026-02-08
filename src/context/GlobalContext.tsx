@@ -22,8 +22,8 @@ const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 
 export function GlobalProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<GlobalConfig>(() => {
-    const storedConfig = loadConfigFromStorage();
-    return storedConfig || defaultConfig;
+    // This will now handle all migration cases
+    return loadConfigFromStorage();
   });
 
   useEffect(() => {

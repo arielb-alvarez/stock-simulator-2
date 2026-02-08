@@ -21,6 +21,25 @@ interface IndicatorsDialogProps {
   onClose: () => void;
 }
 
+// Default indicators structure to prevent undefined errors
+const defaultIndicators = {
+  rsi: [],
+  mfi: [],
+  volume: [],
+  ma: [],
+  ema: [],
+  wma: [],
+  bb: [],
+  vwap: [],
+  avl: [],
+  sar: [],
+  trix: [],
+  supertrend: [],
+  kdj: [],
+  emv: [],
+  mtm: []
+};
+
 export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   isOpen,
   onClose,
@@ -28,6 +47,15 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   const [activeTab, setActiveTab] = useState<'main' | 'sub'>('main');
   const [activeSubMenu, setActiveSubMenu] = useState<string>('ma');
   
+  // Get context with safety check
+  const context = useGlobalContext();
+  
+  // Check if context is available
+  if (!context) {
+    console.error('GlobalContext is not available');
+    return null;
+  }
+
   const {
     config,
     updateRSI,
@@ -62,9 +90,34 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     toggleEMV,
     updateMTM,
     toggleMTM
-  } = useGlobalContext();
+  } = context;
 
   if (!isOpen) return null;
+
+  // Check if config is available
+  if (!config) {
+    return (
+      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm p-2 sm:p-4">
+        <div className="bg-gray-800 rounded-xl w-full max-w-[680px] h-full max-h-[90vh] sm:max-h-[85vh] flex flex-col border border-gray-600 shadow-2xl">
+          <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-700">
+            <h2 className="text-base sm:text-lg font-semibold text-white">Indicators</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white transition-colors text-lg p-1 rounded hover:bg-gray-700"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-gray-400">Loading configuration...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Safely get indicators with fallback
+  const indicators = config?.indicators || defaultIndicators;
 
   // RSI Handlers
   const handleToggleRSI = (rsiId: string) => {
@@ -83,7 +136,7 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     updateRSI(rsiId, { lineColor });
   };
 
-  // Add MFI handlers
+  // MFI handlers
   const handleToggleMFI = (mfiId: string) => {
     toggleMFI(mfiId);
   };
@@ -261,7 +314,7 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     updateTRIX(trixId, { color });
   };
 
-  // Add handler functions for Supertrend
+  // Supertrend handlers with safe access
   const handleToggleSupertrend = (supertrendId: string) => {
     toggleSupertrend(supertrendId);
   };
@@ -275,47 +328,62 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   };
 
   const handleUpLineWidthChange = (supertrendId: string, lineWidth: number) => {
+    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
+    if (!supertrend) return;
+    
     updateSupertrend(supertrendId, { 
       upTrend: { 
-        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend,
+        ...supertrend.upTrend,
         lineWidth: Math.max(0.5, Math.min(5, lineWidth)) 
       } 
     });
   };
 
   const handleDownLineWidthChange = (supertrendId: string, lineWidth: number) => {
+    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
+    if (!supertrend) return;
+    
     updateSupertrend(supertrendId, { 
       downTrend: { 
-        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend,
+        ...supertrend.downTrend,
         lineWidth: Math.max(0.5, Math.min(5, lineWidth)) 
       } 
     });
   };
 
   const handleUpLineColorChange = (supertrendId: string, color: string) => {
+    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
+    if (!supertrend) return;
+    
     updateSupertrend(supertrendId, { 
       upTrend: { 
-        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend,
+        ...supertrend.upTrend,
         lineColor: color
       } 
     });
   };
 
   const handleDownLineColorChange = (supertrendId: string, color: string) => {
+    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
+    if (!supertrend) return;
+    
     updateSupertrend(supertrendId, { 
       downTrend: { 
-        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend,
+        ...supertrend.downTrend,
         lineColor: color
       } 
     });
   };
 
   const handleUpBackgroundToggle = (supertrendId: string, show: boolean) => {
+    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
+    if (!supertrend) return;
+    
     updateSupertrend(supertrendId, { 
       upTrend: { 
-        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend,
+        ...supertrend.upTrend,
         background: { 
-          ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend.background,
+          ...(supertrend.upTrend?.background || { show: false, color: '#00FF0010' }),
           show 
         }
       } 
@@ -323,11 +391,14 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   };
 
   const handleDownBackgroundToggle = (supertrendId: string, show: boolean) => {
+    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
+    if (!supertrend) return;
+    
     updateSupertrend(supertrendId, { 
       downTrend: { 
-        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend,
+        ...supertrend.downTrend,
         background: { 
-          ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend.background,
+          ...(supertrend.downTrend?.background || { show: false, color: '#FF000010' }),
           show 
         }
       } 
@@ -335,11 +406,14 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   };
 
   const handleUpBackgroundColorChange = (supertrendId: string, color: string) => {
+    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
+    if (!supertrend) return;
+    
     updateSupertrend(supertrendId, { 
       upTrend: { 
-        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend,
+        ...supertrend.upTrend,
         background: { 
-          ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend.background,
+          ...(supertrend.upTrend?.background || { show: false, color: '#00FF0010' }),
           color 
         }
       } 
@@ -347,18 +421,21 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
   };
 
   const handleDownBackgroundColorChange = (supertrendId: string, color: string) => {
+    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
+    if (!supertrend) return;
+    
     updateSupertrend(supertrendId, { 
       downTrend: { 
-        ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend,
+        ...supertrend.downTrend,
         background: { 
-          ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend.background,
+          ...(supertrend.downTrend?.background || { show: false, color: '#FF000010' }),
           color 
         }
       } 
     });
   };
 
-  // Add KDJ handlers
+  // KDJ handlers
   const handleToggleKDJ = (kdjId: string) => {
     toggleKDJ(kdjId);
   };
@@ -526,9 +603,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
 
               {/* Content Area */}
               <div className="flex-1 p-3 sm:p-4 overflow-y-auto">
-                {activeSubMenu === 'ma' && (
+                {activeSubMenu === 'ma' && indicators.ma && (
                   <CompactMAConfig
-                    configs={config.indicators.ma}
+                    configs={indicators.ma}
                     title="Moving Average"
                     onToggle={handleToggleMA}
                     onPeriodChange={handlePeriodChangeMA}
@@ -537,9 +614,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                   />
                 )}
 
-                {activeSubMenu === 'ema' && (
+                {activeSubMenu === 'ema' && indicators.ema && (
                   <CompactMAConfig
-                    configs={config.indicators.ema}
+                    configs={indicators.ema}
                     title="Exponential MA"
                     onToggle={handleToggleEMA}
                     onPeriodChange={handlePeriodChangeEMA}
@@ -548,9 +625,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                   />
                 )}
 
-                {activeSubMenu === 'wma' && (
+                {activeSubMenu === 'wma' && indicators.wma && (
                   <CompactMAConfig
-                    configs={config.indicators.wma}
+                    configs={indicators.wma}
                     title="Weighted MA"
                     onToggle={handleToggleWMA}
                     onPeriodChange={handlePeriodChangeWMA}
@@ -559,9 +636,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                   />
                 )}
 
-                {activeSubMenu === 'bb' && (
+                {activeSubMenu === 'bb' && indicators.bb && (
                   <CompactBBConfig
-                    bbConfigs={config.indicators.bb}
+                    bbConfigs={indicators.bb}
                     onToggle={handleToggleBB}
                     onPeriodChange={handlePeriodChangeBB}
                     onStdDevChange={handleStdDevChangeBB}
@@ -569,9 +646,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                   />
                 )}
 
-                {activeSubMenu === 'vwap' && (
+                {activeSubMenu === 'vwap' && indicators.vwap && (
                   <CompactVWAPConfig
-                    vwapConfigs={config.indicators.vwap}
+                    vwapConfigs={indicators.vwap}
                     onToggle={handleToggleVWAP}
                     onLengthChange={handleLengthChangeVWAP}
                     onLineSizeChange={handleLineSizeChangeVWAP}
@@ -579,9 +656,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                   />
                 )}
 
-                {activeSubMenu === 'avl' && (
+                {activeSubMenu === 'avl' && indicators.avl && (
                   <CompactAVLConfig
-                    configs={config.indicators.avl}
+                    configs={indicators.avl}
                     title="Average Value Line"
                     onToggle={handleToggleAVL}
                     onPeriodChange={handlePeriodChangeAVL}
@@ -590,9 +667,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                   />
                 )}
 
-                {activeSubMenu === 'sar' && (
+                {activeSubMenu === 'sar' && indicators.sar && (
                   <CompactSARConfig
-                    sarConfigs={config.indicators.sar}
+                    sarConfigs={indicators.sar}
                     onToggle={handleToggleSAR}
                     onStartChange={handleStartChangeSAR}
                     onMaximumChange={handleMaximumChangeSAR}
@@ -600,9 +677,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                   />
                 )}
 
-                {activeSubMenu === 'trix' && (
+                {activeSubMenu === 'trix' && indicators.trix && (
                   <CompactTRIXConfig
-                    trixConfigs={config.indicators.trix}
+                    trixConfigs={indicators.trix}
                     onToggle={handleToggleTRIX}
                     onPeriodChange={handlePeriodChangeTRIX}
                     onLineSizeChange={handleLineSizeChangeTRIX}
@@ -610,9 +687,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                   />
                 )}
 
-                {activeSubMenu === 'supertrend' && (
+                {activeSubMenu === 'supertrend' && indicators.supertrend && (
                   <CompactSupertrendConfig
-                    supertrendConfigs={config.indicators.supertrend}
+                    supertrendConfigs={indicators.supertrend}
                     onToggle={handleToggleSupertrend}
                     onATRLengthChange={handleATRLengthChange}
                     onFactorChange={handleFactorChange}
@@ -662,27 +739,27 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
 
               {/* Content Area */}
               <div className="flex-1 p-3 sm:p-4 overflow-y-auto">
-                {activeSubMenu === 'rsi' && (
+                {activeSubMenu === 'rsi' && indicators.rsi && (
                   <CompactRSIConfig
-                    rsiConfigs={config.indicators.rsi}
+                    rsiConfigs={indicators.rsi}
                     onToggle={handleToggleRSI}
                     onPeriodChange={handlePeriodChangeRSI}
                     onLineSizeChange={handleLineSizeChangeRSI}
                     onColorChange={handleColorChangeRSI}
                   />
                 )}
-                {activeSubMenu === 'mfi' && ( // Add this
+                {activeSubMenu === 'mfi' && indicators.mfi && (
                   <CompactMFIConfig
-                    mfiConfigs={config.indicators.mfi}
+                    mfiConfigs={indicators.mfi}
                     onToggle={handleToggleMFI}
                     onPeriodChange={handlePeriodChangeMFI}
                     onLineSizeChange={handleLineSizeChangeMFI}
                     onColorChange={handleColorChangeMFI}
                   />
                 )}
-                {activeSubMenu === 'volume' && (
+                {activeSubMenu === 'volume' && indicators.volume && (
                   <CompactVolumeConfig
-                    volumeConfigs={config.indicators.volume}
+                    volumeConfigs={indicators.volume}
                     onToggle={handleToggleVolume}
                     onNameChange={handleNameChangeVolume}
                     onUpColorChange={handleUpColorChange}
@@ -692,9 +769,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                     onToggleVolumeMA={handleToggleVolumeMA}
                   />
                 )}
-                {activeSubMenu === 'kdj' && (
+                {activeSubMenu === 'kdj' && indicators.kdj && (
                   <CompactKDJConfig
-                    kdjConfigs={config.indicators.kdj}
+                    kdjConfigs={indicators.kdj}
                     onToggle={handleToggleKDJ}
                     onPeriodChange={handlePeriodChangeKDJ}
                     onKPeriodChange={handleKPeriodChange}
@@ -709,9 +786,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                     onOversoldChange={handleOversoldChangeKDJ}
                   />
                 )}
-                {activeSubMenu === 'emv' && (
+                {activeSubMenu === 'emv' && indicators.emv && (
                   <CompactEMVConfig
-                    emvConfigs={config.indicators.emv}
+                    emvConfigs={indicators.emv}
                     onToggle={handleToggleEMV}
                     onPeriodChange={handlePeriodChangeEMV}
                     onDivisorChange={handleDivisorChange}
@@ -719,9 +796,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                     onColorChange={handleColorChangeEMV}
                   />
                 )}
-                {activeSubMenu === 'mtm' && (
+                {activeSubMenu === 'mtm' && indicators.mtm && (
                   <CompactMTMConfig
-                    mtmConfigs={config.indicators.mtm}
+                    mtmConfigs={indicators.mtm}
                     onToggle={handleToggleMTM}
                     onPeriodChange={handlePeriodChangeMTM}
                     onPriceTypeChange={handlePriceTypeChangeMTM}
