@@ -11,16 +11,49 @@ import { IndicatorsDialog } from './indicators/IndicatorsDialog';
 import { TimeFrameSelector } from './TimeFrameSelector';
 
 export default function ChartControls() {
-  const { config, updateConfig, updateChartType } = useGlobalContext();
+  const context = useGlobalContext();
+  
+  // Check if context is available
+  if (!context) {
+    console.error('GlobalContext is not available');
+    return (
+      <div className="chart-controls p-1 border-b border-gray-700">
+        <div className="flex items-center gap-4">
+          <div className="h-10 w-24 bg-gray-700/50 animate-pulse rounded-md"></div>
+          <div className="h-10 w-24 bg-gray-700/50 animate-pulse rounded-md"></div>
+          <div className="h-10 w-10 bg-gray-700/50 animate-pulse rounded-md"></div>
+        </div>
+      </div>
+    );
+  }
+
+  const { config, updateConfig, updateChartType } = context;
   const [isIndicatorsOpen, setIsIndicatorsOpen] = useState(false);
   
+  // Check if config exists before using it
+  if (!config) {
+    return (
+      <div className="chart-controls p-1 border-b border-gray-700">
+        <div className="flex items-center gap-4">
+          <div className="h-10 w-24 bg-gray-700/50 animate-pulse rounded-md"></div>
+          <div className="h-10 w-24 bg-gray-700/50 animate-pulse rounded-md"></div>
+          <div className="h-10 w-10 bg-gray-700/50 animate-pulse rounded-md"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Provide default values if they don't exist
+  const interval = config.interval || '1m';
+  const chartType = config.chartType || 'candlestick';
+
   const {
     pinnedTimeFrames,
     isCurrentTimeFramePinned,
     getDisplayTimeFrames,
     getAvailableTimeFrames,
     togglePinnedTimeFrame
-  } = usePinnedTimeFrames(config.interval);
+  } = usePinnedTimeFrames(interval);
 
   const {
     isOpen: isChartTypeOpen,
@@ -35,11 +68,15 @@ export default function ChartControls() {
   } = useDropdown();
 
   const handleChartTypeChange = (chartType: ChartType) => {
-    updateChartType(chartType);
+    if (updateChartType) {
+      updateChartType(chartType);
+    }
   };
 
   const handleTimeFrameChange = (timeFrame: string) => {
-    updateConfig({ interval: timeFrame });
+    if (updateConfig) {
+      updateConfig({ ...config, interval: timeFrame });
+    }
   }
 
   return (
@@ -50,7 +87,7 @@ export default function ChartControls() {
             isOpen={isTimeFrameOpen}
             onToggle={toggleTimeFrame}
             ref={timeFrameRef}
-            currentInterval={config.interval}
+            currentInterval={interval}
             pinnedTimeFrames={pinnedTimeFrames}
             isCurrentTimeFramePinned={isCurrentTimeFramePinned}
             displayTimeFrames={getDisplayTimeFrames()}
@@ -63,7 +100,7 @@ export default function ChartControls() {
             isOpen={isChartTypeOpen}
             onToggle={toggleChartType}
             ref={chartTypeRef}
-            currentChartType={config.chartType}
+            currentChartType={chartType}
             onChartTypeChange={handleChartTypeChange}
           />
 
