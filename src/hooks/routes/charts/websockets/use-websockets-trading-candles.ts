@@ -1,11 +1,11 @@
 
 import { EUserBroadcastingAction, EUserBroadcastingChannel } from "@/enum/websockets/enum.user.broadcasting";
-import { TDataCandlesWebsockets, TParamsTradingCandles } from "@/types/services/dev-coin-user/types.candles";
+import { TDataCandlesWebsockets, TDataTradingCandles, TParamsTradingCandles } from "@/types/services/dev-coin-user/types.candles";
 import { RefObject } from "react";
 import { marketdata } from '@/proto/candles';
 
 
-const useWebsocketsTradingCandles = ({ parameters, wsRef }: Props) => {
+const useWebsocketsTradingCandles = ({ parameters, wsRef, wsQueueRef }: Props) => {
     const WS_TRADING_CANDLES_URL: string | undefined = process.env.NEXT_PUBLIC_USER_BROADCASTING;
     const WS_CONNECT = () => {
         try {
@@ -57,19 +57,16 @@ const useWebsocketsTradingCandles = ({ parameters, wsRef }: Props) => {
                     if(data instanceof ArrayBuffer){
 
                         const bytes = new Uint8Array(data);
-                        const DecodedMessage = marketdata.CandleMessage.decode(bytes);
-                        const OpenBytes = DecodedMessage.open;
-
-                        const encoder = new TextEncoder();
-                        const candleBytes = encoder.encode(OpenBytes);
-                        let CandleDecodeMessage = marketdata.CandleMessage.decode(candleBytes) as TDataCandlesWebsockets;
-                        if(CandleDecodeMessage?.interval || CandleDecodeMessage?.interval?.length === 0){
-                            CandleDecodeMessage = {
-                                ...CandleDecodeMessage,
-                                interval: parameters?.interval as string
-                            }
+                        const DecodedMessage = marketdata.MarketDataMessage.decode(bytes);
+                        const transformedMessage: TDataTradingCandles = {
+                            timestamp: DecodedMessage?.header?.timestamp,
+                            open: Number(DecodedMessage?.candle?.open || 0),
+                            high: Number(DecodedMessage?.candle?.high),
+                            low: Number(DecodedMessage?.candle?.low),
+                            close: Number(DecodedMessage?.candle?.close || 0),
+                            volume: Number(DecodedMessage?.candle?.volume)
                         }
-                        console.log("Candle Decode Message", CandleDecodeMessage);                        
+                        wsQueueRef.current.push(transformedMessage);                      
                     }
                 }
                 catch (error) {
@@ -95,5 +92,5 @@ export default useWebsocketsTradingCandles;
 type Props = {
     parameters: Pick<TParamsTradingCandles, "symbol" | "interval">;
     wsRef: RefObject<WebSocket | null>,
-
+    wsQueueRef: RefObject<TDataTradingCandles[]>
 }
