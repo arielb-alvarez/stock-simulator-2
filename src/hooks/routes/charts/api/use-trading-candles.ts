@@ -62,22 +62,18 @@ const useTradingCandles = ({ symbol }: Pick<TParamsTradingCandles, "symbol">) =>
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (wsQueueRef.current.length === 0) return;
+      if(wsQueueRef.current.length === 0) return;
       const message = wsQueueRef.current.shift();
-      if (!message) return;
+      if(!message) return;
 
-
+      
       setData(prev => {
-        const next = prev.length === 0
-          ? [message]
-          : [...prev, message];
-
-        // Oldest first, latest last
-        next.sort((a, b) => a.timestamp - b.timestamp);
-
-        return next;
+        if (prev.length === 0) return [message];
+        
+        const updated = [...prev];
+        updated[updated.length - 1] = message;
+        return [...prev, message];
       });
-
     }, WS_INTERVAL)
 
     return () => clearInterval(interval);
