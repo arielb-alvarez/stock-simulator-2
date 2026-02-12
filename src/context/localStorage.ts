@@ -292,14 +292,15 @@ const deepMerge = (target: any, source: any): any => {
   return source !== undefined ? source : target;
 };
 
-// Main storage functions
+// Main storage functions - CHANGED FROM SESSIONSTORAGE TO LOCALSTORAGE
 export const loadConfigFromStorage = (): GlobalConfig => {
   if (typeof window === 'undefined') {
     return JSON.parse(JSON.stringify(defaultConfig));
   }
   
   try {
-    const stored = sessionStorage.getItem(STORAGE_KEY);
+    // CHANGED: localStorage instead of sessionStorage
+    const stored = localStorage.getItem(STORAGE_KEY);
     
     if (!stored) {
       console.log('No stored config found, using defaults');
@@ -352,7 +353,8 @@ export const saveConfigToStorage = (config: GlobalConfig): void => {
       config: cleanedConfig
     };
     
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(storedConfig));
+    // CHANGED: localStorage instead of sessionStorage
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(storedConfig));
     
   } catch (error) {
     console.error('Error saving config to storage:', error);
@@ -363,7 +365,8 @@ export const resetStorage = (): void => {
   if (typeof window === 'undefined') return;
   
   try {
-    sessionStorage.removeItem(STORAGE_KEY);
+    // CHANGED: localStorage instead of sessionStorage
+    localStorage.removeItem(STORAGE_KEY);
     console.log('Storage reset successfully');
   } catch (error) {
     console.error('Error resetting storage:', error);
@@ -375,7 +378,8 @@ export const debugStorage = (): void => {
   if (typeof window === 'undefined') return;
   
   try {
-    const stored = sessionStorage.getItem(STORAGE_KEY);
+    // CHANGED: localStorage instead of sessionStorage
+    const stored = localStorage.getItem(STORAGE_KEY);
     console.log('Current storage:', stored ? JSON.parse(stored) : 'Empty');
   } catch (error) {
     console.error('Debug error:', error);

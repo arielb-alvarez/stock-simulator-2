@@ -1,816 +1,703 @@
 // components/chart/indicators/IndicatorsDialog.tsx
-import { useState } from 'react';
-import { useGlobalContext } from '@/context/GlobalContext';
+import React, { useState, useCallback, useMemo, memo, Suspense, lazy, useEffect } from 'react';
+import { useGlobalApi, useGlobalConfig } from '@/context/GlobalContext';
 import { MTMConfig } from '@/context/types';
-import { CompactMAConfig } from './CompactMAConfig';
-import { CompactRSIConfig } from './CompactRSIConfig';
-import { CompactMFIConfig } from './CompactMFIConfig';
-import { CompactVolumeConfig } from './CompactVolumeConfig';
-import { CompactBBConfig } from './CompactBBConfig';
-import { CompactVWAPConfig } from './CompactVWAPConfig';
-import { CompactAVLConfig } from './CompactAVLConfig';
-import { CompactSARConfig } from './CompactSARConfig';
-import { CompactTRIXConfig } from './CompactTRIXConfig';
-import { CompactSupertrendConfig } from './CompactSuperTrendConfig';
-import { CompactKDJConfig } from './CompactKDJConfig';
-import { CompactEMVConfig } from './CompactEMVConfig';
-import { CompactMTMConfig } from './CompactMTMConfig';
 
+// --- Lazy load all indicator config panels (using named exports) ---
+const CompactMAConfig = lazy(() =>
+  import('./CompactMAConfig').then(module => ({ default: module.CompactMAConfig }))
+);
+const CompactRSIConfig = lazy(() =>
+  import('./CompactRSIConfig').then(module => ({ default: module.CompactRSIConfig }))
+);
+const CompactMFIConfig = lazy(() =>
+  import('./CompactMFIConfig').then(module => ({ default: module.CompactMFIConfig }))
+);
+const CompactVolumeConfig = lazy(() =>
+  import('./CompactVolumeConfig').then(module => ({ default: module.CompactVolumeConfig }))
+);
+const CompactBBConfig = lazy(() =>
+  import('./CompactBBConfig').then(module => ({ default: module.CompactBBConfig }))
+);
+const CompactVWAPConfig = lazy(() =>
+  import('./CompactVWAPConfig').then(module => ({ default: module.CompactVWAPConfig }))
+);
+const CompactAVLConfig = lazy(() =>
+  import('./CompactAVLConfig').then(module => ({ default: module.CompactAVLConfig }))
+);
+const CompactSARConfig = lazy(() =>
+  import('./CompactSARConfig').then(module => ({ default: module.CompactSARConfig }))
+);
+const CompactTRIXConfig = lazy(() =>
+  import('./CompactTRIXConfig').then(module => ({ default: module.CompactTRIXConfig }))
+);
+const CompactSupertrendConfig = lazy(() =>
+  import('./CompactSuperTrendConfig').then(module => ({ default: module.CompactSupertrendConfig }))
+);
+const CompactKDJConfig = lazy(() =>
+  import('./CompactKDJConfig').then(module => ({ default: module.CompactKDJConfig }))
+);
+const CompactEMVConfig = lazy(() =>
+  import('./CompactEMVConfig').then(module => ({ default: module.CompactEMVConfig }))
+);
+const CompactMTMConfig = lazy(() =>
+  import('./CompactMTMConfig').then(module => ({ default: module.CompactMTMConfig }))
+);
+
+// --- Constants ---
+const defaultIndicators = {
+  rsi: [], mfi: [], volume: [], ma: [], ema: [], wma: [],
+  bb: [], vwap: [], avl: [], sar: [], trix: [], supertrend: [],
+  kdj: [], emv: [], mtm: []
+};
+
+const MAIN_MENU_ITEMS = [
+  { id: 'ma', label: 'MA' },
+  { id: 'ema', label: 'EMA' },
+  { id: 'wma', label: 'WMA' },
+  { id: 'avl', label: 'AVL' },
+  { id: 'bb', label: 'BB' },
+  { id: 'vwap', label: 'VWAP' },
+  { id: 'sar', label: 'SAR' },
+  { id: 'trix', label: 'TRIX' },
+  { id: 'supertrend', label: 'Supertrend' }
+] as const;
+
+const SUB_MENU_ITEMS = [
+  { id: 'rsi', label: 'RSI' },
+  { id: 'mfi', label: 'MFI' },
+  { id: 'kdj', label: 'KDJ' },
+  { id: 'emv', label: 'EMV' },
+  { id: 'mtm', label: 'Momentum' },
+  { id: 'volume', label: 'Volume' }
+] as const;
+
+// --- Memoized MenuItem component ---
+const MenuItem = memo(({
+  item,
+  activeSubMenu,
+  onClick
+}: {
+  item: { id: string; label: string };
+  activeSubMenu: string;
+  onClick: (id: string) => void;
+}) => (
+  <button
+    onClick={() => onClick(item.id)}
+    className={`px-3 py-2.5 rounded text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 sm:flex-shrink ${
+      activeSubMenu === item.id
+        ? 'bg-yellow-500/20 text-yellow-400'
+        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+    }`}
+  >
+    {item.label}
+  </button>
+));
+MenuItem.displayName = 'MenuItem';
+
+// --- Memoized TabButton ---
+const TabButton = memo(({
+  tab,
+  activeTab,
+  onClick
+}: {
+  tab: 'main' | 'sub';
+  activeTab: 'main' | 'sub';
+  onClick: (tab: 'main' | 'sub') => void;
+}) => (
+  <button
+    onClick={() => onClick(tab)}
+    className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
+      activeTab === tab
+        ? 'text-yellow-400 border-b-2 border-yellow-400'
+        : 'text-gray-400 hover:text-gray-200'
+    }`}
+  >
+    {tab === 'main' ? 'Main Chart' : 'Sub Chart'}
+  </button>
+));
+TabButton.displayName = 'TabButton';
+
+// --- Main DialogContent component (memoized) ---
+interface DialogContentProps {
+  indicatorApi: any;
+  activeTab: 'main' | 'sub';
+  activeSubMenu: string;
+  onClose: () => void;
+  onTabChange: (tab: 'main' | 'sub') => void;
+  onSubMenuChange: (menuId: string) => void;
+}
+
+const DialogContent = memo(({
+  indicatorApi,
+  activeTab,
+  activeSubMenu,
+  onClose,
+  onTabChange,
+  onSubMenuChange
+}: DialogContentProps) => {
+  // --- Stable callbacks for each indicator type ---
+  const handleMAPeriodChange = useCallback((id: string, period: number) => {
+    indicatorApi.ma?.update?.(id, { period });
+  }, [indicatorApi.ma]);
+  const handleMALineSizeChange = useCallback((id: string, lineSize: number) => {
+    indicatorApi.ma?.update?.(id, { lineSize });
+  }, [indicatorApi.ma]);
+  const handleMAColorChange = useCallback((id: string, color: string) => {
+    indicatorApi.ma?.update?.(id, { color });
+  }, [indicatorApi.ma]);
+
+  const handleEMAPeriodChange = useCallback((id: string, period: number) => {
+    indicatorApi.ema?.update?.(id, { period });
+  }, [indicatorApi.ema]);
+  const handleEMALineSizeChange = useCallback((id: string, lineSize: number) => {
+    indicatorApi.ema?.update?.(id, { lineSize });
+  }, [indicatorApi.ema]);
+  const handleEMAColorChange = useCallback((id: string, color: string) => {
+    indicatorApi.ema?.update?.(id, { color });
+  }, [indicatorApi.ema]);
+
+  const handleWMAPeriodChange = useCallback((id: string, period: number) => {
+    indicatorApi.wma?.update?.(id, { period });
+  }, [indicatorApi.wma]);
+  const handleWMALineSizeChange = useCallback((id: string, lineSize: number) => {
+    indicatorApi.wma?.update?.(id, { lineSize });
+  }, [indicatorApi.wma]);
+  const handleWMAColorChange = useCallback((id: string, color: string) => {
+    indicatorApi.wma?.update?.(id, { color });
+  }, [indicatorApi.wma]);
+
+  const handleAVLPeriodChange = useCallback((id: string, period: number) => {
+    indicatorApi.avl?.update?.(id, { period });
+  }, [indicatorApi.avl]);
+  const handleAVLLineSizeChange = useCallback((id: string, lineSize: number) => {
+    indicatorApi.avl?.update?.(id, { lineSize });
+  }, [indicatorApi.avl]);
+  const handleAVLColorChange = useCallback((id: string, color: string) => {
+    indicatorApi.avl?.update?.(id, { color });
+  }, [indicatorApi.avl]);
+
+  const handleBBPeriodChange = useCallback((id: string, period: number) => {
+    indicatorApi.bb?.update?.(id, { period });
+  }, [indicatorApi.bb]);
+  const handleBBStdDevChange = useCallback((id: string, stdDev: number) => {
+    indicatorApi.bb?.update?.(id, { stdDev });
+  }, [indicatorApi.bb]);
+  const handleBBUpdate = useCallback((id: string, updates: any) => {
+    indicatorApi.bb?.update?.(id, updates);
+  }, [indicatorApi.bb]);
+
+  const handleVWAPLengthChange = useCallback((id: string, length: number) => {
+    indicatorApi.vwap?.update?.(id, { length });
+  }, [indicatorApi.vwap]);
+  const handleVWAPLineSizeChange = useCallback((id: string, lineSize: number) => {
+    indicatorApi.vwap?.update?.(id, { lineSize });
+  }, [indicatorApi.vwap]);
+  const handleVWAPColorChange = useCallback((id: string, color: string) => {
+    indicatorApi.vwap?.update?.(id, { color });
+  }, [indicatorApi.vwap]);
+
+  const handleSARStartChange = useCallback((id: string, start: number) => {
+    indicatorApi.sar?.update?.(id, { start });
+  }, [indicatorApi.sar]);
+  const handleSARMaximumChange = useCallback((id: string, maximum: number) => {
+    indicatorApi.sar?.update?.(id, { maximum });
+  }, [indicatorApi.sar]);
+  const handleSARColorChange = useCallback((id: string, color: string) => {
+    indicatorApi.sar?.update?.(id, { color });
+  }, [indicatorApi.sar]);
+
+  const handleTRIXPeriodChange = useCallback((id: string, period: number) => {
+    indicatorApi.trix?.update?.(id, { period });
+  }, [indicatorApi.trix]);
+  const handleTRIXLineSizeChange = useCallback((id: string, lineSize: number) => {
+    indicatorApi.trix?.update?.(id, { lineSize });
+  }, [indicatorApi.trix]);
+  const handleTRIXColorChange = useCallback((id: string, color: string) => {
+    indicatorApi.trix?.update?.(id, { color });
+  }, [indicatorApi.trix]);
+
+  // Sub indicators
+  const handleRSIPeriodChange = useCallback((id: string, period: number) => {
+    indicatorApi.rsi?.update?.(id, { period });
+  }, [indicatorApi.rsi]);
+  const handleRSILineSizeChange = useCallback((id: string, lineSize: number) => {
+    indicatorApi.rsi?.update?.(id, { lineSize });
+  }, [indicatorApi.rsi]);
+  const handleRSIColorChange = useCallback((id: string, lineColor: string) => {
+    indicatorApi.rsi?.update?.(id, { lineColor });
+  }, [indicatorApi.rsi]);
+
+  const handleMFIPeriodChange = useCallback((id: string, period: number) => {
+    indicatorApi.mfi?.update?.(id, { period });
+  }, [indicatorApi.mfi]);
+  const handleMFILineSizeChange = useCallback((id: string, lineSize: number) => {
+    indicatorApi.mfi?.update?.(id, { lineSize });
+  }, [indicatorApi.mfi]);
+  const handleMFIColorChange = useCallback((id: string, lineColor: string) => {
+    indicatorApi.mfi?.update?.(id, { lineColor });
+  }, [indicatorApi.mfi]);
+
+  const handleVolumeNameChange = useCallback((id: string, name: string) => {
+    indicatorApi.volume?.update?.(id, { name });
+  }, [indicatorApi.volume]);
+  const handleVolumeUpColorChange = useCallback((id: string, upColor: string) => {
+    indicatorApi.volume?.update?.(id, { upColor });
+  }, [indicatorApi.volume]);
+  const handleVolumeDownColorChange = useCallback((id: string, downColor: string) => {
+    indicatorApi.volume?.update?.(id, { downColor });
+  }, [indicatorApi.volume]);
+  const handleVolumeOpacityChange = useCallback((id: string, opacity: number) => {
+    indicatorApi.volume?.update?.(id, { opacity });
+  }, [indicatorApi.volume]);
+  const handleVolumeMAUpdate = useCallback((volumeId: string, maId: string, updates: any) => {
+    indicatorApi.volume?.updateMA?.(volumeId, maId, updates);
+  }, [indicatorApi.volume]);
+  const handleToggleVolumeMA = useCallback((volumeId: string, maId: string) => {
+    indicatorApi.volume?.toggleMA?.(volumeId, maId);
+  }, [indicatorApi.volume]);
+
+  const handleKDJUpdate = useCallback((id: string, updates: any) => {
+    indicatorApi.kdj?.update?.(id, updates);
+  }, [indicatorApi.kdj]);
+
+  const handleEMVPeriodChange = useCallback((id: string, period: number) => {
+    indicatorApi.emv?.update?.(id, { period });
+  }, [indicatorApi.emv]);
+  const handleEMVDivisorChange = useCallback((id: string, divisor: number) => {
+    indicatorApi.emv?.update?.(id, { divisor });
+  }, [indicatorApi.emv]);
+  const handleEMVLineSizeChange = useCallback((id: string, lineSize: number) => {
+    indicatorApi.emv?.update?.(id, { lineSize });
+  }, [indicatorApi.emv]);
+  const handleEMVColorChange = useCallback((id: string, lineColor: string) => {
+    indicatorApi.emv?.update?.(id, { lineColor });
+  }, [indicatorApi.emv]);
+
+  const handleMTMPeriodChange = useCallback((id: string, period: number) => {
+    indicatorApi.mtm?.update?.(id, { period });
+  }, [indicatorApi.mtm]);
+  const handleMTMPriceTypeChange = useCallback((id: string, priceType: string) => {
+    indicatorApi.mtm?.update?.(id, { priceType });
+  }, [indicatorApi.mtm]);
+  const handleMTMLineSizeChange = useCallback((id: string, lineSize: number) => {
+    indicatorApi.mtm?.update?.(id, { lineSize });
+  }, [indicatorApi.mtm]);
+  const handleMTMColorChange = useCallback((id: string, lineColor: string) => {
+    indicatorApi.mtm?.update?.(id, { lineColor });
+  }, [indicatorApi.mtm]);
+
+  // --- Memoized components for each indicator ---
+  const maComponent = useMemo(() => indicatorApi.ma?.configs && (
+    <Suspense fallback={<div className="text-gray-400">Loading MA...</div>}>
+      <CompactMAConfig
+        configs={indicatorApi.ma.configs}
+        title="Moving Average"
+        onToggle={indicatorApi.ma.toggle}
+        onPeriodChange={handleMAPeriodChange}
+        onLineSizeChange={handleMALineSizeChange}
+        onColorChange={handleMAColorChange}
+      />
+    </Suspense>
+  ), [indicatorApi.ma, handleMAPeriodChange, handleMALineSizeChange, handleMAColorChange]);
+
+  const emaComponent = useMemo(() => indicatorApi.ema?.configs && (
+    <Suspense fallback={<div className="text-gray-400">Loading EMA...</div>}>
+      <CompactMAConfig
+        configs={indicatorApi.ema.configs}
+        title="Exponential MA"
+        onToggle={indicatorApi.ema.toggle}
+        onPeriodChange={handleEMAPeriodChange}
+        onLineSizeChange={handleEMALineSizeChange}
+        onColorChange={handleEMAColorChange}
+      />
+    </Suspense>
+  ), [indicatorApi.ema, handleEMAPeriodChange, handleEMALineSizeChange, handleEMAColorChange]);
+
+  const wmaComponent = useMemo(() => indicatorApi.wma?.configs && (
+    <Suspense fallback={<div className="text-gray-400">Loading WMA...</div>}>
+      <CompactMAConfig
+        configs={indicatorApi.wma.configs}
+        title="Weighted MA"
+        onToggle={indicatorApi.wma.toggle}
+        onPeriodChange={handleWMAPeriodChange}
+        onLineSizeChange={handleWMALineSizeChange}
+        onColorChange={handleWMAColorChange}
+      />
+    </Suspense>
+  ), [indicatorApi.wma, handleWMAPeriodChange, handleWMALineSizeChange, handleWMAColorChange]);
+
+  const avlComponent = useMemo(() => indicatorApi.avl?.configs && (
+    <Suspense fallback={<div className="text-gray-400">Loading AVL...</div>}>
+      <CompactAVLConfig
+        configs={indicatorApi.avl.configs}
+        title="Average Value Line"
+        onToggle={indicatorApi.avl.toggle}
+        onPeriodChange={handleAVLPeriodChange}
+        onLineSizeChange={handleAVLLineSizeChange}
+        onColorChange={handleAVLColorChange}
+      />
+    </Suspense>
+  ), [indicatorApi.avl, handleAVLPeriodChange, handleAVLLineSizeChange, handleAVLColorChange]);
+
+  const bbComponent = useMemo(() => indicatorApi.bb?.configs && (
+    <Suspense fallback={<div className="text-gray-400">Loading BB...</div>}>
+      <CompactBBConfig
+        bbConfigs={indicatorApi.bb.configs}
+        onToggle={indicatorApi.bb.toggle}
+        onPeriodChange={handleBBPeriodChange}
+        onStdDevChange={handleBBStdDevChange}
+        onUpdateBB={handleBBUpdate}
+      />
+    </Suspense>
+  ), [indicatorApi.bb, handleBBPeriodChange, handleBBStdDevChange, handleBBUpdate]);
+
+  const vwapComponent = useMemo(() => indicatorApi.vwap?.configs && (
+    <Suspense fallback={<div className="text-gray-400">Loading VWAP...</div>}>
+      <CompactVWAPConfig
+        vwapConfigs={indicatorApi.vwap.configs}
+        onToggle={indicatorApi.vwap.toggle}
+        onLengthChange={handleVWAPLengthChange}
+        onLineSizeChange={handleVWAPLineSizeChange}
+        onColorChange={handleVWAPColorChange}
+      />
+    </Suspense>
+  ), [indicatorApi.vwap, handleVWAPLengthChange, handleVWAPLineSizeChange, handleVWAPColorChange]);
+
+  const sarComponent = useMemo(() => indicatorApi.sar?.configs && (
+    <Suspense fallback={<div className="text-gray-400">Loading SAR...</div>}>
+      <CompactSARConfig
+        sarConfigs={indicatorApi.sar.configs}
+        onToggle={indicatorApi.sar.toggle}
+        onStartChange={handleSARStartChange}
+        onMaximumChange={handleSARMaximumChange}
+        onColorChange={handleSARColorChange}
+      />
+    </Suspense>
+  ), [indicatorApi.sar, handleSARStartChange, handleSARMaximumChange, handleSARColorChange]);
+
+  const trixComponent = useMemo(() => indicatorApi.trix?.configs && (
+    <Suspense fallback={<div className="text-gray-400">Loading TRIX...</div>}>
+      <CompactTRIXConfig
+        trixConfigs={indicatorApi.trix.configs}
+        onToggle={indicatorApi.trix.toggle}
+        onPeriodChange={handleTRIXPeriodChange}
+        onLineSizeChange={handleTRIXLineSizeChange}
+        onColorChange={handleTRIXColorChange}
+      />
+    </Suspense>
+  ), [indicatorApi.trix, handleTRIXPeriodChange, handleTRIXLineSizeChange, handleTRIXColorChange]);
+
+  // Sub indicators
+  const rsiComponent = useMemo(() => indicatorApi.rsi?.configs && (
+    <Suspense fallback={<div className="text-gray-400">Loading RSI...</div>}>
+      <CompactRSIConfig
+        rsiConfigs={indicatorApi.rsi.configs}
+        onToggle={indicatorApi.rsi.toggle}
+        onPeriodChange={handleRSIPeriodChange}
+        onLineSizeChange={handleRSILineSizeChange}
+        onColorChange={handleRSIColorChange}
+      />
+    </Suspense>
+  ), [indicatorApi.rsi, handleRSIPeriodChange, handleRSILineSizeChange, handleRSIColorChange]);
+
+  const mfiComponent = useMemo(() => indicatorApi.mfi?.configs && (
+    <Suspense fallback={<div className="text-gray-400">Loading MFI...</div>}>
+      <CompactMFIConfig
+        mfiConfigs={indicatorApi.mfi.configs}
+        onToggle={indicatorApi.mfi.toggle}
+        onPeriodChange={handleMFIPeriodChange}
+        onLineSizeChange={handleMFILineSizeChange}
+        onColorChange={handleMFIColorChange}
+      />
+    </Suspense>
+  ), [indicatorApi.mfi, handleMFIPeriodChange, handleMFILineSizeChange, handleMFIColorChange]);
+
+  const volumeComponent = useMemo(() => indicatorApi.volume?.configs && (
+    <Suspense fallback={<div className="text-gray-400">Loading Volume...</div>}>
+      <CompactVolumeConfig
+        volumeConfigs={indicatorApi.volume.configs}
+        onToggle={indicatorApi.volume.toggle}
+        onNameChange={handleVolumeNameChange}
+        onUpColorChange={handleVolumeUpColorChange}
+        onDownColorChange={handleVolumeDownColorChange}
+        onOpacityChange={handleVolumeOpacityChange}
+        onUpdateVolumeMA={handleVolumeMAUpdate}
+        onToggleVolumeMA={handleToggleVolumeMA}
+      />
+    </Suspense>
+  ), [indicatorApi.volume, handleVolumeNameChange, handleVolumeUpColorChange, handleVolumeDownColorChange, handleVolumeOpacityChange, handleVolumeMAUpdate, handleToggleVolumeMA]);
+
+  const kdjComponent = useMemo(() => indicatorApi.kdj?.configs && (
+    <Suspense fallback={<div className="text-gray-400">Loading KDJ...</div>}>
+      <CompactKDJConfig
+        kdjConfigs={indicatorApi.kdj.configs}
+        onToggle={indicatorApi.kdj.toggle}
+        onUpdateKDJ={handleKDJUpdate}
+      />
+    </Suspense>
+  ), [indicatorApi.kdj, handleKDJUpdate]);
+
+  const emvComponent = useMemo(() => indicatorApi.emv?.configs && (
+    <Suspense fallback={<div className="text-gray-400">Loading EMV...</div>}>
+      <CompactEMVConfig
+        emvConfigs={indicatorApi.emv.configs}
+        onToggle={indicatorApi.emv.toggle}
+        onPeriodChange={handleEMVPeriodChange}
+        onDivisorChange={handleEMVDivisorChange}
+        onLineSizeChange={handleEMVLineSizeChange}
+        onColorChange={handleEMVColorChange}
+      />
+    </Suspense>
+  ), [indicatorApi.emv, handleEMVPeriodChange, handleEMVDivisorChange, handleEMVLineSizeChange, handleEMVColorChange]);
+
+  const mtmComponent = useMemo(() => indicatorApi.mtm?.configs && (
+    <Suspense fallback={<div className="text-gray-400">Loading Momentum...</div>}>
+      <CompactMTMConfig
+        mtmConfigs={indicatorApi.mtm.configs}
+        onToggle={indicatorApi.mtm.toggle}
+        onPeriodChange={handleMTMPeriodChange}
+        onPriceTypeChange={handleMTMPriceTypeChange}
+        onLineSizeChange={handleMTMLineSizeChange}
+        onColorChange={handleMTMColorChange}
+      />
+    </Suspense>
+  ), [indicatorApi.mtm, handleMTMPeriodChange, handleMTMPriceTypeChange, handleMTMLineSizeChange, handleMTMColorChange]);
+
+  return (
+    <div className="bg-gray-800 rounded-xl w-full max-w-[680px] h-full max-h-[90vh] sm:max-h-[85vh] flex flex-col border border-gray-600 shadow-2xl">
+      {/* Header */}
+      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-700 flex-shrink-0">
+        <h2 className="text-base sm:text-lg font-semibold text-white">Indicators</h2>
+        <button
+          onClick={onClose}
+          className="text-gray-400 hover:text-white transition-colors text-lg p-1 rounded hover:bg-gray-700"
+          aria-label="Close"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-gray-700 flex-shrink-0">
+        <TabButton tab="main" activeTab={activeTab} onClick={onTabChange} />
+        <TabButton tab="sub" activeTab={activeTab} onClick={onTabChange} />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 flex flex-col sm:flex-row min-h-0 overflow-hidden">
+        {activeTab === 'main' ? (
+          <>
+            {/* Vertical Menu - Main */}
+            <div className="sm:w-44 border-b sm:border-b-0 sm:border-r border-gray-700 bg-gray-750/50 flex-shrink-0 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto">
+              <div className="p-3 min-w-max sm:min-w-0 sm:pb-4">
+                <h3 className="text-xs text-gray-400 mb-3 font-medium hidden sm:block sticky top-0 bg-gray-750/95 py-1 z-10">MAIN INDICATORS</h3>
+                <nav className="flex sm:flex-col gap-1 sm:gap-0 sm:space-y-1">
+                  {MAIN_MENU_ITEMS.map((item) => (
+                    <MenuItem
+                      key={item.id}
+                      item={item}
+                      activeSubMenu={activeSubMenu}
+                      onClick={onSubMenuChange}
+                    />
+                  ))}
+                </nav>
+              </div>
+            </div>
+
+            {/* Content Area - Main */}
+            <div className="flex-1 p-3 sm:p-4 overflow-y-auto">
+              {activeSubMenu === 'ma' && maComponent}
+              {activeSubMenu === 'ema' && emaComponent}
+              {activeSubMenu === 'wma' && wmaComponent}
+              {activeSubMenu === 'avl' && avlComponent}
+              {activeSubMenu === 'bb' && bbComponent}
+              {activeSubMenu === 'vwap' && vwapComponent}
+              {activeSubMenu === 'sar' && sarComponent}
+              {activeSubMenu === 'trix' && trixComponent}
+              {/* Supertrend is commented out in original */}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Vertical Menu - Sub */}
+            <div className="sm:w-44 border-b sm:border-b-0 sm:border-r border-gray-700 bg-gray-750/50 flex-shrink-0 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto">
+              <div className="p-3 min-w-max sm:min-w-0 sm:pb-4">
+                <h3 className="text-xs text-gray-400 mb-3 font-medium hidden sm:block sticky top-0 bg-gray-750/95 py-1 z-10">SUB INDICATORS</h3>
+                <nav className="flex sm:flex-col gap-1 sm:gap-0 sm:space-y-1">
+                  {SUB_MENU_ITEMS.map((item) => (
+                    <MenuItem
+                      key={item.id}
+                      item={item}
+                      activeSubMenu={activeSubMenu}
+                      onClick={onSubMenuChange}
+                    />
+                  ))}
+                </nav>
+              </div>
+            </div>
+
+            {/* Content Area - Sub */}
+            <div className="flex-1 p-3 sm:p-4 overflow-y-auto">
+              {activeSubMenu === 'rsi' && rsiComponent}
+              {activeSubMenu === 'mfi' && mfiComponent}
+              {activeSubMenu === 'volume' && volumeComponent}
+              {activeSubMenu === 'kdj' && kdjComponent}
+              {activeSubMenu === 'emv' && emvComponent}
+              {activeSubMenu === 'mtm' && mtmComponent}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+});
+DialogContent.displayName = 'DialogContent';
+
+// --- Main IndicatorsDialog component ---
 interface IndicatorsDialogProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-// Default indicators structure to prevent undefined errors
-const defaultIndicators = {
-  rsi: [],
-  mfi: [],
-  volume: [],
-  ma: [],
-  ema: [],
-  wma: [],
-  bb: [],
-  vwap: [],
-  avl: [],
-  sar: [],
-  trix: [],
-  supertrend: [],
-  kdj: [],
-  emv: [],
-  mtm: []
-};
+export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({ isOpen, onClose }) => {
+  const config = useGlobalConfig();
+  const api = useGlobalApi();
 
-export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
-  isOpen,
-  onClose,
-}) => {
   const [activeTab, setActiveTab] = useState<'main' | 'sub'>('main');
   const [activeSubMenu, setActiveSubMenu] = useState<string>('ma');
-  
-  // Get context with safety check
-  const context = useGlobalContext();
-  
-  // Check if context is available
-  if (!context) {
-    console.error('GlobalContext is not available');
-    return null;
-  }
 
-  const {
-    config,
-    updateRSI,
-    toggleRSI,
-    updateMFI,
-    toggleMFI,
-    updateVolume,
-    toggleVolume,
-    updateVolumeMA,
-    toggleVolumeMA,
-    updateMA,
-    toggleMA,
-    updateEMA,
-    toggleEMA,
-    updateWMA,
-    toggleWMA,
-    updateBB,
-    toggleBB,
-    updateVWAP,
-    toggleVWAP,
-    updateAVL,
-    toggleAVL,
-    updateSAR,
-    toggleSAR,
-    updateTRIX,
-    toggleTRIX,
-    updateSupertrend,
-    toggleSupertrend,
-    updateKDJ,
-    toggleKDJ,
-    updateEMV,
-    toggleEMV,
-    updateMTM,
-    toggleMTM
-  } = context;
+  const handleTabChange = useCallback((tab: 'main' | 'sub') => {
+    setActiveTab(tab);
+    setActiveSubMenu(tab === 'main' ? 'ma' : 'rsi');
+  }, []);
+
+  const handleSubMenuChange = useCallback((menuId: string) => {
+    setActiveSubMenu(menuId);
+  }, []);
+
+  const handleBackdropClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.target === e.currentTarget) onClose();
+  }, [onClose]);
+
+  const indicatorApi = useMemo(() => {
+    const indicators = config?.indicators || defaultIndicators;
+    return {
+      rsi: {
+        configs: indicators.rsi,
+        toggle: api.toggleRSI,
+        update: api.updateRSI,
+      },
+      mfi: {
+        configs: indicators.mfi,
+        toggle: api.toggleMFI,
+        update: api.updateMFI,
+      },
+      volume: {
+        configs: indicators.volume,
+        toggle: api.toggleVolume,
+        update: api.updateVolume,
+        updateMA: api.updateVolumeMA,
+        toggleMA: api.toggleVolumeMA,
+      },
+      ma: {
+        configs: indicators.ma,
+        toggle: api.toggleMA,
+        update: api.updateMA,
+      },
+      ema: {
+        configs: indicators.ema,
+        toggle: api.toggleEMA,
+        update: api.updateEMA,
+      },
+      wma: {
+        configs: indicators.wma,
+        toggle: api.toggleWMA,
+        update: api.updateWMA,
+      },
+      bb: {
+        configs: indicators.bb,
+        toggle: api.toggleBB,
+        update: api.updateBB,
+      },
+      vwap: {
+        configs: indicators.vwap,
+        toggle: api.toggleVWAP,
+        update: api.updateVWAP,
+      },
+      avl: {
+        configs: indicators.avl,
+        toggle: api.toggleAVL,
+        update: api.updateAVL,
+      },
+      sar: {
+        configs: indicators.sar,
+        toggle: api.toggleSAR,
+        update: api.updateSAR,
+      },
+      trix: {
+        configs: indicators.trix,
+        toggle: api.toggleTRIX,
+        update: api.updateTRIX,
+      },
+      supertrend: {
+        configs: indicators.supertrend,
+        toggle: api.toggleSupertrend,
+        update: api.updateSupertrend,
+      },
+      kdj: {
+        configs: indicators.kdj,
+        toggle: api.toggleKDJ,
+        update: api.updateKDJ,
+      },
+      emv: {
+        configs: indicators.emv,
+        toggle: api.toggleEMV,
+        update: api.updateEMV,
+      },
+      mtm: {
+        configs: indicators.mtm,
+        toggle: api.toggleMTM,
+        update: api.updateMTM,
+      },
+    };
+  }, [
+    config?.indicators,
+    api.toggleRSI, api.updateRSI,
+    api.toggleMFI, api.updateMFI,
+    api.toggleVolume, api.updateVolume, api.updateVolumeMA, api.toggleVolumeMA,
+    api.toggleMA, api.updateMA,
+    api.toggleEMA, api.updateEMA,
+    api.toggleWMA, api.updateWMA,
+    api.toggleBB, api.updateBB,
+    api.toggleVWAP, api.updateVWAP,
+    api.toggleAVL, api.updateAVL,
+    api.toggleSAR, api.updateSAR,
+    api.toggleTRIX, api.updateTRIX,
+    api.toggleSupertrend, api.updateSupertrend,
+    api.toggleKDJ, api.updateKDJ,
+    api.toggleEMV, api.updateEMV,
+    api.toggleMTM, api.updateMTM,
+  ]);
 
   if (!isOpen) return null;
 
-  // Check if config is available
-  if (!config) {
-    return (
-      <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm p-2 sm:p-4">
-        <div className="bg-gray-800 rounded-xl w-full max-w-[680px] h-full max-h-[90vh] sm:max-h-[85vh] flex flex-col border border-gray-600 shadow-2xl">
-          <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-700">
-            <h2 className="text-base sm:text-lg font-semibold text-white">Indicators</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors text-lg p-1 rounded hover:bg-gray-700"
-            >
-              ✕
-            </button>
-          </div>
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-gray-400">Loading configuration...</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Safely get indicators with fallback
-  const indicators = config?.indicators || defaultIndicators;
-
-  // RSI Handlers
-  const handleToggleRSI = (rsiId: string) => {
-    toggleRSI(rsiId);
-  };
-
-  const handlePeriodChangeRSI = (rsiId: string, period: number) => {
-    updateRSI(rsiId, { period: Math.max(1, period) });
-  };
-
-  const handleLineSizeChangeRSI = (rsiId: string, lineSize: number) => {
-    updateRSI(rsiId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
-
-  const handleColorChangeRSI = (rsiId: string, lineColor: string) => {
-    updateRSI(rsiId, { lineColor });
-  };
-
-  // MFI handlers
-  const handleToggleMFI = (mfiId: string) => {
-    toggleMFI(mfiId);
-  };
-
-  const handlePeriodChangeMFI = (mfiId: string, period: number) => {
-    updateMFI(mfiId, { period: Math.max(1, period) });
-  };
-
-  const handleLineSizeChangeMFI = (mfiId: string, lineSize: number) => {
-    updateMFI(mfiId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
-
-  const handleColorChangeMFI = (mfiId: string, lineColor: string) => {
-    updateMFI(mfiId, { lineColor });
-  };
-
-  // Volume Handlers
-  const handleToggleVolume = (volumeId: string) => {
-    toggleVolume(volumeId);
-  };
-
-  const handleNameChangeVolume = (volumeId: string, name: string) => {
-    updateVolume(volumeId, { name });
-  };
-
-  const handleUpColorChange = (volumeId: string, upColor: string) => {
-    updateVolume(volumeId, { upColor });
-  };
-
-  const handleDownColorChange = (volumeId: string, downColor: string) => {
-    updateVolume(volumeId, { downColor });
-  };
-
-  const handleOpacityChange = (volumeId: string, opacity: number) => {
-    updateVolume(volumeId, { opacity: Math.max(0.1, Math.min(1, opacity)) });
-  };
-
-  const handleUpdateVolumeMA = (volumeId: string, maId: string, updates: any) => {
-    updateVolumeMA(volumeId, maId, updates);
-  };
-
-  const handleToggleVolumeMA = (volumeId: string, maId: string) => {
-    toggleVolumeMA(volumeId, maId);
-  };
-
-  // MA configuration handlers
-  const handleToggleMA = (maId: string) => {
-    toggleMA(maId);
-  };
-
-  const handlePeriodChangeMA = (maId: string, period: number) => {
-    updateMA(maId, { period: Math.max(1, period) });
-  };
-
-  const handleLineSizeChangeMA = (maId: string, lineSize: number) => {
-    updateMA(maId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
-
-  const handleColorChangeMA = (maId: string, color: string) => {
-    updateMA(maId, { color });
-  };
-
-  // EMA configuration handlers
-  const handleToggleEMA = (emaId: string) => {
-    toggleEMA(emaId);
-  };
-
-  const handlePeriodChangeEMA = (emaId: string, period: number) => {
-    updateEMA(emaId, { period: Math.max(1, period) });
-  };
-
-  const handleLineSizeChangeEMA = (emaId: string, lineSize: number) => {
-    updateEMA(emaId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
-
-  const handleColorChangeEMA = (emaId: string, color: string) => {
-    updateEMA(emaId, { color });
-  };
-
-  // WMA configuration handlers
-  const handleToggleWMA = (wmaId: string) => {
-    toggleWMA(wmaId);
-  };
-
-  const handlePeriodChangeWMA = (wmaId: string, period: number) => {
-    updateWMA(wmaId, { period: Math.max(1, period) });
-  };
-
-  const handleLineSizeChangeWMA = (wmaId: string, lineSize: number) => {
-    updateWMA(wmaId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
-
-  const handleColorChangeWMA = (wmaId: string, color: string) => {
-    updateWMA(wmaId, { color });
-  };
-
-  // BB configuration handlers
-  const handleToggleBB = (bbId: string) => {
-    toggleBB(bbId);
-  };
-
-  const handlePeriodChangeBB = (bbId: string, period: number) => {
-    updateBB(bbId, { period: Math.max(1, period) });
-  };
-
-  const handleStdDevChangeBB = (bbId: string, stdDev: number) => {
-    updateBB(bbId, { stdDev: Math.max(0.1, Math.min(5, stdDev)) });
-  };
-
-  // VWAP configuration handlers
-  const handleToggleVWAP = (vwapId: string) => {
-    toggleVWAP(vwapId);
-  };
-
-  const handleLengthChangeVWAP = (vwapId: string, length: number) => {
-    updateVWAP(vwapId, { length: Math.max(0, length) });
-  };
-
-  const handleLineSizeChangeVWAP = (vwapId: string, lineSize: number) => {
-    updateVWAP(vwapId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
-
-  const handleColorChangeVWAP = (vwapId: string, color: string) => {
-    updateVWAP(vwapId, { color });
-  };
-
-  // AVL handlers
-  const handleToggleAVL = (avlId: string) => {
-    toggleAVL(avlId);
-  };
-
-  const handlePeriodChangeAVL = (avlId: string, period: number) => {
-    updateAVL(avlId, { period: Math.max(1, period) });
-  };
-
-  const handleLineSizeChangeAVL = (avlId: string, lineSize: number) => {
-    updateAVL(avlId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
-
-  const handleColorChangeAVL = (avlId: string, color: string) => {
-    updateAVL(avlId, { color });
-  };
-
-  // SAR handlers
-  const handleToggleSAR = (sarId: string) => {
-    toggleSAR(sarId);
-  };
-
-  const handleStartChangeSAR = (sarId: string, start: number) => {
-    updateSAR(sarId, { start: Math.max(0.001, Math.min(0.1, start)) });
-  };
-
-  const handleMaximumChangeSAR = (sarId: string, maximum: number) => {
-    updateSAR(sarId, { maximum: Math.max(0.01, Math.min(1, maximum)) });
-  };
-
-  const handleColorChangeSAR = (sarId: string, color: string) => {
-    updateSAR(sarId, { color });
-  };
-
-  // TRIX handlers
-  const handleToggleTRIX = (trixId: string) => {
-    toggleTRIX(trixId);
-  };
-
-  const handlePeriodChangeTRIX = (trixId: string, period: number) => {
-    updateTRIX(trixId, { period: Math.max(1, period) });
-  };
-
-  const handleLineSizeChangeTRIX = (trixId: string, lineSize: number) => {
-    updateTRIX(trixId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
-
-  const handleColorChangeTRIX = (trixId: string, color: string) => {
-    updateTRIX(trixId, { color });
-  };
-
-  // Supertrend handlers with safe access
-  const handleToggleSupertrend = (supertrendId: string) => {
-    toggleSupertrend(supertrendId);
-  };
-
-  const handleATRLengthChange = (supertrendId: string, atrLength: number) => {
-    updateSupertrend(supertrendId, { atrLength: Math.max(1, Math.min(100, atrLength)) });
-  };
-
-  const handleFactorChange = (supertrendId: string, factor: number) => {
-    updateSupertrend(supertrendId, { factor: Math.max(0.1, Math.min(10, factor)) });
-  };
-
-  const handleUpLineWidthChange = (supertrendId: string, lineWidth: number) => {
-    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
-    if (!supertrend) return;
-    
-    updateSupertrend(supertrendId, { 
-      upTrend: { 
-        ...supertrend.upTrend,
-        lineWidth: Math.max(0.5, Math.min(5, lineWidth)) 
-      } 
-    });
-  };
-
-  const handleDownLineWidthChange = (supertrendId: string, lineWidth: number) => {
-    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
-    if (!supertrend) return;
-    
-    updateSupertrend(supertrendId, { 
-      downTrend: { 
-        ...supertrend.downTrend,
-        lineWidth: Math.max(0.5, Math.min(5, lineWidth)) 
-      } 
-    });
-  };
-
-  const handleUpLineColorChange = (supertrendId: string, color: string) => {
-    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
-    if (!supertrend) return;
-    
-    updateSupertrend(supertrendId, { 
-      upTrend: { 
-        ...supertrend.upTrend,
-        lineColor: color
-      } 
-    });
-  };
-
-  const handleDownLineColorChange = (supertrendId: string, color: string) => {
-    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
-    if (!supertrend) return;
-    
-    updateSupertrend(supertrendId, { 
-      downTrend: { 
-        ...supertrend.downTrend,
-        lineColor: color
-      } 
-    });
-  };
-
-  const handleUpBackgroundToggle = (supertrendId: string, show: boolean) => {
-    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
-    if (!supertrend) return;
-    
-    updateSupertrend(supertrendId, { 
-      upTrend: { 
-        ...supertrend.upTrend,
-        background: { 
-          ...(supertrend.upTrend?.background || { show: false, color: '#00FF0010' }),
-          show 
-        }
-      } 
-    });
-  };
-
-  const handleDownBackgroundToggle = (supertrendId: string, show: boolean) => {
-    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
-    if (!supertrend) return;
-    
-    updateSupertrend(supertrendId, { 
-      downTrend: { 
-        ...supertrend.downTrend,
-        background: { 
-          ...(supertrend.downTrend?.background || { show: false, color: '#FF000010' }),
-          show 
-        }
-      } 
-    });
-  };
-
-  const handleUpBackgroundColorChange = (supertrendId: string, color: string) => {
-    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
-    if (!supertrend) return;
-    
-    updateSupertrend(supertrendId, { 
-      upTrend: { 
-        ...supertrend.upTrend,
-        background: { 
-          ...(supertrend.upTrend?.background || { show: false, color: '#00FF0010' }),
-          color 
-        }
-      } 
-    });
-  };
-
-  const handleDownBackgroundColorChange = (supertrendId: string, color: string) => {
-    const supertrend = indicators.supertrend?.find(st => st.id === supertrendId);
-    if (!supertrend) return;
-    
-    updateSupertrend(supertrendId, { 
-      downTrend: { 
-        ...supertrend.downTrend,
-        background: { 
-          ...(supertrend.downTrend?.background || { show: false, color: '#FF000010' }),
-          color 
-        }
-      } 
-    });
-  };
-
-  // KDJ handlers
-  const handleToggleKDJ = (kdjId: string) => {
-    toggleKDJ(kdjId);
-  };
-
-  const handlePeriodChangeKDJ = (kdjId: string, period: number) => {
-    updateKDJ(kdjId, { period: Math.max(1, period) });
-  };
-
-  const handleKPeriodChange = (kdjId: string, kPeriod: number) => {
-    updateKDJ(kdjId, { kPeriod: Math.max(1, kPeriod) });
-  };
-
-  const handleDPeriodChange = (kdjId: string, dPeriod: number) => {
-    updateKDJ(kdjId, { dPeriod: Math.max(1, dPeriod) });
-  };
-
-  const handleKLineSizeChangeKDJ = (kdjId: string, lineSize: number) => {
-    updateKDJ(kdjId, { kLineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
-
-  const handleDLineSizeChangeKDJ = (kdjId: string, lineSize: number) => {
-    updateKDJ(kdjId, { dLineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
-
-  const handleJLineSizeChangeKDJ = (kdjId: string, lineSize: number) => {
-    updateKDJ(kdjId, { jLineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
-
-  const handleKColorChangeKDJ = (kdjId: string, color: string) => {
-    updateKDJ(kdjId, { kLineColor: color });
-  };
-
-  const handleDColorChangeKDJ = (kdjId: string, color: string) => {
-    updateKDJ(kdjId, { dLineColor: color });
-  };
-
-  const handleJColorChangeKDJ = (kdjId: string, color: string) => {
-    updateKDJ(kdjId, { jLineColor: color });
-  };
-
-  const handleOverboughtChangeKDJ = (kdjId: string, value: number) => {
-    updateKDJ(kdjId, { overbought: Math.max(50, Math.min(100, value)) });
-  };
-
-  const handleOversoldChangeKDJ = (kdjId: string, value: number) => {
-    updateKDJ(kdjId, { oversold: Math.max(0, Math.min(50, value)) });
-  };
-
-  // EMV handlers
-  const handleToggleEMV = (emvId: string) => {
-    toggleEMV(emvId);
-  };
-
-  const handlePeriodChangeEMV = (emvId: string, period: number) => {
-    updateEMV(emvId, { period: Math.max(5, Math.min(50, period)) });
-  };
-
-  const handleDivisorChange = (emvId: string, divisor: number) => {
-    updateEMV(emvId, { divisor: Math.max(1000, Math.min(1000000, divisor)) });
-  };
-
-  const handleLineSizeChangeEMV = (emvId: string, lineSize: number) => {
-    updateEMV(emvId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
-
-  const handleColorChangeEMV = (emvId: string, color: string) => {
-    updateEMV(emvId, { lineColor: color });
-  };
-
-  // MTM Handlers
-  const handleToggleMTM = (mtmId: string) => {
-    toggleMTM(mtmId);
-  };
-
-  const handlePeriodChangeMTM = (mtmId: string, period: number) => {
-    updateMTM(mtmId, { period: Math.max(1, period) });
-  };
-
-  const handlePriceTypeChangeMTM = (mtmId: string, priceType: MTMConfig['priceType']) => {
-    updateMTM(mtmId, { priceType });
-  };
-
-  const handleLineSizeChangeMTM = (mtmId: string, lineSize: number) => {
-    updateMTM(mtmId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
-
-  const handleColorChangeMTM = (mtmId: string, color: string) => {
-    updateMTM(mtmId, { lineColor: color });
-  };
-
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm p-2 sm:p-4">
-      <div className="bg-gray-800 rounded-xl w-full max-w-[680px] h-full max-h-[90vh] sm:max-h-[85vh] flex flex-col border border-gray-600 shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-700 flex-shrink-0">
-          <h2 className="text-base sm:text-lg font-semibold text-white">Indicators</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors text-lg p-1 rounded hover:bg-gray-700"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex border-b border-gray-700 flex-shrink-0">
-          <button
-            onClick={() => setActiveTab('main')}
-            className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
-              activeTab === 'main'
-                ? 'text-yellow-400 border-b-2 border-yellow-400'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            Main Chart
-          </button>
-          <button
-            onClick={() => setActiveTab('sub')}
-            className={`flex-1 py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-colors ${
-              activeTab === 'sub'
-                ? 'text-yellow-400 border-b-2 border-yellow-400'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
-          >
-            Sub Chart
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 flex flex-col sm:flex-row min-h-0 overflow-hidden">
-          {activeTab === 'main' ? (
-            /* Main Indicator Content */
-            <>
-              {/* Vertical Menu - Hidden on mobile, shown as horizontal on small screens */}
-              <div className="sm:w-44 border-b sm:border-b-0 sm:border-r border-gray-700 bg-gray-750/50 flex-shrink-0 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto">
-                <div className="p-3 min-w-max sm:min-w-0 sm:pb-4">
-                  <h3 className="text-xs text-gray-400 mb-3 font-medium hidden sm:block sticky top-0 bg-gray-750/95 py-1 z-10">MAIN INDICATORS</h3>
-                  <nav className="flex sm:flex-col gap-1 sm:gap-0 sm:space-y-1">
-                    {[
-                      { id: 'ma', label: 'MA' },
-                      { id: 'ema', label: 'EMA' },
-                      { id: 'wma', label: 'WMA' },
-                      { id: 'avl', label: 'AVL' },
-                      { id: 'bb', label: 'BB' },
-                      { id: 'vwap', label: 'VWAP' },
-                      { id: 'sar', label: 'SAR' },
-                      { id: 'trix', label: 'TRIX' },
-                      { id: 'supertrend', label: 'Supertrend' }
-                    ].map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => setActiveSubMenu(item.id)}
-                        className={`px-3 py-2.5 rounded text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 sm:flex-shrink ${
-                          activeSubMenu === item.id
-                            ? 'bg-yellow-500/20 text-yellow-400'
-                            : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </nav>
-                </div>
-              </div>
-
-              {/* Content Area */}
-              <div className="flex-1 p-3 sm:p-4 overflow-y-auto">
-                {activeSubMenu === 'ma' && indicators.ma && (
-                  <CompactMAConfig
-                    configs={indicators.ma}
-                    title="Moving Average"
-                    onToggle={handleToggleMA}
-                    onPeriodChange={handlePeriodChangeMA}
-                    onLineSizeChange={handleLineSizeChangeMA}
-                    onColorChange={handleColorChangeMA}
-                  />
-                )}
-
-                {activeSubMenu === 'ema' && indicators.ema && (
-                  <CompactMAConfig
-                    configs={indicators.ema}
-                    title="Exponential MA"
-                    onToggle={handleToggleEMA}
-                    onPeriodChange={handlePeriodChangeEMA}
-                    onLineSizeChange={handleLineSizeChangeEMA}
-                    onColorChange={handleColorChangeEMA}
-                  />
-                )}
-
-                {activeSubMenu === 'wma' && indicators.wma && (
-                  <CompactMAConfig
-                    configs={indicators.wma}
-                    title="Weighted MA"
-                    onToggle={handleToggleWMA}
-                    onPeriodChange={handlePeriodChangeWMA}
-                    onLineSizeChange={handleLineSizeChangeWMA}
-                    onColorChange={handleColorChangeWMA}
-                  />
-                )}
-
-                {activeSubMenu === 'bb' && indicators.bb && (
-                  <CompactBBConfig
-                    bbConfigs={indicators.bb}
-                    onToggle={handleToggleBB}
-                    onPeriodChange={handlePeriodChangeBB}
-                    onStdDevChange={handleStdDevChangeBB}
-                    onUpdateBB={updateBB}
-                  />
-                )}
-
-                {activeSubMenu === 'vwap' && indicators.vwap && (
-                  <CompactVWAPConfig
-                    vwapConfigs={indicators.vwap}
-                    onToggle={handleToggleVWAP}
-                    onLengthChange={handleLengthChangeVWAP}
-                    onLineSizeChange={handleLineSizeChangeVWAP}
-                    onColorChange={handleColorChangeVWAP}
-                  />
-                )}
-
-                {activeSubMenu === 'avl' && indicators.avl && (
-                  <CompactAVLConfig
-                    configs={indicators.avl}
-                    title="Average Value Line"
-                    onToggle={handleToggleAVL}
-                    onPeriodChange={handlePeriodChangeAVL}
-                    onLineSizeChange={handleLineSizeChangeAVL}
-                    onColorChange={handleColorChangeAVL}
-                  />
-                )}
-
-                {activeSubMenu === 'sar' && indicators.sar && (
-                  <CompactSARConfig
-                    sarConfigs={indicators.sar}
-                    onToggle={handleToggleSAR}
-                    onStartChange={handleStartChangeSAR}
-                    onMaximumChange={handleMaximumChangeSAR}
-                    onColorChange={handleColorChangeSAR}
-                  />
-                )}
-
-                {activeSubMenu === 'trix' && indicators.trix && (
-                  <CompactTRIXConfig
-                    trixConfigs={indicators.trix}
-                    onToggle={handleToggleTRIX}
-                    onPeriodChange={handlePeriodChangeTRIX}
-                    onLineSizeChange={handleLineSizeChangeTRIX}
-                    onColorChange={handleColorChangeTRIX}
-                  />
-                )}
-
-                {activeSubMenu === 'supertrend' && indicators.supertrend && (
-                  <CompactSupertrendConfig
-                    supertrendConfigs={indicators.supertrend}
-                    onToggle={handleToggleSupertrend}
-                    onATRLengthChange={handleATRLengthChange}
-                    onFactorChange={handleFactorChange}
-                    onUpLineWidthChange={handleUpLineWidthChange}
-                    onDownLineWidthChange={handleDownLineWidthChange}
-                    onUpLineColorChange={handleUpLineColorChange}
-                    onDownLineColorChange={handleDownLineColorChange}
-                    onUpBackgroundToggle={handleUpBackgroundToggle}
-                    onDownBackgroundToggle={handleDownBackgroundToggle}
-                    onUpBackgroundColorChange={handleUpBackgroundColorChange}
-                    onDownBackgroundColorChange={handleDownBackgroundColorChange}
-                  />
-                )}
-              </div>
-            </>
-          ) : (
-            /* Sub Indicator Content */
-            <>
-              {/* Vertical Menu - Hidden on mobile, shown as horizontal on small screens */}
-              <div className="sm:w-44 border-b sm:border-b-0 sm:border-r border-gray-700 bg-gray-750/50 flex-shrink-0 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto">
-                <div className="p-3 min-w-max sm:min-w-0 sm:pb-4">
-                  <h3 className="text-xs text-gray-400 mb-3 font-medium hidden sm:block sticky top-0 bg-gray-750/95 py-1 z-10">SUB INDICATORS</h3>
-                  <nav className="flex sm:flex-col gap-1 sm:gap-0 sm:space-y-1">
-                    {[
-                      { id: 'rsi', label: 'RSI' },
-                      { id: 'mfi', label: 'MFI' },
-                      { id: 'kdj', label: 'KDJ' },
-                      { id: 'emv', label: 'EMV' },
-                      { id: 'mtm', label: 'Momentum' },
-                      { id: 'volume', label: 'Volume' }
-                    ].map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => setActiveSubMenu(item.id)}
-                        className={`px-3 py-2.5 rounded text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 sm:flex-shrink ${
-                          activeSubMenu === item.id
-                            ? 'bg-yellow-500/20 text-yellow-400'
-                            : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </nav>
-                </div>
-              </div>
-
-              {/* Content Area */}
-              <div className="flex-1 p-3 sm:p-4 overflow-y-auto">
-                {activeSubMenu === 'rsi' && indicators.rsi && (
-                  <CompactRSIConfig
-                    rsiConfigs={indicators.rsi}
-                    onToggle={handleToggleRSI}
-                    onPeriodChange={handlePeriodChangeRSI}
-                    onLineSizeChange={handleLineSizeChangeRSI}
-                    onColorChange={handleColorChangeRSI}
-                  />
-                )}
-                {activeSubMenu === 'mfi' && indicators.mfi && (
-                  <CompactMFIConfig
-                    mfiConfigs={indicators.mfi}
-                    onToggle={handleToggleMFI}
-                    onPeriodChange={handlePeriodChangeMFI}
-                    onLineSizeChange={handleLineSizeChangeMFI}
-                    onColorChange={handleColorChangeMFI}
-                  />
-                )}
-                {activeSubMenu === 'volume' && indicators.volume && (
-                  <CompactVolumeConfig
-                    volumeConfigs={indicators.volume}
-                    onToggle={handleToggleVolume}
-                    onNameChange={handleNameChangeVolume}
-                    onUpColorChange={handleUpColorChange}
-                    onDownColorChange={handleDownColorChange}
-                    onOpacityChange={handleOpacityChange}
-                    onUpdateVolumeMA={handleUpdateVolumeMA}
-                    onToggleVolumeMA={handleToggleVolumeMA}
-                  />
-                )}
-                {activeSubMenu === 'kdj' && indicators.kdj && (
-                  <CompactKDJConfig
-                    kdjConfigs={indicators.kdj}
-                    onToggle={handleToggleKDJ}
-                    onPeriodChange={handlePeriodChangeKDJ}
-                    onKPeriodChange={handleKPeriodChange}
-                    onDPeriodChange={handleDPeriodChange}
-                    onKLineSizeChange={handleKLineSizeChangeKDJ}
-                    onDLineSizeChange={handleDLineSizeChangeKDJ}
-                    onJLineSizeChange={handleJLineSizeChangeKDJ}
-                    onKColorChange={handleKColorChangeKDJ}
-                    onDColorChange={handleDColorChangeKDJ}
-                    onJColorChange={handleJColorChangeKDJ}
-                    onOverboughtChange={handleOverboughtChangeKDJ}
-                    onOversoldChange={handleOversoldChangeKDJ}
-                  />
-                )}
-                {activeSubMenu === 'emv' && indicators.emv && (
-                  <CompactEMVConfig
-                    emvConfigs={indicators.emv}
-                    onToggle={handleToggleEMV}
-                    onPeriodChange={handlePeriodChangeEMV}
-                    onDivisorChange={handleDivisorChange}
-                    onLineSizeChange={handleLineSizeChangeEMV}
-                    onColorChange={handleColorChangeEMV}
-                  />
-                )}
-                {activeSubMenu === 'mtm' && indicators.mtm && (
-                  <CompactMTMConfig
-                    mtmConfigs={indicators.mtm}
-                    onToggle={handleToggleMTM}
-                    onPeriodChange={handlePeriodChangeMTM}
-                    onPriceTypeChange={handlePriceTypeChangeMTM}
-                    onLineSizeChange={handleLineSizeChangeMTM}
-                    onColorChange={handleColorChangeMTM}
-                  />
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
+    <div
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm p-2 sm:p-4"
+      onClick={handleBackdropClick}
+    >
+      <DialogContent
+        indicatorApi={indicatorApi}
+        activeTab={activeTab}
+        activeSubMenu={activeSubMenu}
+        onClose={onClose}
+        onTabChange={handleTabChange}
+        onSubMenuChange={handleSubMenuChange}
+      />
     </div>
   );
 };
+
+// Export memoized version
+export const MemoizedIndicatorsDialog = memo(IndicatorsDialog);

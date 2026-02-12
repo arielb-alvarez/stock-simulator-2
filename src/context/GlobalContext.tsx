@@ -1,6 +1,6 @@
 // context/GlobalContext.tsx
 'use client';
-import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect, useMemo } from 'react';
 import { GlobalContextType, GlobalConfig, ChartType, ChartStyleConfig, 
          RSIConfig, MFIConfig, VolumeConfig, VolumeMAConfig, MAConfig, 
          BBConfig, VWAPConfig, AVLConfig, SARConfig, TRIXConfig, 
@@ -18,41 +18,75 @@ import {
   generateSupertrendName, generateKDJName, generateEMVName, generateMTMName 
 } from './defaultConfig';
 
-const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
+// --- Separate contexts for state and API ---
+const ConfigStateContext = createContext<GlobalConfig | undefined>(undefined);
+const ConfigApiContext = createContext<Omit<GlobalContextType, 'config'> | undefined>(undefined);
 
 export function GlobalProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<GlobalConfig>(() => {
-    // This will now handle all migration cases
-    return loadConfigFromStorage();
+    try {
+      const loadedConfig = loadConfigFromStorage();
+      console.log('Loaded config from storage:', loadedConfig);
+      return loadedConfig;
+    } catch (error) {
+      console.error('Failed to load config from storage:', error);
+      return defaultConfig;
+    }
   });
 
+  // --- Save to storage with debouncing ---
   useEffect(() => {
-    saveConfigToStorage(config);
+    const timeoutId = setTimeout(() => {
+      try {
+        saveConfigToStorage(config);
+      } catch (error) {
+        console.error('Failed to save config to storage:', error);
+      }
+    }, 100);
+    return () => clearTimeout(timeoutId);
   }, [config]);
 
+  // -----------------------------------------------------------------
+  // All update functions are identical to the original, but now they
+  // are stable across renders (useCallback with empty deps where appropriate).
+  // -----------------------------------------------------------------
+
   const updateConfig = useCallback((updates: Partial<GlobalConfig>) => {
-    setConfig(prev => ({ ...prev, ...updates }));
+    setConfig(prev => {
+      const hasChanges = Object.keys(updates).some(key => {
+        const prevValue = (prev as any)[key];
+        const newValue = (updates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
+      return { ...prev, ...updates };
+    });
   }, []);
 
   const updateRSI = useCallback((id: string, updates: Partial<RSIConfig>) => {
     setConfig(prev => {
       const currentRSI = prev.indicators.rsi.find(rsi => rsi.id === id);
-      
+      if (!currentRSI) return prev;
+      const newUpdates = { ...updates };
       if (updates.period && currentRSI) {
         const oldPeriod = currentRSI.period;
         const newPeriod = updates.period;
-        const defaultNamePattern = `RSI ${oldPeriod}`;
-        if (currentRSI.name === defaultNamePattern) {
-          updates.name = generateRSIName(newPeriod);
+        if (currentRSI.name === `RSI ${oldPeriod}`) {
+          newUpdates.name = generateRSIName(newPeriod);
         }
       }
-      
+      const hasChanges = Object.keys(newUpdates).some(key => {
+        const prevValue = (currentRSI as any)[key];
+        const newValue = (newUpdates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
       return {
         ...prev,
         indicators: {
           ...prev.indicators,
           rsi: prev.indicators.rsi.map(rsi => 
-            rsi.id === id ? { ...rsi, ...updates } : rsi
+            rsi.id === id ? { ...rsi, ...newUpdates } : rsi
           ),
         },
       };
@@ -64,7 +98,7 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       indicators: {
         ...prev.indicators,
-        rsi: prev.indicators.rsi.map(rsi => 
+        rsi: prev.indicators.rsi.map(rsi =>
           rsi.id === id ? { ...rsi, show: !rsi.show } : rsi
         ),
       },
@@ -73,23 +107,24 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
   const updateMFI = useCallback((id: string, updates: Partial<MFIConfig>) => {
     setConfig(prev => {
-      const currentMFI = prev.indicators.mfi.find(mfi => mfi.id === id);
-      
-      if (updates.period && currentMFI) {
-        const oldPeriod = currentMFI.period;
-        const newPeriod = updates.period;
-        const defaultNamePattern = `MFI ${oldPeriod}`;
-        if (currentMFI.name === defaultNamePattern) {
-          updates.name = generateMFIName(newPeriod);
-        }
+      const current = prev.indicators.mfi.find(item => item.id === id);
+      if (!current) return prev;
+      const newUpdates = { ...updates };
+      if (updates.period && current.name === `MFI ${current.period}`) {
+        newUpdates.name = generateMFIName(updates.period);
       }
-      
+      const hasChanges = Object.keys(newUpdates).some(key => {
+        const prevValue = (current as any)[key];
+        const newValue = (newUpdates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
       return {
         ...prev,
         indicators: {
           ...prev.indicators,
-          mfi: prev.indicators.mfi.map(mfi => 
-            mfi.id === id ? { ...mfi, ...updates } : mfi
+          mfi: prev.indicators.mfi.map(item =>
+            item.id === id ? { ...item, ...newUpdates } : item
           ),
         },
       };
@@ -101,8 +136,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       indicators: {
         ...prev.indicators,
-        mfi: prev.indicators.mfi.map(mfi => 
-          mfi.id === id ? { ...mfi, show: !mfi.show } : mfi
+        mfi: prev.indicators.mfi.map(item =>
+          item.id === id ? { ...item, show: !item.show } : item
         ),
       },
     }));
@@ -110,26 +145,30 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
   const updateEMV = useCallback((id: string, updates: Partial<EMVConfig>) => {
     setConfig(prev => {
-      const currentEMV = prev.indicators.emv.find(emv => emv.id === id);
-      
-      if ((updates.period !== undefined || updates.divisor !== undefined) && currentEMV) {
-        const oldPeriod = currentEMV.period;
-        const oldDivisor = currentEMV.divisor;
-        const newPeriod = updates.period !== undefined ? updates.period : oldPeriod;
-        const newDivisor = updates.divisor !== undefined ? updates.divisor : oldDivisor;
-        const defaultNamePattern = generateEMVName(oldPeriod, oldDivisor);
-        
-        if (currentEMV.name === defaultNamePattern) {
-          updates.name = generateEMVName(newPeriod, newDivisor);
+      const current = prev.indicators.emv.find(item => item.id === id);
+      if (!current) return prev;
+      const newUpdates = { ...updates };
+      if ((updates.period !== undefined || updates.divisor !== undefined) && current) {
+        const oldPeriod = current.period;
+        const oldDivisor = current.divisor;
+        const newPeriod = updates.period ?? oldPeriod;
+        const newDivisor = updates.divisor ?? oldDivisor;
+        if (current.name === generateEMVName(oldPeriod, oldDivisor)) {
+          newUpdates.name = generateEMVName(newPeriod, newDivisor);
         }
       }
-      
+      const hasChanges = Object.keys(newUpdates).some(key => {
+        const prevValue = (current as any)[key];
+        const newValue = (newUpdates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
       return {
         ...prev,
         indicators: {
           ...prev.indicators,
-          emv: prev.indicators.emv.map(emv => 
-            emv.id === id ? { ...emv, ...updates } : emv
+          emv: prev.indicators.emv.map(item =>
+            item.id === id ? { ...item, ...newUpdates } : item
           ),
         },
       };
@@ -141,23 +180,33 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       indicators: {
         ...prev.indicators,
-        emv: prev.indicators.emv.map(emv => 
-          emv.id === id ? { ...emv, show: !emv.show } : emv
+        emv: prev.indicators.emv.map(item =>
+          item.id === id ? { ...item, show: !item.show } : item
         ),
       },
     }));
   }, []);
 
   const updateVolume = useCallback((id: string, updates: Partial<VolumeConfig>) => {
-    setConfig(prev => ({
-      ...prev,
-      indicators: {
-        ...prev.indicators,
-        volume: prev.indicators.volume.map(volume => 
-          volume.id === id ? { ...volume, ...updates } : volume
-        ),
-      },
-    }));
+    setConfig(prev => {
+      const current = prev.indicators.volume.find(item => item.id === id);
+      if (!current) return prev;
+      const hasChanges = Object.keys(updates).some(key => {
+        const prevValue = (current as any)[key];
+        const newValue = (updates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          volume: prev.indicators.volume.map(item =>
+            item.id === id ? { ...item, ...updates } : item
+          ),
+        },
+      };
+    });
   }, []);
 
   const toggleVolume = useCallback((id: string) => {
@@ -165,8 +214,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       indicators: {
         ...prev.indicators,
-        volume: prev.indicators.volume.map(volume => 
-          volume.id === id ? { ...volume, show: !volume.show } : volume
+        volume: prev.indicators.volume.map(item =>
+          item.id === id ? { ...item, show: !item.show } : item
         ),
       },
     }));
@@ -174,24 +223,24 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
   const updateMA = useCallback((id: string, updates: Partial<MAConfig>) => {
     setConfig(prev => {
-      const currentMA = prev.indicators.ma.find(ma => ma.id === id);
-      
-      if (updates.period && currentMA) {
-        const oldPeriod = currentMA.period;
-        const newPeriod = updates.period;
-        const defaultNamePattern = generateMAName(currentMA.type, oldPeriod);
-        
-        if (currentMA.name === defaultNamePattern) {
-          updates.name = generateMAName(currentMA.type, newPeriod);
-        }
+      const current = prev.indicators.ma.find(item => item.id === id);
+      if (!current) return prev;
+      const newUpdates = { ...updates };
+      if (updates.period && current.name === generateMAName(current.type, current.period)) {
+        newUpdates.name = generateMAName(current.type, updates.period);
       }
-      
+      const hasChanges = Object.keys(newUpdates).some(key => {
+        const prevValue = (current as any)[key];
+        const newValue = (newUpdates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
       return {
         ...prev,
         indicators: {
           ...prev.indicators,
-          ma: prev.indicators.ma.map(ma => 
-            ma.id === id ? { ...ma, ...updates } : ma
+          ma: prev.indicators.ma.map(item =>
+            item.id === id ? { ...item, ...newUpdates } : item
           ),
         },
       };
@@ -203,8 +252,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       indicators: {
         ...prev.indicators,
-        ma: prev.indicators.ma.map(ma => 
-          ma.id === id ? { ...ma, show: !ma.show } : ma
+        ma: prev.indicators.ma.map(item =>
+          item.id === id ? { ...item, show: !item.show } : item
         ),
       },
     }));
@@ -212,24 +261,24 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
   const updateEMA = useCallback((id: string, updates: Partial<MAConfig>) => {
     setConfig(prev => {
-      const currentEMA = prev.indicators.ema.find(ema => ema.id === id);
-      
-      if (updates.period && currentEMA) {
-        const oldPeriod = currentEMA.period;
-        const newPeriod = updates.period;
-        const defaultNamePattern = generateMAName(currentEMA.type, oldPeriod);
-        
-        if (currentEMA.name === defaultNamePattern) {
-          updates.name = generateMAName(currentEMA.type, newPeriod);
-        }
+      const current = prev.indicators.ema.find(item => item.id === id);
+      if (!current) return prev;
+      const newUpdates = { ...updates };
+      if (updates.period && current.name === generateMAName(current.type, current.period)) {
+        newUpdates.name = generateMAName(current.type, updates.period);
       }
-      
+      const hasChanges = Object.keys(newUpdates).some(key => {
+        const prevValue = (current as any)[key];
+        const newValue = (newUpdates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
       return {
         ...prev,
         indicators: {
           ...prev.indicators,
-          ema: prev.indicators.ema.map(ema => 
-            ema.id === id ? { ...ema, ...updates } : ema
+          ema: prev.indicators.ema.map(item =>
+            item.id === id ? { ...item, ...newUpdates } : item
           ),
         },
       };
@@ -241,8 +290,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       indicators: {
         ...prev.indicators,
-        ema: prev.indicators.ema.map(ema => 
-          ema.id === id ? { ...ema, show: !ema.show } : ema
+        ema: prev.indicators.ema.map(item =>
+          item.id === id ? { ...item, show: !item.show } : item
         ),
       },
     }));
@@ -250,24 +299,24 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
   const updateWMA = useCallback((id: string, updates: Partial<MAConfig>) => {
     setConfig(prev => {
-      const currentWMA = prev.indicators.wma.find(wma => wma.id === id);
-      
-      if (updates.period && currentWMA) {
-        const oldPeriod = currentWMA.period;
-        const newPeriod = updates.period;
-        const defaultNamePattern = generateMAName(currentWMA.type, oldPeriod);
-        
-        if (currentWMA.name === defaultNamePattern) {
-          updates.name = generateMAName(currentWMA.type, newPeriod);
-        }
+      const current = prev.indicators.wma.find(item => item.id === id);
+      if (!current) return prev;
+      const newUpdates = { ...updates };
+      if (updates.period && current.name === generateMAName(current.type, current.period)) {
+        newUpdates.name = generateMAName(current.type, updates.period);
       }
-      
+      const hasChanges = Object.keys(newUpdates).some(key => {
+        const prevValue = (current as any)[key];
+        const newValue = (newUpdates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
       return {
         ...prev,
         indicators: {
           ...prev.indicators,
-          wma: prev.indicators.wma.map(wma => 
-            wma.id === id ? { ...wma, ...updates } : wma
+          wma: prev.indicators.wma.map(item =>
+            item.id === id ? { ...item, ...newUpdates } : item
           ),
         },
       };
@@ -279,8 +328,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       indicators: {
         ...prev.indicators,
-        wma: prev.indicators.wma.map(wma => 
-          wma.id === id ? { ...wma, show: !wma.show } : wma
+        wma: prev.indicators.wma.map(item =>
+          item.id === id ? { ...item, show: !item.show } : item
         ),
       },
     }));
@@ -288,26 +337,30 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
   const updateBB = useCallback((id: string, updates: Partial<BBConfig>) => {
     setConfig(prev => {
-      const currentBB = prev.indicators.bb.find(bb => bb.id === id);
-      
-      if ((updates.period || updates.stdDev) && currentBB) {
-        const oldPeriod = currentBB.period;
-        const oldStdDev = currentBB.stdDev;
-        const newPeriod = updates.period || oldPeriod;
-        const newStdDev = updates.stdDev || oldStdDev;
-        const defaultNamePattern = generateBBName(oldPeriod, oldStdDev);
-        
-        if (currentBB.name === defaultNamePattern) {
-          updates.name = generateBBName(newPeriod, newStdDev);
+      const current = prev.indicators.bb.find(item => item.id === id);
+      if (!current) return prev;
+      const newUpdates = { ...updates };
+      if ((updates.period || updates.stdDev) && current) {
+        const oldPeriod = current.period;
+        const oldStdDev = current.stdDev;
+        const newPeriod = updates.period ?? oldPeriod;
+        const newStdDev = updates.stdDev ?? oldStdDev;
+        if (current.name === generateBBName(oldPeriod, oldStdDev)) {
+          newUpdates.name = generateBBName(newPeriod, newStdDev);
         }
       }
-      
+      const hasChanges = Object.keys(newUpdates).some(key => {
+        const prevValue = (current as any)[key];
+        const newValue = (newUpdates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
       return {
         ...prev,
         indicators: {
           ...prev.indicators,
-          bb: prev.indicators.bb.map(bb => 
-            bb.id === id ? { ...bb, ...updates } : bb
+          bb: prev.indicators.bb.map(item =>
+            item.id === id ? { ...item, ...newUpdates } : item
           ),
         },
       };
@@ -319,23 +372,33 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       indicators: {
         ...prev.indicators,
-        bb: prev.indicators.bb.map(bb => 
-          bb.id === id ? { ...bb, show: !bb.show } : bb
+        bb: prev.indicators.bb.map(item =>
+          item.id === id ? { ...item, show: !item.show } : item
         ),
       },
     }));
   }, []);
 
   const updateVWAP = useCallback((id: string, updates: Partial<VWAPConfig>) => {
-    setConfig(prev => ({
-      ...prev,
-      indicators: {
-        ...prev.indicators,
-        vwap: prev.indicators.vwap.map(vwap => 
-          vwap.id === id ? { ...vwap, ...updates } : vwap
-        ),
-      },
-    }));
+    setConfig(prev => {
+      const current = prev.indicators.vwap.find(item => item.id === id);
+      if (!current) return prev;
+      const hasChanges = Object.keys(updates).some(key => {
+        const prevValue = (current as any)[key];
+        const newValue = (updates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          vwap: prev.indicators.vwap.map(item =>
+            item.id === id ? { ...item, ...updates } : item
+          ),
+        },
+      };
+    });
   }, []);
 
   const toggleVWAP = useCallback((id: string) => {
@@ -343,8 +406,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       indicators: {
         ...prev.indicators,
-        vwap: prev.indicators.vwap.map(vwap => 
-          vwap.id === id ? { ...vwap, show: !vwap.show } : vwap
+        vwap: prev.indicators.vwap.map(item =>
+          item.id === id ? { ...item, show: !item.show } : item
         ),
       },
     }));
@@ -352,24 +415,24 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
   const updateAVL = useCallback((id: string, updates: Partial<AVLConfig>) => {
     setConfig(prev => {
-      const currentAVL = prev.indicators.avl.find(avl => avl.id === id);
-      
-      if (updates.period && currentAVL) {
-        const oldPeriod = currentAVL.period;
-        const newPeriod = updates.period;
-        const defaultNamePattern = generateAVLName(oldPeriod);
-        
-        if (currentAVL.name === defaultNamePattern) {
-          updates.name = generateAVLName(newPeriod);
-        }
+      const current = prev.indicators.avl.find(item => item.id === id);
+      if (!current) return prev;
+      const newUpdates = { ...updates };
+      if (updates.period && current.name === generateAVLName(current.period)) {
+        newUpdates.name = generateAVLName(updates.period);
       }
-      
+      const hasChanges = Object.keys(newUpdates).some(key => {
+        const prevValue = (current as any)[key];
+        const newValue = (newUpdates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
       return {
         ...prev,
         indicators: {
           ...prev.indicators,
-          avl: prev.indicators.avl.map(avl => 
-            avl.id === id ? { ...avl, ...updates } : avl
+          avl: prev.indicators.avl.map(item =>
+            item.id === id ? { ...item, ...newUpdates } : item
           ),
         },
       };
@@ -381,8 +444,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       indicators: {
         ...prev.indicators,
-        avl: prev.indicators.avl.map(avl => 
-          avl.id === id ? { ...avl, show: !avl.show } : avl
+        avl: prev.indicators.avl.map(item =>
+          item.id === id ? { ...item, show: !item.show } : item
         ),
       },
     }));
@@ -390,26 +453,30 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
   const updateSAR = useCallback((id: string, updates: Partial<SARConfig>) => {
     setConfig(prev => {
-      const currentSAR = prev.indicators.sar.find(sar => sar.id === id);
-      
-      if ((updates.start !== undefined || updates.maximum !== undefined) && currentSAR) {
-        const oldStart = currentSAR.start;
-        const oldMaximum = currentSAR.maximum;
-        const newStart = updates.start !== undefined ? updates.start : oldStart;
-        const newMaximum = updates.maximum !== undefined ? updates.maximum : oldMaximum;
-        const defaultNamePattern = generateSARName(oldStart, oldMaximum);
-        
-        if (currentSAR.name === defaultNamePattern) {
-          updates.name = generateSARName(newStart, newMaximum);
+      const current = prev.indicators.sar.find(item => item.id === id);
+      if (!current) return prev;
+      const newUpdates = { ...updates };
+      if ((updates.start !== undefined || updates.maximum !== undefined) && current) {
+        const oldStart = current.start;
+        const oldMaximum = current.maximum;
+        const newStart = updates.start ?? oldStart;
+        const newMaximum = updates.maximum ?? oldMaximum;
+        if (current.name === generateSARName(oldStart, oldMaximum)) {
+          newUpdates.name = generateSARName(newStart, newMaximum);
         }
       }
-      
+      const hasChanges = Object.keys(newUpdates).some(key => {
+        const prevValue = (current as any)[key];
+        const newValue = (newUpdates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
       return {
         ...prev,
         indicators: {
           ...prev.indicators,
-          sar: prev.indicators.sar.map(sar => 
-            sar.id === id ? { ...sar, ...updates } : sar
+          sar: prev.indicators.sar.map(item =>
+            item.id === id ? { ...item, ...newUpdates } : item
           ),
         },
       };
@@ -421,8 +488,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       indicators: {
         ...prev.indicators,
-        sar: prev.indicators.sar.map(sar => 
-          sar.id === id ? { ...sar, show: !sar.show } : sar
+        sar: prev.indicators.sar.map(item =>
+          item.id === id ? { ...item, show: !item.show } : item
         ),
       },
     }));
@@ -430,24 +497,24 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
   const updateTRIX = useCallback((id: string, updates: Partial<TRIXConfig>) => {
     setConfig(prev => {
-      const currentTRIX = prev.indicators.trix.find(trix => trix.id === id);
-      
-      if (updates.period && currentTRIX) {
-        const oldPeriod = currentTRIX.period;
-        const newPeriod = updates.period;
-        const defaultNamePattern = generateTRIXName(oldPeriod);
-        
-        if (currentTRIX.name === defaultNamePattern) {
-          updates.name = generateTRIXName(newPeriod);
-        }
+      const current = prev.indicators.trix.find(item => item.id === id);
+      if (!current) return prev;
+      const newUpdates = { ...updates };
+      if (updates.period && current.name === generateTRIXName(current.period)) {
+        newUpdates.name = generateTRIXName(updates.period);
       }
-      
+      const hasChanges = Object.keys(newUpdates).some(key => {
+        const prevValue = (current as any)[key];
+        const newValue = (newUpdates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
       return {
         ...prev,
         indicators: {
           ...prev.indicators,
-          trix: prev.indicators.trix.map(trix => 
-            trix.id === id ? { ...trix, ...updates } : trix
+          trix: prev.indicators.trix.map(item =>
+            item.id === id ? { ...item, ...newUpdates } : item
           ),
         },
       };
@@ -459,8 +526,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       indicators: {
         ...prev.indicators,
-        trix: prev.indicators.trix.map(trix => 
-          trix.id === id ? { ...trix, show: !trix.show } : trix
+        trix: prev.indicators.trix.map(item =>
+          item.id === id ? { ...item, show: !item.show } : item
         ),
       },
     }));
@@ -468,26 +535,30 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
   const updateSupertrend = useCallback((id: string, updates: Partial<SupertrendConfig>) => {
     setConfig(prev => {
-      const currentST = prev.indicators.supertrend.find(st => st.id === id);
-      
-      if ((updates.atrLength !== undefined || updates.factor !== undefined) && currentST) {
-        const oldAtrLength = currentST.atrLength;
-        const oldFactor = currentST.factor;
-        const newAtrLength = updates.atrLength !== undefined ? updates.atrLength : oldAtrLength;
-        const newFactor = updates.factor !== undefined ? updates.factor : oldFactor;
-        const defaultNamePattern = generateSupertrendName(oldAtrLength, oldFactor);
-        
-        if (currentST.name === defaultNamePattern) {
-          updates.name = generateSupertrendName(newAtrLength, newFactor);
+      const current = prev.indicators.supertrend.find(item => item.id === id);
+      if (!current) return prev;
+      const newUpdates = { ...updates };
+      if ((updates.atrLength !== undefined || updates.factor !== undefined) && current) {
+        const oldAtrLength = current.atrLength;
+        const oldFactor = current.factor;
+        const newAtrLength = updates.atrLength ?? oldAtrLength;
+        const newFactor = updates.factor ?? oldFactor;
+        if (current.name === generateSupertrendName(oldAtrLength, oldFactor)) {
+          newUpdates.name = generateSupertrendName(newAtrLength, newFactor);
         }
       }
-      
+      const hasChanges = Object.keys(newUpdates).some(key => {
+        const prevValue = (current as any)[key];
+        const newValue = (newUpdates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
       return {
         ...prev,
         indicators: {
           ...prev.indicators,
-          supertrend: prev.indicators.supertrend.map(st => 
-            st.id === id ? { ...st, ...updates } : st
+          supertrend: prev.indicators.supertrend.map(item =>
+            item.id === id ? { ...item, ...newUpdates } : item
           ),
         },
       };
@@ -499,8 +570,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       indicators: {
         ...prev.indicators,
-        supertrend: prev.indicators.supertrend.map(st => 
-          st.id === id ? { ...st, show: !st.show } : st
+        supertrend: prev.indicators.supertrend.map(item =>
+          item.id === id ? { ...item, show: !item.show } : item
         ),
       },
     }));
@@ -508,28 +579,32 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
   const updateKDJ = useCallback((id: string, updates: Partial<KDJConfig>) => {
     setConfig(prev => {
-      const currentKDJ = prev.indicators.kdj.find(kdj => kdj.id === id);
-      
-      if ((updates.period !== undefined || updates.kPeriod !== undefined || updates.dPeriod !== undefined) && currentKDJ) {
-        const oldPeriod = currentKDJ.period;
-        const oldKPeriod = currentKDJ.kPeriod;
-        const oldDPeriod = currentKDJ.dPeriod;
-        const newPeriod = updates.period !== undefined ? updates.period : oldPeriod;
-        const newKPeriod = updates.kPeriod !== undefined ? updates.kPeriod : oldKPeriod;
-        const newDPeriod = updates.dPeriod !== undefined ? updates.dPeriod : oldDPeriod;
-        const defaultNamePattern = generateKDJName(oldPeriod, oldKPeriod, oldDPeriod);
-        
-        if (currentKDJ.name === defaultNamePattern) {
-          updates.name = generateKDJName(newPeriod, newKPeriod, newDPeriod);
+      const current = prev.indicators.kdj.find(item => item.id === id);
+      if (!current) return prev;
+      const newUpdates = { ...updates };
+      if ((updates.period !== undefined || updates.kPeriod !== undefined || updates.dPeriod !== undefined) && current) {
+        const oldPeriod = current.period;
+        const oldKPeriod = current.kPeriod;
+        const oldDPeriod = current.dPeriod;
+        const newPeriod = updates.period ?? oldPeriod;
+        const newKPeriod = updates.kPeriod ?? oldKPeriod;
+        const newDPeriod = updates.dPeriod ?? oldDPeriod;
+        if (current.name === generateKDJName(oldPeriod, oldKPeriod, oldDPeriod)) {
+          newUpdates.name = generateKDJName(newPeriod, newKPeriod, newDPeriod);
         }
       }
-      
+      const hasChanges = Object.keys(newUpdates).some(key => {
+        const prevValue = (current as any)[key];
+        const newValue = (newUpdates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
       return {
         ...prev,
         indicators: {
           ...prev.indicators,
-          kdj: prev.indicators.kdj.map(kdj => 
-            kdj.id === id ? { ...kdj, ...updates } : kdj
+          kdj: prev.indicators.kdj.map(item =>
+            item.id === id ? { ...item, ...newUpdates } : item
           ),
         },
       };
@@ -541,8 +616,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       indicators: {
         ...prev.indicators,
-        kdj: prev.indicators.kdj.map(kdj => 
-          kdj.id === id ? { ...kdj, show: !kdj.show } : kdj
+        kdj: prev.indicators.kdj.map(item =>
+          item.id === id ? { ...item, show: !item.show } : item
         ),
       },
     }));
@@ -550,26 +625,30 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
 
   const updateMTM = useCallback((id: string, updates: Partial<MTMConfig>) => {
     setConfig(prev => {
-      const currentMTM = prev.indicators.mtm.find(mtm => mtm.id === id);
-      
-      if ((updates.period !== undefined || updates.priceType !== undefined) && currentMTM) {
-        const oldPeriod = currentMTM.period;
-        const oldPriceType = currentMTM.priceType;
-        const newPeriod = updates.period !== undefined ? updates.period : oldPeriod;
-        const newPriceType = updates.priceType !== undefined ? updates.priceType : oldPriceType;
-        const defaultNamePattern = generateMTMName(oldPeriod, oldPriceType);
-        
-        if (currentMTM.name === defaultNamePattern) {
-          updates.name = generateMTMName(newPeriod, newPriceType);
+      const current = prev.indicators.mtm.find(item => item.id === id);
+      if (!current) return prev;
+      const newUpdates = { ...updates };
+      if ((updates.period !== undefined || updates.priceType !== undefined) && current) {
+        const oldPeriod = current.period;
+        const oldPriceType = current.priceType;
+        const newPeriod = updates.period ?? oldPeriod;
+        const newPriceType = updates.priceType ?? oldPriceType;
+        if (current.name === generateMTMName(oldPeriod, oldPriceType)) {
+          newUpdates.name = generateMTMName(newPeriod, newPriceType);
         }
       }
-      
+      const hasChanges = Object.keys(newUpdates).some(key => {
+        const prevValue = (current as any)[key];
+        const newValue = (newUpdates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
       return {
         ...prev,
         indicators: {
           ...prev.indicators,
-          mtm: prev.indicators.mtm.map(mtm => 
-            mtm.id === id ? { ...mtm, ...updates } : mtm
+          mtm: prev.indicators.mtm.map(item =>
+            item.id === id ? { ...item, ...newUpdates } : item
           ),
         },
       };
@@ -581,67 +660,96 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
       ...prev,
       indicators: {
         ...prev.indicators,
-        mtm: prev.indicators.mtm.map(mtm => 
-          mtm.id === id ? { ...mtm, show: !mtm.show } : mtm
+        mtm: prev.indicators.mtm.map(item =>
+          item.id === id ? { ...item, show: !item.show } : item
         ),
       },
     }));
   }, []);
 
   const updateVolumeMA = useCallback((volumeId: string, maId: string, updates: Partial<VolumeMAConfig>) => {
-    setConfig(prev => ({
-      ...prev,
-      indicators: {
-        ...prev.indicators,
-        volume: prev.indicators.volume.map(volume => 
-          volume.id === volumeId 
-            ? {
-                ...volume,
-                maLines: volume.maLines.map(ma => 
-                  ma.id === maId ? { ...ma, ...updates } : ma
-                )
-              }
-            : volume
-        ),
-      },
-    }));
+    setConfig(prev => {
+      const currentVolume = prev.indicators.volume.find(v => v.id === volumeId);
+      if (!currentVolume) return prev;
+      const currentMA = currentVolume.maLines.find(ma => ma.id === maId);
+      if (!currentMA) return prev;
+      const hasChanges = Object.keys(updates).some(key => {
+        const prevValue = (currentMA as any)[key];
+        const newValue = (updates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          volume: prev.indicators.volume.map(volume =>
+            volume.id === volumeId
+              ? {
+                  ...volume,
+                  maLines: volume.maLines.map(ma =>
+                    ma.id === maId ? { ...ma, ...updates } : ma
+                  )
+                }
+              : volume
+          ),
+        },
+      };
+    });
   }, []);
 
   const toggleVolumeMA = useCallback((volumeId: string, maId: string) => {
-    setConfig(prev => ({
-      ...prev,
-      indicators: {
-        ...prev.indicators,
-        volume: prev.indicators.volume.map(volume => 
-          volume.id === volumeId 
-            ? {
-                ...volume,
-                maLines: volume.maLines.map(ma => 
-                  ma.id === maId ? { ...ma, show: !ma.show } : ma
-                )
-              }
-            : volume
-        ),
-      },
-    }));
+    setConfig(prev => {
+      const currentVolume = prev.indicators.volume.find(v => v.id === volumeId);
+      if (!currentVolume) return prev;
+      const currentMA = currentVolume.maLines.find(ma => ma.id === maId);
+      if (!currentMA) return prev;
+      return {
+        ...prev,
+        indicators: {
+          ...prev.indicators,
+          volume: prev.indicators.volume.map(volume =>
+            volume.id === volumeId
+              ? {
+                  ...volume,
+                  maLines: volume.maLines.map(ma =>
+                    ma.id === maId ? { ...ma, show: !ma.show } : ma
+                  )
+                }
+              : volume
+          ),
+        },
+      };
+    });
   }, []);
 
   const updateChartStyle = useCallback((updates: Partial<ChartStyleConfig>) => {
-    setConfig(prev => ({
-      ...prev,
-      chart: { ...prev.chart, ...updates },
-    }));
+    setConfig(prev => {
+      const hasChanges = Object.keys(updates).some(key => {
+        const prevValue = (prev.chart as any)[key];
+        const newValue = (updates as any)[key];
+        return JSON.stringify(prevValue) !== JSON.stringify(newValue);
+      });
+      if (!hasChanges) return prev;
+      return {
+        ...prev,
+        chart: { ...prev.chart, ...updates },
+      };
+    });
   }, []);
 
   const updateChartType = useCallback((chartType: ChartType) => {
-    setConfig(prev => ({
-      ...prev,
-      chartType,
-      chart: {
-        ...prev.chart,
-        candle: getChartTypeConfig(chartType),
-      },
-    }));
+    setConfig(prev => {
+      if (prev.chartType === chartType) return prev;
+      return {
+        ...prev,
+        chartType,
+        chart: {
+          ...prev.chart,
+          candle: getChartTypeConfig(chartType),
+        },
+      };
+    });
   }, []);
 
   const resetToDefaults = useCallback(() => {
@@ -649,8 +757,8 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
     resetStorage();
   }, []);
 
-  const value: GlobalContextType = {
-    config,
+  // --- API object is stable across renders ---
+  const api = useMemo(() => ({
     updateConfig,
     updateRSI,
     toggleRSI,
@@ -687,21 +795,63 @@ export function GlobalProvider({ children }: { children: ReactNode }) {
     updateChartStyle,
     updateChartType,
     resetToDefaults,
-  };
+  }), [
+    updateConfig,
+    updateRSI, toggleRSI,
+    updateMFI, toggleMFI,
+    updateVolume, toggleVolume,
+    updateVolumeMA, toggleVolumeMA,
+    updateMA, toggleMA,
+    updateEMA, toggleEMA,
+    updateWMA, toggleWMA,
+    updateBB, toggleBB,
+    updateVWAP, toggleVWAP,
+    updateAVL, toggleAVL,
+    updateSAR, toggleSAR,
+    updateTRIX, toggleTRIX,
+    updateSupertrend, toggleSupertrend,
+    updateKDJ, toggleKDJ,
+    updateEMV, toggleEMV,
+    updateMTM, toggleMTM,
+    updateChartStyle,
+    updateChartType,
+    resetToDefaults,
+  ]);
 
   return (
-    <GlobalContext.Provider value={value}>
-      {children}
-    </GlobalContext.Provider>
+    <ConfigStateContext.Provider value={config}>
+      <ConfigApiContext.Provider value={api}>
+        {children}
+      </ConfigApiContext.Provider>
+    </ConfigStateContext.Provider>
   );
 }
 
-export function useGlobalContext() {
-  const context = useContext(GlobalContext);
+// --- Custom hooks ---
+export function useGlobalConfig() {
+  const context = useContext(ConfigStateContext);
   if (context === undefined) {
-    throw new Error('useGlobalContext must be used within a GlobalProvider');
+    console.error('useGlobalConfig must be used within a GlobalProvider');
+    return defaultConfig; // fallback
   }
   return context;
+}
+
+export function useGlobalApi() {
+  const context = useContext(ConfigApiContext);
+  if (context === undefined) {
+    console.error('useGlobalApi must be used within a GlobalProvider');
+    // Return dummy functions to avoid crashing
+    return {} as Omit<GlobalContextType, 'config'>;
+  }
+  return context;
+}
+
+// Legacy hook for backward compatibility (now uses both)
+export function useGlobalContext(): GlobalContextType {
+  const config = useGlobalConfig();
+  const api = useGlobalApi();
+  return { config, ...api };
 }
 
 // Re-export types for backward compatibility
