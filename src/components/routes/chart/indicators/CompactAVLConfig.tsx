@@ -1,3 +1,5 @@
+// components/routes/chart/indicators/CompactAVLConfig.tsx
+import React from 'react';
 import { AVLConfig } from "@/context/types";
 
 interface CompactAVLConfigProps {
@@ -9,7 +11,7 @@ interface CompactAVLConfigProps {
   onColorChange: (id: string, color: string) => void;
 }
 
-export const CompactAVLConfig: React.FC<CompactAVLConfigProps> = ({ 
+export const CompactAVLConfig: React.FC<CompactAVLConfigProps> = React.memo(({ 
   configs, 
   title, 
   onToggle, 
@@ -74,4 +76,6 @@ export const CompactAVLConfig: React.FC<CompactAVLConfigProps> = ({
       ))}
     </div>
   </div>
-);
+));
+
+CompactAVLConfig.displayName = 'CompactAVLConfig';

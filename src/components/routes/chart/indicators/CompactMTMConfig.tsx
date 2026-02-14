@@ -1,4 +1,4 @@
-// components/chart/indicators/CompactMTMConfig.tsx
+// components/routes/chart/indicators/CompactMTMConfig.tsx
 import React from 'react';
 import { MTMConfig } from '@/context/types';
 
@@ -21,7 +21,7 @@ const priceTypeOptions = [
   { value: 'ohlc4', label: 'OHLC/4 (Open+High+Low+Close/4)' },
 ];
 
-export const CompactMTMConfig: React.FC<CompactMTMConfigProps> = ({
+export const CompactMTMConfig: React.FC<CompactMTMConfigProps> = React.memo(({
   mtmConfigs,
   onToggle,
   onPeriodChange,
@@ -52,7 +52,6 @@ export const CompactMTMConfig: React.FC<CompactMTMConfigProps> = ({
             </div>
           </div>
 
-          {/* Configuration Grid */}
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-xs text-gray-400 mb-1">Period</label>
@@ -81,7 +80,6 @@ export const CompactMTMConfig: React.FC<CompactMTMConfigProps> = ({
             </div>
           </div>
 
-          {/* Line Style */}
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-gray-300">Line Style</h4>
             
@@ -107,7 +105,6 @@ export const CompactMTMConfig: React.FC<CompactMTMConfigProps> = ({
             </div>
           </div>
 
-          {/* Information Section */}
           <div className="mt-4 pt-4 border-t border-gray-700">
             <div className="text-xs text-gray-400 space-y-2">
               <p className="text-gray-300 font-medium">MTM Formula:</p>
@@ -122,4 +119,6 @@ export const CompactMTMConfig: React.FC<CompactMTMConfigProps> = ({
       ))}
     </div>
   </div>
-);
+));
+
+CompactMTMConfig.displayName = 'CompactMTMConfig';

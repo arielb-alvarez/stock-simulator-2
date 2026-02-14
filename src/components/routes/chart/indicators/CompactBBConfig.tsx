@@ -1,4 +1,5 @@
 // components/chart/indicators/CompactBBConfig.tsx
+import React from 'react';
 import { BBConfig } from "@/context/types";
 
 interface CompactBBConfigProps {
@@ -9,7 +10,7 @@ interface CompactBBConfigProps {
   onUpdateBB: (id: string, updates: Partial<BBConfig>) => void;
 }
 
-export const CompactBBConfig: React.FC<CompactBBConfigProps> = ({
+export const CompactBBConfig: React.FC<CompactBBConfigProps> = React.memo(({
   bbConfigs,
   onToggle,
   onPeriodChange,
@@ -104,4 +105,6 @@ export const CompactBBConfig: React.FC<CompactBBConfigProps> = ({
       ))}
     </div>
   </div>
-);
+));
+
+CompactBBConfig.displayName = 'CompactBBConfig';

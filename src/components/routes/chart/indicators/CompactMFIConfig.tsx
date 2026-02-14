@@ -1,4 +1,5 @@
 // components/chart/indicators/CompactMFIConfig.tsx
+import React from 'react';
 import { MFIConfig } from '@/context/types';
 
 interface CompactMFIConfigProps {
@@ -9,14 +10,13 @@ interface CompactMFIConfigProps {
   onColorChange: (id: string, color: string) => void;
 }
 
-export const CompactMFIConfig: React.FC<CompactMFIConfigProps> = ({
+export const CompactMFIConfig: React.FC<CompactMFIConfigProps> = React.memo(({
   mfiConfigs,
   onToggle,
   onPeriodChange,
   onLineSizeChange,
   onColorChange,
 }) => {
-  // Line width options - 4 different numeric options
   const lineWidthOptions = [1.0, 1.5, 2.0, 2.5];
 
   return (
@@ -41,17 +41,12 @@ export const CompactMFIConfig: React.FC<CompactMFIConfigProps> = ({
               <input
                 type="text"
                 value={mfiConfig.name}
-                onChange={(e) => {
-                  // Optionally add name change handler if needed
-                  // For now, we'll keep it read-only or you can add a handler
-                }}
-                className="flex-1 bg-gray-700 border border-gray-500 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
                 readOnly
+                className="flex-1 bg-gray-700 border border-gray-500 rounded px-3 py-2 text-white text-sm focus:outline-none focus:ring-1 focus:ring-yellow-500"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-4">
-              {/* Period */}
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-400">Period:</span>
                 <input
@@ -65,7 +60,6 @@ export const CompactMFIConfig: React.FC<CompactMFIConfigProps> = ({
                 />
               </div>
 
-              {/* Line Width Dropdown */}
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-400">Width:</span>
                 <select
@@ -81,7 +75,6 @@ export const CompactMFIConfig: React.FC<CompactMFIConfigProps> = ({
                 </select>
               </div>
 
-              {/* Line Color */}
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-400">Color:</span>
                 <input
@@ -92,7 +85,6 @@ export const CompactMFIConfig: React.FC<CompactMFIConfigProps> = ({
                 />
               </div>
 
-              {/* Overbought/Oversold Levels */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-400">Overbought: {mfiConfig.overbought}</span>
@@ -113,4 +105,6 @@ export const CompactMFIConfig: React.FC<CompactMFIConfigProps> = ({
       </div>
     </div>
   );
-};
+});
+
+CompactMFIConfig.displayName = 'CompactMFIConfig';

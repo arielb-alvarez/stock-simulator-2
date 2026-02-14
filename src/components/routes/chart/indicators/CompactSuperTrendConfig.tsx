@@ -1,3 +1,5 @@
+// components/routes/chart/indicators/CompactSuperTrendConfig.tsx
+import React from 'react';
 import { SupertrendConfig } from '@/context/types';
 
 interface CompactSupertrendConfigProps {
@@ -15,7 +17,7 @@ interface CompactSupertrendConfigProps {
   onDownBackgroundColorChange: (id: string, color: string) => void;
 }
 
-export const CompactSupertrendConfig: React.FC<CompactSupertrendConfigProps> = ({
+export const CompactSupertrendConfig: React.FC<CompactSupertrendConfigProps> = React.memo(({
   supertrendConfigs,
   onToggle,
   onATRLengthChange,
@@ -30,13 +32,13 @@ export const CompactSupertrendConfig: React.FC<CompactSupertrendConfigProps> = (
   onDownBackgroundColorChange
 }) => {
   const colorOptions = [
-  '#26A69A', // Teal - Good for uptrend
-  '#4CAF50', // Green - Good for uptrend
-  '#00C853', // Light Green - Good for uptrend
-  '#EF5350', // Red - Good for downtrend
-  '#F44336', // Dark Red - Good for downtrend
-  '#D32F2F', // Deep Red - Good for downtrend
-];
+    '#26A69A', // Teal - Good for uptrend
+    '#4CAF50', // Green - Good for uptrend
+    '#00C853', // Light Green - Good for uptrend
+    '#EF5350', // Red - Good for downtrend
+    '#F44336', // Dark Red - Good for downtrend
+    '#D32F2F', // Deep Red - Good for downtrend
+  ];
 
   return (
     <div className="space-y-4">
@@ -50,7 +52,6 @@ export const CompactSupertrendConfig: React.FC<CompactSupertrendConfigProps> = (
       <div className="space-y-3">
         {supertrendConfigs.map((stConfig) => (
           <div key={stConfig.id} className="space-y-4 p-4 bg-gray-750 rounded-lg border border-gray-600">
-            {/* Header with toggle and basic settings */}
             <div className="flex items-center gap-4">
               <input
                 type="checkbox"
@@ -87,7 +88,6 @@ export const CompactSupertrendConfig: React.FC<CompactSupertrendConfigProps> = (
               </div>
             </div>
 
-            {/* Up Trend Settings */}
             <div className="space-y-2 pl-8 border-l-2 border-green-500/50">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-medium text-green-400">Up Trend</h4>
@@ -141,7 +141,6 @@ export const CompactSupertrendConfig: React.FC<CompactSupertrendConfigProps> = (
               </div>
             </div>
 
-            {/* Down Trend Settings */}
             <div className="space-y-2 pl-8 border-l-2 border-red-500/50">
               <div className="flex items-center justify-between">
                 <h4 className="text-sm font-medium text-red-400">Down Trend</h4>
@@ -199,4 +198,6 @@ export const CompactSupertrendConfig: React.FC<CompactSupertrendConfigProps> = (
       </div>
     </div>
   );
-};
+});
+
+CompactSupertrendConfig.displayName = 'CompactSupertrendConfig';

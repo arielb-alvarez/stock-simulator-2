@@ -1,5 +1,5 @@
 // components/chart/indicators/IndicatorsDialog.tsx
-import { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useGlobalContext } from '@/context/GlobalContext';
 import { MTMConfig } from '@/context/types';
 import { CompactMAConfig } from './CompactMAConfig';
@@ -27,7 +27,7 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'main' | 'sub'>('main');
   const [activeSubMenu, setActiveSubMenu] = useState<string>('ma');
-  
+
   const {
     config,
     updateRSI,
@@ -64,253 +64,273 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
     toggleMTM
   } = useGlobalContext();
 
-  if (!isOpen) return null;
+  // Memoize menu items to prevent re-creation
+  const mainMenuItems = useMemo(() => [
+    { id: 'ma', label: 'MA' },
+    { id: 'ema', label: 'EMA' },
+    { id: 'wma', label: 'WMA' },
+    { id: 'avl', label: 'AVL' },
+    { id: 'bb', label: 'BB' },
+    { id: 'vwap', label: 'VWAP' },
+    { id: 'sar', label: 'SAR' },
+    { id: 'trix', label: 'TRIX' },
+    { id: 'supertrend', label: 'Supertrend' }
+  ], []);
 
-  // RSI Handlers
-  const handleToggleRSI = (rsiId: string) => {
+  const subMenuItems = useMemo(() => [
+    { id: 'rsi', label: 'RSI' },
+    { id: 'mfi', label: 'MFI' },
+    { id: 'kdj', label: 'KDJ' },
+    { id: 'emv', label: 'EMV' },
+    { id: 'mtm', label: 'Momentum' },
+    { id: 'volume', label: 'Volume' }
+  ], []);
+
+  // ==================== RSI Handlers ====================
+  const handleToggleRSI = useCallback((rsiId: string) => {
     toggleRSI(rsiId);
-  };
+  }, [toggleRSI]);
 
-  const handlePeriodChangeRSI = (rsiId: string, period: number) => {
+  const handlePeriodChangeRSI = useCallback((rsiId: string, period: number) => {
     updateRSI(rsiId, { period: Math.max(1, period) });
-  };
+  }, [updateRSI]);
 
-  const handleLineSizeChangeRSI = (rsiId: string, lineSize: number) => {
+  const handleLineSizeChangeRSI = useCallback((rsiId: string, lineSize: number) => {
     updateRSI(rsiId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
+  }, [updateRSI]);
 
-  const handleColorChangeRSI = (rsiId: string, lineColor: string) => {
+  const handleColorChangeRSI = useCallback((rsiId: string, lineColor: string) => {
     updateRSI(rsiId, { lineColor });
-  };
+  }, [updateRSI]);
 
-  // Add MFI handlers
-  const handleToggleMFI = (mfiId: string) => {
+  // ==================== MFI Handlers ====================
+  const handleToggleMFI = useCallback((mfiId: string) => {
     toggleMFI(mfiId);
-  };
+  }, [toggleMFI]);
 
-  const handlePeriodChangeMFI = (mfiId: string, period: number) => {
+  const handlePeriodChangeMFI = useCallback((mfiId: string, period: number) => {
     updateMFI(mfiId, { period: Math.max(1, period) });
-  };
+  }, [updateMFI]);
 
-  const handleLineSizeChangeMFI = (mfiId: string, lineSize: number) => {
+  const handleLineSizeChangeMFI = useCallback((mfiId: string, lineSize: number) => {
     updateMFI(mfiId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
+  }, [updateMFI]);
 
-  const handleColorChangeMFI = (mfiId: string, lineColor: string) => {
+  const handleColorChangeMFI = useCallback((mfiId: string, lineColor: string) => {
     updateMFI(mfiId, { lineColor });
-  };
+  }, [updateMFI]);
 
-  // Volume Handlers
-  const handleToggleVolume = (volumeId: string) => {
+  // ==================== Volume Handlers ====================
+  const handleToggleVolume = useCallback((volumeId: string) => {
     toggleVolume(volumeId);
-  };
+  }, [toggleVolume]);
 
-  const handleNameChangeVolume = (volumeId: string, name: string) => {
+  const handleNameChangeVolume = useCallback((volumeId: string, name: string) => {
     updateVolume(volumeId, { name });
-  };
+  }, [updateVolume]);
 
-  const handleUpColorChange = (volumeId: string, upColor: string) => {
+  const handleUpColorChange = useCallback((volumeId: string, upColor: string) => {
     updateVolume(volumeId, { upColor });
-  };
+  }, [updateVolume]);
 
-  const handleDownColorChange = (volumeId: string, downColor: string) => {
+  const handleDownColorChange = useCallback((volumeId: string, downColor: string) => {
     updateVolume(volumeId, { downColor });
-  };
+  }, [updateVolume]);
 
-  const handleOpacityChange = (volumeId: string, opacity: number) => {
+  const handleOpacityChange = useCallback((volumeId: string, opacity: number) => {
     updateVolume(volumeId, { opacity: Math.max(0.1, Math.min(1, opacity)) });
-  };
+  }, [updateVolume]);
 
-  const handleUpdateVolumeMA = (volumeId: string, maId: string, updates: any) => {
+  const handleUpdateVolumeMA = useCallback((volumeId: string, maId: string, updates: any) => {
     updateVolumeMA(volumeId, maId, updates);
-  };
+  }, [updateVolumeMA]);
 
-  const handleToggleVolumeMA = (volumeId: string, maId: string) => {
+  const handleToggleVolumeMA = useCallback((volumeId: string, maId: string) => {
     toggleVolumeMA(volumeId, maId);
-  };
+  }, [toggleVolumeMA]);
 
-  // MA configuration handlers
-  const handleToggleMA = (maId: string) => {
+  // ==================== MA Handlers ====================
+  const handleToggleMA = useCallback((maId: string) => {
     toggleMA(maId);
-  };
+  }, [toggleMA]);
 
-  const handlePeriodChangeMA = (maId: string, period: number) => {
+  const handlePeriodChangeMA = useCallback((maId: string, period: number) => {
     updateMA(maId, { period: Math.max(1, period) });
-  };
+  }, [updateMA]);
 
-  const handleLineSizeChangeMA = (maId: string, lineSize: number) => {
+  const handleLineSizeChangeMA = useCallback((maId: string, lineSize: number) => {
     updateMA(maId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
+  }, [updateMA]);
 
-  const handleColorChangeMA = (maId: string, color: string) => {
+  const handleColorChangeMA = useCallback((maId: string, color: string) => {
     updateMA(maId, { color });
-  };
+  }, [updateMA]);
 
-  // EMA configuration handlers
-  const handleToggleEMA = (emaId: string) => {
+  // ==================== EMA Handlers ====================
+  const handleToggleEMA = useCallback((emaId: string) => {
     toggleEMA(emaId);
-  };
+  }, [toggleEMA]);
 
-  const handlePeriodChangeEMA = (emaId: string, period: number) => {
+  const handlePeriodChangeEMA = useCallback((emaId: string, period: number) => {
     updateEMA(emaId, { period: Math.max(1, period) });
-  };
+  }, [updateEMA]);
 
-  const handleLineSizeChangeEMA = (emaId: string, lineSize: number) => {
+  const handleLineSizeChangeEMA = useCallback((emaId: string, lineSize: number) => {
     updateEMA(emaId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
+  }, [updateEMA]);
 
-  const handleColorChangeEMA = (emaId: string, color: string) => {
+  const handleColorChangeEMA = useCallback((emaId: string, color: string) => {
     updateEMA(emaId, { color });
-  };
+  }, [updateEMA]);
 
-  // WMA configuration handlers
-  const handleToggleWMA = (wmaId: string) => {
+  // ==================== WMA Handlers ====================
+  const handleToggleWMA = useCallback((wmaId: string) => {
     toggleWMA(wmaId);
-  };
+  }, [toggleWMA]);
 
-  const handlePeriodChangeWMA = (wmaId: string, period: number) => {
+  const handlePeriodChangeWMA = useCallback((wmaId: string, period: number) => {
     updateWMA(wmaId, { period: Math.max(1, period) });
-  };
+  }, [updateWMA]);
 
-  const handleLineSizeChangeWMA = (wmaId: string, lineSize: number) => {
+  const handleLineSizeChangeWMA = useCallback((wmaId: string, lineSize: number) => {
     updateWMA(wmaId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
+  }, [updateWMA]);
 
-  const handleColorChangeWMA = (wmaId: string, color: string) => {
+  const handleColorChangeWMA = useCallback((wmaId: string, color: string) => {
     updateWMA(wmaId, { color });
-  };
+  }, [updateWMA]);
 
-  // BB configuration handlers
-  const handleToggleBB = (bbId: string) => {
+  // ==================== BB Handlers ====================
+  const handleToggleBB = useCallback((bbId: string) => {
     toggleBB(bbId);
-  };
+  }, [toggleBB]);
 
-  const handlePeriodChangeBB = (bbId: string, period: number) => {
+  const handlePeriodChangeBB = useCallback((bbId: string, period: number) => {
     updateBB(bbId, { period: Math.max(1, period) });
-  };
+  }, [updateBB]);
 
-  const handleStdDevChangeBB = (bbId: string, stdDev: number) => {
+  const handleStdDevChangeBB = useCallback((bbId: string, stdDev: number) => {
     updateBB(bbId, { stdDev: Math.max(0.1, Math.min(5, stdDev)) });
-  };
+  }, [updateBB]);
 
-  // VWAP configuration handlers
-  const handleToggleVWAP = (vwapId: string) => {
+  // ==================== VWAP Handlers ====================
+  const handleToggleVWAP = useCallback((vwapId: string) => {
     toggleVWAP(vwapId);
-  };
+  }, [toggleVWAP]);
 
-  const handleLengthChangeVWAP = (vwapId: string, length: number) => {
+  const handleLengthChangeVWAP = useCallback((vwapId: string, length: number) => {
     updateVWAP(vwapId, { length: Math.max(0, length) });
-  };
+  }, [updateVWAP]);
 
-  const handleLineSizeChangeVWAP = (vwapId: string, lineSize: number) => {
+  const handleLineSizeChangeVWAP = useCallback((vwapId: string, lineSize: number) => {
     updateVWAP(vwapId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
+  }, [updateVWAP]);
 
-  const handleColorChangeVWAP = (vwapId: string, color: string) => {
+  const handleColorChangeVWAP = useCallback((vwapId: string, color: string) => {
     updateVWAP(vwapId, { color });
-  };
+  }, [updateVWAP]);
 
-  // AVL handlers
-  const handleToggleAVL = (avlId: string) => {
+  // ==================== AVL Handlers ====================
+  const handleToggleAVL = useCallback((avlId: string) => {
     toggleAVL(avlId);
-  };
+  }, [toggleAVL]);
 
-  const handlePeriodChangeAVL = (avlId: string, period: number) => {
+  const handlePeriodChangeAVL = useCallback((avlId: string, period: number) => {
     updateAVL(avlId, { period: Math.max(1, period) });
-  };
+  }, [updateAVL]);
 
-  const handleLineSizeChangeAVL = (avlId: string, lineSize: number) => {
+  const handleLineSizeChangeAVL = useCallback((avlId: string, lineSize: number) => {
     updateAVL(avlId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
+  }, [updateAVL]);
 
-  const handleColorChangeAVL = (avlId: string, color: string) => {
+  const handleColorChangeAVL = useCallback((avlId: string, color: string) => {
     updateAVL(avlId, { color });
-  };
+  }, [updateAVL]);
 
-  // SAR handlers
-  const handleToggleSAR = (sarId: string) => {
+  // ==================== SAR Handlers ====================
+  const handleToggleSAR = useCallback((sarId: string) => {
     toggleSAR(sarId);
-  };
+  }, [toggleSAR]);
 
-  const handleStartChangeSAR = (sarId: string, start: number) => {
+  const handleStartChangeSAR = useCallback((sarId: string, start: number) => {
     updateSAR(sarId, { start: Math.max(0.001, Math.min(0.1, start)) });
-  };
+  }, [updateSAR]);
 
-  const handleMaximumChangeSAR = (sarId: string, maximum: number) => {
+  const handleMaximumChangeSAR = useCallback((sarId: string, maximum: number) => {
     updateSAR(sarId, { maximum: Math.max(0.01, Math.min(1, maximum)) });
-  };
+  }, [updateSAR]);
 
-  const handleColorChangeSAR = (sarId: string, color: string) => {
+  const handleColorChangeSAR = useCallback((sarId: string, color: string) => {
     updateSAR(sarId, { color });
-  };
+  }, [updateSAR]);
 
-  // TRIX handlers
-  const handleToggleTRIX = (trixId: string) => {
+  // ==================== TRIX Handlers ====================
+  const handleToggleTRIX = useCallback((trixId: string) => {
     toggleTRIX(trixId);
-  };
+  }, [toggleTRIX]);
 
-  const handlePeriodChangeTRIX = (trixId: string, period: number) => {
+  const handlePeriodChangeTRIX = useCallback((trixId: string, period: number) => {
     updateTRIX(trixId, { period: Math.max(1, period) });
-  };
+  }, [updateTRIX]);
 
-  const handleLineSizeChangeTRIX = (trixId: string, lineSize: number) => {
+  const handleLineSizeChangeTRIX = useCallback((trixId: string, lineSize: number) => {
     updateTRIX(trixId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
+  }, [updateTRIX]);
 
-  const handleColorChangeTRIX = (trixId: string, color: string) => {
+  const handleColorChangeTRIX = useCallback((trixId: string, color: string) => {
     updateTRIX(trixId, { color });
-  };
+  }, [updateTRIX]);
 
-  // Add handler functions for Supertrend
-  const handleToggleSupertrend = (supertrendId: string) => {
+  // ==================== Supertrend Handlers ====================
+  const handleToggleSupertrend = useCallback((supertrendId: string) => {
     toggleSupertrend(supertrendId);
-  };
+  }, [toggleSupertrend]);
 
-  const handleATRLengthChange = (supertrendId: string, atrLength: number) => {
+  const handleATRLengthChange = useCallback((supertrendId: string, atrLength: number) => {
     updateSupertrend(supertrendId, { atrLength: Math.max(1, Math.min(100, atrLength)) });
-  };
+  }, [updateSupertrend]);
 
-  const handleFactorChange = (supertrendId: string, factor: number) => {
+  const handleFactorChange = useCallback((supertrendId: string, factor: number) => {
     updateSupertrend(supertrendId, { factor: Math.max(0.1, Math.min(10, factor)) });
-  };
+  }, [updateSupertrend]);
 
-  const handleUpLineWidthChange = (supertrendId: string, lineWidth: number) => {
+  const handleUpLineWidthChange = useCallback((supertrendId: string, lineWidth: number) => {
     updateSupertrend(supertrendId, { 
       upTrend: { 
         ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend,
         lineWidth: Math.max(0.5, Math.min(5, lineWidth)) 
       } 
     });
-  };
+  }, [updateSupertrend, config.indicators.supertrend]);
 
-  const handleDownLineWidthChange = (supertrendId: string, lineWidth: number) => {
+  const handleDownLineWidthChange = useCallback((supertrendId: string, lineWidth: number) => {
     updateSupertrend(supertrendId, { 
       downTrend: { 
         ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend,
         lineWidth: Math.max(0.5, Math.min(5, lineWidth)) 
       } 
     });
-  };
+  }, [updateSupertrend, config.indicators.supertrend]);
 
-  const handleUpLineColorChange = (supertrendId: string, color: string) => {
+  const handleUpLineColorChange = useCallback((supertrendId: string, color: string) => {
     updateSupertrend(supertrendId, { 
       upTrend: { 
         ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend,
         lineColor: color
       } 
     });
-  };
+  }, [updateSupertrend, config.indicators.supertrend]);
 
-  const handleDownLineColorChange = (supertrendId: string, color: string) => {
+  const handleDownLineColorChange = useCallback((supertrendId: string, color: string) => {
     updateSupertrend(supertrendId, { 
       downTrend: { 
         ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend,
         lineColor: color
       } 
     });
-  };
+  }, [updateSupertrend, config.indicators.supertrend]);
 
-  const handleUpBackgroundToggle = (supertrendId: string, show: boolean) => {
+  const handleUpBackgroundToggle = useCallback((supertrendId: string, show: boolean) => {
     updateSupertrend(supertrendId, { 
       upTrend: { 
         ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend,
@@ -320,9 +340,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
         }
       } 
     });
-  };
+  }, [updateSupertrend, config.indicators.supertrend]);
 
-  const handleDownBackgroundToggle = (supertrendId: string, show: boolean) => {
+  const handleDownBackgroundToggle = useCallback((supertrendId: string, show: boolean) => {
     updateSupertrend(supertrendId, { 
       downTrend: { 
         ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend,
@@ -332,9 +352,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
         }
       } 
     });
-  };
+  }, [updateSupertrend, config.indicators.supertrend]);
 
-  const handleUpBackgroundColorChange = (supertrendId: string, color: string) => {
+  const handleUpBackgroundColorChange = useCallback((supertrendId: string, color: string) => {
     updateSupertrend(supertrendId, { 
       upTrend: { 
         ...config.indicators.supertrend.find(st => st.id === supertrendId)!.upTrend,
@@ -344,9 +364,9 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
         }
       } 
     });
-  };
+  }, [updateSupertrend, config.indicators.supertrend]);
 
-  const handleDownBackgroundColorChange = (supertrendId: string, color: string) => {
+  const handleDownBackgroundColorChange = useCallback((supertrendId: string, color: string) => {
     updateSupertrend(supertrendId, { 
       downTrend: { 
         ...config.indicators.supertrend.find(st => st.id === supertrendId)!.downTrend,
@@ -356,98 +376,100 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
         }
       } 
     });
-  };
+  }, [updateSupertrend, config.indicators.supertrend]);
 
-  // Add KDJ handlers
-  const handleToggleKDJ = (kdjId: string) => {
+  // ==================== KDJ Handlers ====================
+  const handleToggleKDJ = useCallback((kdjId: string) => {
     toggleKDJ(kdjId);
-  };
+  }, [toggleKDJ]);
 
-  const handlePeriodChangeKDJ = (kdjId: string, period: number) => {
+  const handlePeriodChangeKDJ = useCallback((kdjId: string, period: number) => {
     updateKDJ(kdjId, { period: Math.max(1, period) });
-  };
+  }, [updateKDJ]);
 
-  const handleKPeriodChange = (kdjId: string, kPeriod: number) => {
+  const handleKPeriodChange = useCallback((kdjId: string, kPeriod: number) => {
     updateKDJ(kdjId, { kPeriod: Math.max(1, kPeriod) });
-  };
+  }, [updateKDJ]);
 
-  const handleDPeriodChange = (kdjId: string, dPeriod: number) => {
+  const handleDPeriodChange = useCallback((kdjId: string, dPeriod: number) => {
     updateKDJ(kdjId, { dPeriod: Math.max(1, dPeriod) });
-  };
+  }, [updateKDJ]);
 
-  const handleKLineSizeChangeKDJ = (kdjId: string, lineSize: number) => {
+  const handleKLineSizeChangeKDJ = useCallback((kdjId: string, lineSize: number) => {
     updateKDJ(kdjId, { kLineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
+  }, [updateKDJ]);
 
-  const handleDLineSizeChangeKDJ = (kdjId: string, lineSize: number) => {
+  const handleDLineSizeChangeKDJ = useCallback((kdjId: string, lineSize: number) => {
     updateKDJ(kdjId, { dLineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
+  }, [updateKDJ]);
 
-  const handleJLineSizeChangeKDJ = (kdjId: string, lineSize: number) => {
+  const handleJLineSizeChangeKDJ = useCallback((kdjId: string, lineSize: number) => {
     updateKDJ(kdjId, { jLineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
+  }, [updateKDJ]);
 
-  const handleKColorChangeKDJ = (kdjId: string, color: string) => {
+  const handleKColorChangeKDJ = useCallback((kdjId: string, color: string) => {
     updateKDJ(kdjId, { kLineColor: color });
-  };
+  }, [updateKDJ]);
 
-  const handleDColorChangeKDJ = (kdjId: string, color: string) => {
+  const handleDColorChangeKDJ = useCallback((kdjId: string, color: string) => {
     updateKDJ(kdjId, { dLineColor: color });
-  };
+  }, [updateKDJ]);
 
-  const handleJColorChangeKDJ = (kdjId: string, color: string) => {
+  const handleJColorChangeKDJ = useCallback((kdjId: string, color: string) => {
     updateKDJ(kdjId, { jLineColor: color });
-  };
+  }, [updateKDJ]);
 
-  const handleOverboughtChangeKDJ = (kdjId: string, value: number) => {
+  const handleOverboughtChangeKDJ = useCallback((kdjId: string, value: number) => {
     updateKDJ(kdjId, { overbought: Math.max(50, Math.min(100, value)) });
-  };
+  }, [updateKDJ]);
 
-  const handleOversoldChangeKDJ = (kdjId: string, value: number) => {
+  const handleOversoldChangeKDJ = useCallback((kdjId: string, value: number) => {
     updateKDJ(kdjId, { oversold: Math.max(0, Math.min(50, value)) });
-  };
+  }, [updateKDJ]);
 
-  // EMV handlers
-  const handleToggleEMV = (emvId: string) => {
+  // ==================== EMV Handlers ====================
+  const handleToggleEMV = useCallback((emvId: string) => {
     toggleEMV(emvId);
-  };
+  }, [toggleEMV]);
 
-  const handlePeriodChangeEMV = (emvId: string, period: number) => {
+  const handlePeriodChangeEMV = useCallback((emvId: string, period: number) => {
     updateEMV(emvId, { period: Math.max(5, Math.min(50, period)) });
-  };
+  }, [updateEMV]);
 
-  const handleDivisorChange = (emvId: string, divisor: number) => {
+  const handleDivisorChange = useCallback((emvId: string, divisor: number) => {
     updateEMV(emvId, { divisor: Math.max(1000, Math.min(1000000, divisor)) });
-  };
+  }, [updateEMV]);
 
-  const handleLineSizeChangeEMV = (emvId: string, lineSize: number) => {
+  const handleLineSizeChangeEMV = useCallback((emvId: string, lineSize: number) => {
     updateEMV(emvId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
+  }, [updateEMV]);
 
-  const handleColorChangeEMV = (emvId: string, color: string) => {
+  const handleColorChangeEMV = useCallback((emvId: string, color: string) => {
     updateEMV(emvId, { lineColor: color });
-  };
+  }, [updateEMV]);
 
-  // MTM Handlers
-  const handleToggleMTM = (mtmId: string) => {
+  // ==================== MTM Handlers ====================
+  const handleToggleMTM = useCallback((mtmId: string) => {
     toggleMTM(mtmId);
-  };
+  }, [toggleMTM]);
 
-  const handlePeriodChangeMTM = (mtmId: string, period: number) => {
+  const handlePeriodChangeMTM = useCallback((mtmId: string, period: number) => {
     updateMTM(mtmId, { period: Math.max(1, period) });
-  };
+  }, [updateMTM]);
 
-  const handlePriceTypeChangeMTM = (mtmId: string, priceType: MTMConfig['priceType']) => {
+  const handlePriceTypeChangeMTM = useCallback((mtmId: string, priceType: MTMConfig['priceType']) => {
     updateMTM(mtmId, { priceType });
-  };
+  }, [updateMTM]);
 
-  const handleLineSizeChangeMTM = (mtmId: string, lineSize: number) => {
+  const handleLineSizeChangeMTM = useCallback((mtmId: string, lineSize: number) => {
     updateMTM(mtmId, { lineSize: Math.max(0.5, Math.min(5, lineSize)) });
-  };
+  }, [updateMTM]);
 
-  const handleColorChangeMTM = (mtmId: string, color: string) => {
+  const handleColorChangeMTM = useCallback((mtmId: string, color: string) => {
     updateMTM(mtmId, { lineColor: color });
-  };
+  }, [updateMTM]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm p-2 sm:p-4">
@@ -492,22 +514,12 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
           {activeTab === 'main' ? (
             /* Main Indicator Content */
             <>
-              {/* Vertical Menu - Hidden on mobile, shown as horizontal on small screens */}
+              {/* Vertical Menu */}
               <div className="sm:w-44 border-b sm:border-b-0 sm:border-r border-gray-700 bg-gray-750/50 flex-shrink-0 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto">
                 <div className="p-3 min-w-max sm:min-w-0 sm:pb-4">
                   <h3 className="text-xs text-gray-400 mb-3 font-medium hidden sm:block sticky top-0 bg-gray-750/95 py-1 z-10">MAIN INDICATORS</h3>
                   <nav className="flex sm:flex-col gap-1 sm:gap-0 sm:space-y-1">
-                    {[
-                      { id: 'ma', label: 'MA' },
-                      { id: 'ema', label: 'EMA' },
-                      { id: 'wma', label: 'WMA' },
-                      { id: 'avl', label: 'AVL' },
-                      { id: 'bb', label: 'BB' },
-                      { id: 'vwap', label: 'VWAP' },
-                      { id: 'sar', label: 'SAR' },
-                      { id: 'trix', label: 'TRIX' },
-                      { id: 'supertrend', label: 'Supertrend' }
-                    ].map((item) => (
+                    {mainMenuItems.map((item) => (
                       <button
                         key={item.id}
                         onClick={() => setActiveSubMenu(item.id)}
@@ -631,19 +643,12 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
           ) : (
             /* Sub Indicator Content */
             <>
-              {/* Vertical Menu - Hidden on mobile, shown as horizontal on small screens */}
+              {/* Vertical Menu */}
               <div className="sm:w-44 border-b sm:border-b-0 sm:border-r border-gray-700 bg-gray-750/50 flex-shrink-0 overflow-x-auto sm:overflow-x-hidden sm:overflow-y-auto">
                 <div className="p-3 min-w-max sm:min-w-0 sm:pb-4">
                   <h3 className="text-xs text-gray-400 mb-3 font-medium hidden sm:block sticky top-0 bg-gray-750/95 py-1 z-10">SUB INDICATORS</h3>
                   <nav className="flex sm:flex-col gap-1 sm:gap-0 sm:space-y-1">
-                    {[
-                      { id: 'rsi', label: 'RSI' },
-                      { id: 'mfi', label: 'MFI' },
-                      { id: 'kdj', label: 'KDJ' },
-                      { id: 'emv', label: 'EMV' },
-                      { id: 'mtm', label: 'Momentum' },
-                      { id: 'volume', label: 'Volume' }
-                    ].map((item) => (
+                    {subMenuItems.map((item) => (
                       <button
                         key={item.id}
                         onClick={() => setActiveSubMenu(item.id)}
@@ -671,7 +676,7 @@ export const IndicatorsDialog: React.FC<IndicatorsDialogProps> = ({
                     onColorChange={handleColorChangeRSI}
                   />
                 )}
-                {activeSubMenu === 'mfi' && ( // Add this
+                {activeSubMenu === 'mfi' && (
                   <CompactMFIConfig
                     mfiConfigs={config.indicators.mfi}
                     onToggle={handleToggleMFI}

@@ -1,4 +1,5 @@
 // components/chart/indicators/CompactRSIConfig.tsx
+import React from 'react';
 import { RSIConfig } from '@/context/types';
 
 interface CompactRSIConfigProps {
@@ -9,7 +10,7 @@ interface CompactRSIConfigProps {
   onColorChange: (id: string, color: string) => void;
 }
 
-export const CompactRSIConfig: React.FC<CompactRSIConfigProps> = ({
+export const CompactRSIConfig: React.FC<CompactRSIConfigProps> = React.memo(({
   rsiConfigs,
   onToggle,
   onPeriodChange,
@@ -73,4 +74,6 @@ export const CompactRSIConfig: React.FC<CompactRSIConfigProps> = ({
       ))}
     </div>
   </div>
-);
+));
+
+CompactRSIConfig.displayName = 'CompactRSIConfig';

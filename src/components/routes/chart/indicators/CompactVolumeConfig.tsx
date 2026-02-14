@@ -1,4 +1,5 @@
 // components/chart/indicators/CompactVolumeConfig.tsx
+import React from 'react';
 import { VolumeConfig, VolumeMAConfig } from '@/context/types';
 
 interface CompactVolumeConfigProps {
@@ -12,7 +13,7 @@ interface CompactVolumeConfigProps {
   onToggleVolumeMA: (volumeId: string, maId: string) => void;
 }
 
-export const CompactVolumeConfig: React.FC<CompactVolumeConfigProps> = ({
+export const CompactVolumeConfig: React.FC<CompactVolumeConfigProps> = React.memo(({
   volumeConfigs,
   onToggle,
   onNameChange,
@@ -81,7 +82,6 @@ export const CompactVolumeConfig: React.FC<CompactVolumeConfigProps> = ({
             </div>
           </div>
 
-          {/* Volume MA Lines */}
           <div className="space-y-2">
             <div className="text-sm text-gray-400 font-medium">MA Lines:</div>
             {volumeConfig.maLines.map((maConfig) => (
@@ -115,4 +115,6 @@ export const CompactVolumeConfig: React.FC<CompactVolumeConfigProps> = ({
       ))}
     </div>
   </div>
-);
+));
+
+CompactVolumeConfig.displayName = 'CompactVolumeConfig';

@@ -1,4 +1,5 @@
 // components/chart/indicators/CompactMAConfig.tsx
+import React from 'react';
 import { MAConfig } from '@/context/types';
 
 interface CompactMAConfigProps {
@@ -10,7 +11,7 @@ interface CompactMAConfigProps {
   onColorChange: (id: string, color: string) => void;
 }
 
-export const CompactMAConfig: React.FC<CompactMAConfigProps> = ({ 
+export const CompactMAConfig: React.FC<CompactMAConfigProps> = React.memo(({ 
   configs, 
   title, 
   onToggle, 
@@ -75,4 +76,6 @@ export const CompactMAConfig: React.FC<CompactMAConfigProps> = ({
       ))}
     </div>
   </div>
-);
+));
+
+CompactMAConfig.displayName = 'CompactMAConfig';

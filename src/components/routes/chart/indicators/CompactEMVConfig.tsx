@@ -11,7 +11,7 @@ interface CompactEMVConfigProps {
   onColorChange: (id: string, color: string) => void;
 }
 
-export const CompactEMVConfig: React.FC<CompactEMVConfigProps> = ({
+export const CompactEMVConfig: React.FC<CompactEMVConfigProps> = React.memo(({
   emvConfigs,
   onToggle,
   onPeriodChange,
@@ -42,7 +42,6 @@ export const CompactEMVConfig: React.FC<CompactEMVConfigProps> = ({
             </div>
           </div>
 
-          {/* Period and Divisor Configuration */}
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-xs text-gray-400 mb-1">Period</label>
@@ -69,7 +68,6 @@ export const CompactEMVConfig: React.FC<CompactEMVConfigProps> = ({
             </div>
           </div>
 
-          {/* Line Style */}
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-gray-300">Line Style</h4>
             
@@ -95,7 +93,6 @@ export const CompactEMVConfig: React.FC<CompactEMVConfigProps> = ({
             </div>
           </div>
 
-          {/* Information Section */}
           <div className="mt-4 pt-4 border-t border-gray-700">
             <div className="text-xs text-gray-400 space-y-2">
               <p>
@@ -119,4 +116,6 @@ export const CompactEMVConfig: React.FC<CompactEMVConfigProps> = ({
       ))}
     </div>
   </div>
-);
+));
+
+CompactEMVConfig.displayName = 'CompactEMVConfig';

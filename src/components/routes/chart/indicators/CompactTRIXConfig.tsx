@@ -1,4 +1,5 @@
-// components/chart/indicators/CompactTRIXConfig.tsx
+// components/routes/chart/indicators/CompactTRIXConfig.tsx
+import React from 'react';
 import { TRIXConfig } from '@/context/types';
 
 interface CompactTRIXConfigProps {
@@ -9,7 +10,7 @@ interface CompactTRIXConfigProps {
   onColorChange: (id: string, color: string) => void;
 }
 
-export const CompactTRIXConfig: React.FC<CompactTRIXConfigProps> = ({
+export const CompactTRIXConfig: React.FC<CompactTRIXConfigProps> = React.memo(({
   trixConfigs,
   onToggle,
   onPeriodChange,
@@ -27,7 +28,6 @@ export const CompactTRIXConfig: React.FC<CompactTRIXConfigProps> = ({
     <div className="space-y-3">
       {trixConfigs.map((trixConfig) => (
         <div key={trixConfig.id} className="grid grid-cols-12 gap-3 p-3 bg-gray-750 rounded-lg border border-gray-600">
-          {/* Checkbox and Name */}
           <div className="col-span-12 sm:col-span-3 flex items-center gap-3">
             <input
               type="checkbox"
@@ -38,7 +38,6 @@ export const CompactTRIXConfig: React.FC<CompactTRIXConfigProps> = ({
             <span className="text-sm text-white font-medium truncate">{trixConfig.name}</span>
           </div>
 
-          {/* Period Input */}
           <div className="col-span-6 sm:col-span-3">
             <label className="block text-xs text-gray-400 mb-1">Period</label>
             <input
@@ -52,7 +51,6 @@ export const CompactTRIXConfig: React.FC<CompactTRIXConfigProps> = ({
             />
           </div>
 
-          {/* Width Input */}
           <div className="col-span-6 sm:col-span-3">
             <label className="block text-xs text-gray-400 mb-1">Width</label>
             <input
@@ -66,7 +64,6 @@ export const CompactTRIXConfig: React.FC<CompactTRIXConfigProps> = ({
             />
           </div>
 
-          {/* Color Picker */}
           <div className="col-span-12 sm:col-span-3 flex items-end gap-2">
             <div className="flex-1">
               <label className="block text-xs text-gray-400 mb-1">Color</label>
@@ -92,4 +89,6 @@ export const CompactTRIXConfig: React.FC<CompactTRIXConfigProps> = ({
       <p>• Negative values: Bearish momentum</p>
     </div>
   </div>
-);
+));
+
+CompactTRIXConfig.displayName = 'CompactTRIXConfig';

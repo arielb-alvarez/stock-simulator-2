@@ -1,4 +1,5 @@
-// components/chart/indicators/CompactVWAPConfig.tsx
+// components/routes/chart/indicators/CompactVWAPConfig.tsx
+import React from 'react';
 import { VWAPConfig } from '@/context/types';
 
 interface CompactVWAPConfigProps {
@@ -9,7 +10,7 @@ interface CompactVWAPConfigProps {
   onColorChange: (id: string, color: string) => void;
 }
 
-export const CompactVWAPConfig: React.FC<CompactVWAPConfigProps> = ({
+export const CompactVWAPConfig: React.FC<CompactVWAPConfigProps> = React.memo(({
   vwapConfigs,
   onToggle,
   onLengthChange,
@@ -73,4 +74,6 @@ export const CompactVWAPConfig: React.FC<CompactVWAPConfigProps> = ({
       ))}
     </div>
   </div>
-);
+));
+
+CompactVWAPConfig.displayName = 'CompactVWAPConfig';

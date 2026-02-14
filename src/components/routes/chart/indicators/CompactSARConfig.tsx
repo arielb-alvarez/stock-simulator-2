@@ -1,4 +1,5 @@
 // components/chart/indicators/CompactSARConfig.tsx
+import React from 'react';
 import { SARConfig } from '@/context/types';
 
 interface CompactSARConfigProps {
@@ -9,7 +10,7 @@ interface CompactSARConfigProps {
   onColorChange: (id: string, color: string) => void;
 }
 
-export const CompactSARConfig: React.FC<CompactSARConfigProps> = ({
+export const CompactSARConfig: React.FC<CompactSARConfigProps> = React.memo(({
   sarConfigs,
   onToggle,
   onStartChange,
@@ -74,4 +75,6 @@ export const CompactSARConfig: React.FC<CompactSARConfigProps> = ({
       ))}
     </div>
   </div>
-);
+));
+
+CompactSARConfig.displayName = 'CompactSARConfig';

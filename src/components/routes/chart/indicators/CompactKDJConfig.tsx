@@ -1,3 +1,5 @@
+// components/routes/chart/indicators/CompactKDJConfig.tsx
+import React from 'react';
 import { KDJConfig } from '@/context/types';
 
 interface CompactKDJConfigProps {
@@ -16,7 +18,7 @@ interface CompactKDJConfigProps {
   onOversoldChange?: (id: string, value: number) => void;
 }
 
-export const CompactKDJConfig: React.FC<CompactKDJConfigProps> = ({
+export const CompactKDJConfig: React.FC<CompactKDJConfigProps> = React.memo(({
   kdjConfigs,
   onToggle,
   onPeriodChange,
@@ -54,7 +56,6 @@ export const CompactKDJConfig: React.FC<CompactKDJConfigProps> = ({
             </div>
           </div>
 
-          {/* Period Configuration */}
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-xs text-gray-400 mb-1">Period (n)</label>
@@ -91,7 +92,6 @@ export const CompactKDJConfig: React.FC<CompactKDJConfigProps> = ({
             </div>
           </div>
 
-          {/* Overbought/Oversold Levels */}
           <div className="grid grid-cols-2 gap-4 mb-4">
             <div>
               <label className="block text-xs text-gray-400 mb-1">Overbought</label>
@@ -117,11 +117,9 @@ export const CompactKDJConfig: React.FC<CompactKDJConfigProps> = ({
             </div>
           </div>
 
-          {/* Line Styles */}
           <div className="space-y-3">
             <h4 className="text-sm font-medium text-gray-300">Line Styles</h4>
             
-            {/* K Line */}
             <div className="flex items-center gap-3 p-2 bg-gray-800 rounded">
               <div className="flex items-center gap-2 flex-1">
                 <span className="text-sm text-gray-300">K Line</span>
@@ -143,7 +141,6 @@ export const CompactKDJConfig: React.FC<CompactKDJConfigProps> = ({
               />
             </div>
 
-            {/* D Line */}
             <div className="flex items-center gap-3 p-2 bg-gray-800 rounded">
               <div className="flex items-center gap-2 flex-1">
                 <span className="text-sm text-gray-300">D Line</span>
@@ -165,7 +162,6 @@ export const CompactKDJConfig: React.FC<CompactKDJConfigProps> = ({
               />
             </div>
 
-            {/* J Line */}
             <div className="flex items-center gap-3 p-2 bg-gray-800 rounded">
               <div className="flex items-center gap-2 flex-1">
                 <span className="text-sm text-gray-300">J Line</span>
@@ -191,4 +187,6 @@ export const CompactKDJConfig: React.FC<CompactKDJConfigProps> = ({
       ))}
     </div>
   </div>
-);
+));
+
+CompactKDJConfig.displayName = 'CompactKDJConfig';
