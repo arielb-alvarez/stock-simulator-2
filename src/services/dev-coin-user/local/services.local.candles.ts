@@ -1,3 +1,4 @@
+// services/dev-coin-user/local/services.local.candles.ts
 import { TDataTradingCandles, TDataTradingCandlesLatest, TDataTradingCandlesStats, TParamsTradingCandles, TParamsTradingCandlesLatest, TParamsTradingCandlesStats, TResponseCandles } from "@/types/services/dev-coin-user/types.candles";
 import { LocalService } from "./services.local";
 
