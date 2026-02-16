@@ -1,3 +1,4 @@
+// services/dev-coin-user/main/services.main.candles.ts
 import { AxiosResponse } from "axios";
 import MainService from "./services.main";
 import { TParamsTradingCandles, TResponseCandles, TDataTradingCandles, TParamsTradingCandlesStats, TDataTradingCandlesStats, TDataTradingCandlesLatest } from "@/types/services/dev-coin-user/types.candles";
