@@ -1,3 +1,4 @@
+// pages/api/v1/candles/trading-candles.ts
 // Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import MAIN_SERVICES from "@/constant/constant.main.service";
 import { ERROR_RESPONSE } from "@/services/dev-coin-user/main/services.main";
